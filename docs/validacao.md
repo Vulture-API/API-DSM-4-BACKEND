@@ -4,18 +4,18 @@
 
 Código validado: BACKEND `c247eb9` (os commits posteriores desta entrega consolidam lockfile, CI e documentação sem mudar as funcionalidades). O runtime foi exercitado com os serviços separados e um PostgreSQL 16 descartável, inicializado pelo schema/seed do BANCO.
 
-| Verificação | Resultado |
-| --- | --- |
-| Lint, formatação, TypeScript e build | Aprovados |
-| Testes unitários e integração SQL | 35 arquivos, 239 testes aprovados, sem testes pulados com TEST_DATABASE_URL |
-| Cobertura de linhas | 94,32%; gate de 80% aprovado, incluindo repositórios PostgreSQL |
-| Auditoria npm com nível critical | Aprovada, sem vulnerabilidades críticas; há avisos não críticos herdados das dependências |
-| Build Docker do backend, frontend e recepção Python | Aprovado |
-| E2E com frontend direto em :3010 | 51 verificações aprovadas, zero falhas |
-| E2E pelo Nginx em :8080 | 51 verificações aprovadas, zero falhas |
-| Compose e healthchecks | Backend, frontend, Redis, MQTT, PostgreSQL e Nginx saudáveis |
-| Simulador | Testes e checagem de sintaxe aprovados |
-| Script Bash | Sintaxe validada |
+| Verificação                                         | Resultado                                                                                                  |
+| --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| Lint, formatação, TypeScript e build                | Aprovados                                                                                                  |
+| Testes unitários e integração SQL                   | 35 arquivos, 239 testes aprovados, sem testes pulados com TEST_DATABASE_URL                                |
+| Cobertura de linhas                                 | 94,32%; gate de 80% aprovado, incluindo repositórios PostgreSQL                                            |
+| Auditoria npm com nível critical                    | Aprovada, sem vulnerabilidades críticas; permanecem 7 avisos altos e 2 moderados herdados das dependências |
+| Build Docker do backend, frontend e recepção Python | Aprovado                                                                                                   |
+| E2E com frontend direto em :3010                    | 51 verificações aprovadas, zero falhas                                                                     |
+| E2E pelo Nginx em :8080                             | 51 verificações aprovadas, zero falhas                                                                     |
+| Compose e healthchecks                              | Backend, frontend, Redis, MQTT, PostgreSQL e Nginx saudáveis                                               |
+| Simulador                                           | Testes e checagem de sintaxe aprovados                                                                     |
+| Script Bash                                         | Sintaxe validada                                                                                           |
 
 O E2E cadastra usuário, tipo, estação, sensor e regra; envia leitura MQTT; aguarda persistência e status Online; verifica alerta e reconhecimento; testa páginas/proxies e remove seus registros. Os testes de serviço cobrem checkpoint, duplicidade, falha/reagendamento e ciclos concorrentes. Testes do monolito verificam aliases, CORS encapsulado, erros por domínio, pool e encerramento com motor em andamento.
 
