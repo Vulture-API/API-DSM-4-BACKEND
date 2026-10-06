@@ -9,19 +9,16 @@ import {
 } from "fastify-type-provider-zod";
 
 import { handleError } from "@/errors/error-handler.js";
-import { userRoutes } from "@/modules/example-users/routes/users.route.js";
 
 export function buildApp() {
-  const app = Fastify({
-    logger: false,
-  }).withTypeProvider<ZodTypeProvider>();
-
+  const app = Fastify({ logger: false }).withTypeProvider<ZodTypeProvider>();
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
   app.setErrorHandler(handleError);
-
   app.register(cookie);
-  app.register(userRoutes, { prefix: "/api/users" });
-
+  const health = async () => ({ status: "ok", rules_engine: false });
+  for (const path of ["/health", "/api/health", "/api/v1/health"])
+    app.get(path, health);
+  app.get("/", async () => ({ name: "AgriTech - Backend", status: "ok" }));
   return app;
 }

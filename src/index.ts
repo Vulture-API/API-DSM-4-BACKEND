@@ -1,6 +1,6 @@
-import { env } from "@/config/environment.js";
-import { database } from "@/config/database.js";
 import { buildApp } from "@/app.js";
+import { database } from "@/config/database.js";
+import { env } from "@/config/environment.js";
 
 const app = buildApp();
 let isShuttingDown = false;
