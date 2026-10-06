@@ -2,12 +2,12 @@
 
 Fonte: checkouts locais do INFRA em 2026-10-06. SCRUM-475 acompanha a migração completa.
 
-| Serviço | Responsabilidade | Recursos HTTP | Acesso PostgreSQL | Revisão usada | Testes |
-| --- | --- | --- | --- | --- | --- |
-| USUARIO | Usuários, credenciais e cargos | /api/users; /api/roles | roles, users, credentials | `a493ea092c95bb6bf75a7f2aac9da1664840f532` | 7 arquivos |
-| PARAMETROS | Tipos de sensor, calibração e sensores | /api/sensor-types; /api/sensors e aliases | sensor_types, sensors; referências a stations | `00fa8efcd509337f756a6a18516dab263d26c332` | 11 arquivos |
-| ESTACOES | Estações, propriedades, status e monitoramento | /api/stations; /api/properties; overview e séries | stations, properties, readings, sensors, alertas | `70ab68d10099fa4088bd6f54f069dbc919b61e2c` | 13 arquivos |
-| ALERTAS | Regras, alertas disparados, reconhecimento e processamento | /api/alerts/config; /api/alerts/triggered; /internal/rules-engine/run | alert_configs, triggered_alerts, readings, processing_checkpoints | `8ca070f291c3981d7d29a7daa97a57c3a3e354df` | 7 arquivos |
+| Serviço    | Responsabilidade                                           | Recursos HTTP                                                         | Acesso PostgreSQL                                                 | Revisão usada                              | Testes      |
+| ---------- | ---------------------------------------------------------- | --------------------------------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------ | ----------- |
+| USUARIO    | Usuários, credenciais e cargos                             | /api/users; /api/roles                                                | roles, users, credentials                                         | `a493ea092c95bb6bf75a7f2aac9da1664840f532` | 7 arquivos  |
+| PARAMETROS | Tipos de sensor, calibração e sensores                     | /api/sensor-types; /api/sensors e aliases                             | sensor_types, sensors; referências a stations                     | `00fa8efcd509337f756a6a18516dab263d26c332` | 11 arquivos |
+| ESTACOES   | Estações, propriedades, status e monitoramento             | /api/stations; /api/properties; overview e séries                     | stations, properties, readings, sensors, alertas                  | `70ab68d10099fa4088bd6f54f069dbc919b61e2c` | 13 arquivos |
+| ALERTAS    | Regras, alertas disparados, reconhecimento e processamento | /api/alerts/config; /api/alerts/triggered; /internal/rules-engine/run | alert_configs, triggered_alerts, readings, processing_checkpoints | `8ca070f291c3981d7d29a7daa97a57c3a3e354df` | 7 arquivos  |
 
 ## Comunicação e integrações
 
@@ -39,3 +39,7 @@ Fonte: checkouts locais do INFRA em 2026-10-06. SCRUM-475 acompanha a migração
 - Frontend, Python e BANCO ficam fora da consolidação. Schema e migrations continuam no BANCO; não aplicar migrations ou seeds no banco externo durante validação.
 - Os quatro submódulos Node serão retirados do INFRA depois da cópia e validação. Seus históricos permanecem nos repositórios originais.
 - Deploy manual por Docker Compose. Não configurar Render ou publicar/deployar automaticamente.
+
+## Destino das suítes existentes
+
+Os 31 arquivos de testes dentro dos módulos foram copiados para os módulos homônimos do BACKEND. Os quatro arquivos de testes do pool foram consolidados em `src/config/database.test.ts`; os dois arquivos de testes de aplicação foram reunidos e adaptados em `src/app.test.ts`; o teste do handler de parâmetros passou a `src/errors/parameters-error-handler.test.ts`. Isso preserva as responsabilidades dos 38 arquivos originais em 34 arquivos, com uma suíte adicional para encerramento em `src/lifecycle.test.ts`.
