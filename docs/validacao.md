@@ -42,4 +42,4 @@ O healthcheck original do Nginx tentava localhost/IPv6 contra um listener IPv4. 
 - [ ] Publicar a documentação na página técnica do Confluence e registrar aceite do time.
 - [ ] Realizar implantação/reversão no ambiente do time. Não houve push, deploy externo nem acesso ao PostgreSQL externo nesta tarefa.
 
-Os commits locais usam as chaves SCRUM-476 (inventário), SCRUM-477 (base), SCRUM-478 (funcionalidades/testes), SCRUM-479 (infra/CI/docs) e SCRUM-475 (consolidação/aceite). Todos estão na branch codex/scrum-475-monolito.
+Os commits locais usam as chaves SCRUM-476 (inventário), SCRUM-477 (base), SCRUM-478 (funcionalidades/testes), SCRUM-479 (infra/CI/docs) e SCRUM-475 (consolidação/aceite). No BACKEND, os commits estão na branch existente `refactor/SCRUM-475-ARQ-Migrar-arquitetura-de-microsserviços-para-monolito`. No INFRA, permanecem na branch original `cloudflare`, sem branch adicional para a migração.
