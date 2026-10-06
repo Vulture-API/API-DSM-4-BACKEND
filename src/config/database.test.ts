@@ -7,6 +7,12 @@ import { database } from "@/config/database.js";
 // conexão ociosa emite "error" e o Node derruba o processo inteiro (o
 // api-alertas caiu assim no ambiente do Docker).
 describe("pool do banco", () => {
+  it("mantém bigint numérico e timestamps UTC", () => {
+    expect(types.getTypeParser(types.builtins.INT8)("123")).toBe(123);
+    expect(
+      types.getTypeParser(types.builtins.TIMESTAMP)("2026-09-25 13:07:56.123"),
+    ).toEqual(new Date("2026-09-25T13:07:56.123Z"));
+  });
   afterAll(async () => {
     await database.end();
   });
