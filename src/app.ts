@@ -10,14 +10,28 @@ import {
 import type { Pool } from "pg";
 
 import { database } from "@/config/database.js";
+import { env } from "@/config/environment.js";
 import { handleError } from "@/errors/error-handler.js";
 import { handleParametersError } from "@/errors/handlers/parameters.js";
 import { handleUsersError } from "@/errors/handlers/users.js";
+import type {
+  AlertConfigRepository,
+  TriggeredAlertRepository,
+} from "@/modules/alerts/repositories/alert.repository.js";
+import {
+  PgAlertConfigRepository,
+  PgTriggeredAlertRepository,
+} from "@/modules/alerts/repositories/pg-alert.repository.js";
+import { buildAlertRoutes } from "@/modules/alerts/routes/alerts.route.js";
+import type { MonitoringRepository } from "@/modules/monitoring/repositories/monitoring.repository.js";
+import { PgMonitoringRepository } from "@/modules/monitoring/repositories/pg-monitoring.repository.js";
+import { buildMonitoringRoutes } from "@/modules/monitoring/routes/monitoring.route.js";
 import {
   RoleRepository,
   type RoleRepositoryPort,
 } from "@/modules/roles/repositories/role.repository.js";
 import { roleRoutes } from "@/modules/roles/routes/roles.route.js";
+import type { RulesEngineWorker } from "@/modules/rules-engine/services/rules-engine.worker.js";
 import {
   InMemorySensorTypeRepository,
   PgSensorTypeRepository,
@@ -30,6 +44,9 @@ import {
   type SensorRepository,
 } from "@/modules/sensors/repositories/sensor.repository.js";
 import { sensorRoutes } from "@/modules/sensors/routes/sensors.route.js";
+import { PgStationRepository } from "@/modules/stations/repositories/pg-station.repository.js";
+import type { StationRepository } from "@/modules/stations/repositories/station.repository.js";
+import { buildStationRoutes } from "@/modules/stations/routes/stations.route.js";
 import {
   UserRepository,
   type UserRepositoryPort,
@@ -39,6 +56,13 @@ import type { PasswordHasher } from "@/modules/users/services/password-hasher.js
 
 export type BuildAppOptions = {
   database?: Pool;
+  stationRepository?: StationRepository;
+  monitoringRepository?: MonitoringRepository;
+  stationOfflineThresholdMinutes?: number;
+  clock?: () => Date;
+  alertConfigRepository?: AlertConfigRepository;
+  triggeredAlertRepository?: TriggeredAlertRepository;
+  rulesEngineWorker?: RulesEngineWorker;
   userRepository?: UserRepositoryPort;
   roleRepository?: RoleRepositoryPort;
   passwordHasher?: PasswordHasher;
@@ -53,7 +77,10 @@ export function buildApp(options: BuildAppOptions = {}) {
   app.setSerializerCompiler(serializerCompiler);
   app.setErrorHandler(handleError);
   app.register(cookie);
-  const health = async () => ({ status: "ok", rules_engine: false });
+  const health = async () => ({
+    status: "ok",
+    rules_engine: options.rulesEngineWorker?.isRunning ?? false,
+  });
   for (const path of ["/health", "/api/health", "/api/v1/health"])
     app.get(path, health);
   app.get("/", async () => ({ name: "AgriTech - Backend", status: "ok" }));
@@ -87,12 +114,12 @@ export function buildApp(options: BuildAppOptions = {}) {
     });
     const sensorTypeRepository =
       options.sensorTypeRepository ??
-      (process.env.NODE_ENV === "test"
+      (process.env.NODE_ENV === "test" && !options.database
         ? new InMemorySensorTypeRepository()
         : new PgSensorTypeRepository(pool));
     const sensorRepository =
       options.sensorRepository ??
-      (process.env.NODE_ENV === "test"
+      (process.env.NODE_ENV === "test" && !options.database
         ? new InMemorySensorRepository()
         : new PgSensorRepository(pool));
     for (const prefix of ["", "/v1", "/api", "/api/v1"]) {
@@ -111,6 +138,60 @@ export function buildApp(options: BuildAppOptions = {}) {
         parameters.options(`${prefix}/${resource}/*`, preflight);
       }
     }
+  });
+  app.register(async (stations) => {
+    stations.setErrorHandler(handleError);
+    const repository =
+      options.stationRepository ?? new PgStationRepository(pool);
+    const monitoring =
+      options.monitoringRepository ?? new PgMonitoringRepository(pool);
+    const threshold =
+      options.stationOfflineThresholdMinutes ??
+      env.STATION_OFFLINE_THRESHOLD_MINUTES;
+    stations.get(
+      "/api/properties",
+      async () => (await repository.listProperties?.()) ?? [],
+    );
+    stations.register(
+      buildStationRoutes(repository, threshold, options.clock),
+      { prefix: "/api/stations" },
+    );
+    stations.register(
+      buildMonitoringRoutes(monitoring, threshold, options.clock),
+      { prefix: "/api/stations" },
+    );
+  });
+  app.register(async (alerts) => {
+    alerts.setErrorHandler(handleError);
+    alerts.register(
+      buildAlertRoutes(
+        options.alertConfigRepository ?? new PgAlertConfigRepository(pool),
+        options.triggeredAlertRepository ??
+          new PgTriggeredAlertRepository(pool),
+      ),
+      { prefix: "/api/alerts" },
+    );
+  });
+  app.post("/internal/rules-engine/run", async (_request, reply) => {
+    if (!options.rulesEngineWorker) {
+      return reply.status(503).send({
+        statusCode: 503,
+        code: "RULES_ENGINE_UNAVAILABLE",
+        message: "Rules engine is not attached to this instance.",
+      });
+    }
+    const result = await options.rulesEngineWorker.runOnce();
+    if (result === null) {
+      return reply.status(409).send({
+        statusCode: 409,
+        code: "RULES_ENGINE_BUSY",
+        message: "A processing cycle is already running.",
+      });
+    }
+    return result;
+  });
+  app.addHook("onClose", async () => {
+    await options.rulesEngineWorker?.stop();
   });
   return app;
 }
