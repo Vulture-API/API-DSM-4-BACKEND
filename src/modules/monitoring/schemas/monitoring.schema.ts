@@ -33,5 +33,14 @@ export const stationIdParamSchema = z.object({
   id: z.coerce.number().int().positive(),
 });
 
+export const currentQuerySchema = z.object({
+  station_id: z.coerce.number().int().positive().optional(),
+  property_id: z.coerce.number().int().positive().optional(),
+});
+
+export const liveReadingsQuerySchema = z.object({
+  station_id: z.coerce.number().int().positive().optional(),
+});
+
 export type OverviewQuery = z.infer<typeof overviewQuerySchema>;
 export type SeriesQuery = z.infer<typeof seriesQuerySchema>;

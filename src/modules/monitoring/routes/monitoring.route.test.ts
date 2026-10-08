@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { buildApp } from "@/app.js";
 import { InMemoryMonitoringRepository } from "@/modules/monitoring/repositories/monitoring.repository.js";
+import { ReadingsBroadcaster } from "@/modules/monitoring/services/readings-broadcaster.js";
 import { InMemoryStationRepository } from "@/modules/stations/repositories/in-memory-station.repository.js";
 
 describe("rotas de monitoramento", () => {
@@ -26,6 +27,27 @@ describe("rotas de monitoramento", () => {
         sensors_active: 2,
         active_alerts: 0,
         latest_readings: [
+          {
+            sensor_id: 10,
+            local_identifier: "temp",
+            sensor_type_id: 3,
+            sensor_type: "Temperatura",
+            unit_of_measure: "°C",
+            value: 24.5,
+            unix_time: 1790337480,
+          },
+        ],
+      },
+    ];
+    monitoring.current = [
+      {
+        id: 1,
+        name: "Estação 1",
+        property_id: 1,
+        property_name: "Fazenda",
+        last_communication_at: new Date("2026-09-25T11:58:00.000Z"),
+        active_alerts: 0,
+        readings: [
           {
             sensor_id: 10,
             local_identifier: "temp",
@@ -127,5 +149,118 @@ describe("rotas de monitoramento", () => {
     const response = await app.inject("/api/stations/overview");
 
     expect(response.statusCode).not.toBe(400);
+  });
+
+  it("GET /api/stations/current devolve os dados atuais", async () => {
+    const response = await app.inject("/api/stations/current");
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      generated_at: "2026-09-25T12:00:00.000Z",
+      offline_threshold_minutes: 10,
+      stations: [
+        {
+          station_id: 1,
+          status: "Online",
+          last_update: "2026-09-25T11:58:00.000Z",
+          readings: [{ sensor_type: "Temperatura", value: 24.5 }],
+        },
+      ],
+    });
+  });
+
+  it("GET /api/stations/current filtra por propriedade e valida os filtros", async () => {
+    const other = await app.inject("/api/stations/current?property_id=2");
+    expect(other.statusCode).toBe(200);
+    expect(other.json().stations).toEqual([]);
+
+    const invalid = await app.inject("/api/stations/current?station_id=abc");
+    expect(invalid.statusCode).toBe(400);
+
+    const missing = await app.inject("/api/stations/current?station_id=99");
+    expect(missing.statusCode).toBe(404);
+  });
+
+  it("GET /api/stations/:id/current devolve uma estação ou 404", async () => {
+    const ok = await app.inject("/api/stations/1/current");
+    expect(ok.statusCode).toBe(200);
+    expect(ok.json().stations).toHaveLength(1);
+
+    const missing = await app.inject("/api/stations/99/current");
+    expect(missing.statusCode).toBe(404);
+  });
+});
+
+describe("WebSocket de leituras atuais", () => {
+  let app: FastifyInstance;
+  let monitoring: InMemoryMonitoringRepository;
+  let broadcaster: ReadingsBroadcaster;
+
+  beforeEach(async () => {
+    monitoring = new InMemoryMonitoringRepository();
+    monitoring.current = [1, 2].map((id) => ({
+      id,
+      name: `Estação ${id}`,
+      property_id: 1,
+      property_name: "Fazenda",
+      last_communication_at: null,
+      active_alerts: 0,
+      readings: [],
+    }));
+    broadcaster = new ReadingsBroadcaster(monitoring, { intervalMs: 10 });
+    app = buildApp({
+      stationRepository: new InMemoryStationRepository(),
+      monitoringRepository: monitoring,
+      readingsBroadcaster: broadcaster,
+    });
+    await app.ready();
+  });
+
+  afterEach(async () => {
+    await app.close();
+  });
+
+  const live = (id: number, stationId: number) => ({
+    reading_id: id,
+    station_id: stationId,
+    sensor_id: 10,
+    local_identifier: "temp",
+    sensor_type_id: 1,
+    sensor_type: "Temperatura",
+    unit_of_measure: "°C",
+    value: 21.5,
+    unix_time: 1_790_000_000,
+  });
+
+  const waitFor = async (check: () => boolean) => {
+    for (let i = 0; i < 100 && !check(); i++)
+      await new Promise((resolve) => setTimeout(resolve, 10));
+  };
+
+  it("envia as leituras novas da estação filtrada", async () => {
+    const socket = await app.injectWS("/api/stations/current/ws?station_id=2");
+    const messages: unknown[] = [];
+    socket.on("message", (data) => messages.push(JSON.parse(String(data))));
+    await waitFor(() => broadcaster.subscribers === 1);
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    monitoring.liveReadings.push(live(1, 1), live(2, 2));
+    await waitFor(() => messages.length > 0);
+
+    expect(messages).toEqual([{ type: "reading", ...live(2, 2) }]);
+
+    socket.terminate();
+    await waitFor(() => broadcaster.subscribers === 0);
+    expect(broadcaster.subscribers).toBe(0);
+  });
+
+  it("recusa estação inexistente e filtro inválido", async () => {
+    await expect(
+      app.injectWS("/api/stations/current/ws?station_id=99"),
+    ).rejects.toThrow();
+    await expect(
+      app.injectWS("/api/stations/current/ws?station_id=abc"),
+    ).rejects.toThrow();
+    expect(broadcaster.subscribers).toBe(0);
   });
 });

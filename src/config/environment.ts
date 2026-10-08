@@ -28,6 +28,8 @@ const environmentSchema = z.object({
     .positive()
     .max(5000)
     .default(500),
+  // Intervalo de consulta das leituras novas enviadas pelo WebSocket
+  CURRENT_READINGS_POLL_MS: z.coerce.number().int().positive().default(3000),
 });
 
 const result = environmentSchema.safeParse(process.env);
