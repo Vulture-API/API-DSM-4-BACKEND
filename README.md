@@ -55,6 +55,7 @@ Cada módulo mantém controllers, schemas, serviços e repositórios próprios. 
 | Tipos e sensores        | `/api/sensor-types`, `/api/sensors`                                                                                        |
 | Estações e propriedades | `/api/stations`, `/api/stations/properties`, `/api/properties`                                                             |
 | Status e monitoramento  | `/api/stations/:id/status`, `/api/stations/overview`, `/api/stations/readings/series`, `/api/stations/:id/readings/series` |
+| Estatísticas e previsão | `/api/stations/statistics`, `/api/stations/:id/statistics`, `/api/stations/:id/forecast`                                   |
 | Configurações e alertas | `/api/alerts/config`, `/api/alerts/triggered`, `/api/alerts/triggered/:id/acknowledge`                                     |
 | Operação do motor       | `POST /internal/rules-engine/run`                                                                                          |
 
@@ -64,19 +65,28 @@ Os healthchecks foram unificados e as portas antigas 3001, 3002 e 3005 deixaram 
 
 ## Variáveis de ambiente
 
-| Variável                            | Padrão        | Uso                            |
-| ----------------------------------- | ------------- | ------------------------------ |
-| `NODE_ENV`                          | `development` | Ambiente da aplicação          |
-| `PORT`                              | `3000`        | Porta HTTP                     |
-| `DATABASE_URL`                      | obrigatório   | Única conexão PostgreSQL       |
-| `STATION_OFFLINE_THRESHOLD_MINUTES` | `10`          | Limite para estação Offline    |
-| `RULES_ENGINE_ENABLED`              | `false`       | Ativa o agendamento do motor   |
-| `RULES_ENGINE_INTERVAL_MS`          | `15000`       | Intervalo entre ciclos         |
-| `RULES_ENGINE_BATCH_SIZE`           | `500`         | Leituras por lote, máximo 5000 |
+| Variável                            | Padrão        | Uso                             |
+| ----------------------------------- | ------------- | ------------------------------- |
+| `NODE_ENV`                          | `development` | Ambiente da aplicação           |
+| `PORT`                              | `3000`        | Porta HTTP                      |
+| `DATABASE_URL`                      | obrigatório   | Única conexão PostgreSQL        |
+| `STATION_OFFLINE_THRESHOLD_MINUTES` | `10`          | Limite para estação Offline     |
+| `RULES_ENGINE_ENABLED`              | `false`       | Ativa o agendamento do motor    |
+| `RULES_ENGINE_INTERVAL_MS`          | `15000`       | Intervalo entre ciclos          |
+| `RULES_ENGINE_BATCH_SIZE`           | `500`         | Leituras por lote, máximo 5000  |
+| `FORECAST_API_URL`                  | Open-Meteo    | Endpoint de previsão            |
+| `FORECAST_TIMEOUT_MS`               | `5000`        | Tempo máximo da chamada externa |
+| `FORECAST_CACHE_TTL_MINUTES`        | `30`          | Cache da previsão por posição   |
 
 O motor fica desligado por padrão para não avançar o checkpoint do banco compartilhado durante desenvolvimento. O Compose o habilita e usa intervalo de 5000 ms. A rota manual permanece disponível quando um motor está anexado, mesmo sem agendamento, e retorna 409 durante um ciclo concorrente.
 
 O pool preserva timestamps sem fuso como UTC, IDs bigint numéricos e o listener de falhas de conexões ociosas. Transações, checkpoint e índices de prevenção de duplicidade continuam seguindo o modelo existente. Redis e MQTT são utilizados pelos processos Python; o backend lê o PostgreSQL e não cria clientes adicionais para esses serviços.
+
+## Estatísticas e previsão
+
+`GET /api/stations/statistics` calcula, por tipo de sensor, contagem, média, mínimo, máximo e desvio padrão das leituras consistentes do período. `from` e `to` aceitam datas ISO 8601; sem eles, vale os últimos 7 dias. O período vai até 366 dias e `from` precisa ser anterior a `to` (senão 400 `INVALID_PERIOD`). Filtra por `property_id`, ou por estação em `/api/stations/:id/statistics`. Com menos de duas leituras, `stddev` vem nulo.
+
+`GET /api/stations/:id/forecast?days=1..7` devolve a previsão diária (temperatura máxima e mínima, chuva, probabilidade de chuva, vento e código WMO) para a latitude e longitude da estação. A fonte é o [Open-Meteo](https://open-meteo.com), que é gratuito e não exige chave. A resposta fica em cache por 30 minutos por posição. Estação sem coordenadas devolve 422 `STATION_WITHOUT_COORDINATES`, e falha ou timeout do provedor devolve 503 `FORECAST_UNAVAILABLE`.
 
 ## Verificação
 

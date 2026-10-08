@@ -28,6 +28,13 @@ const environmentSchema = z.object({
     .positive()
     .max(5000)
     .default(500),
+  // Previsão meteorológica (Open-Meteo)
+  FORECAST_API_URL: z
+    .string()
+    .url()
+    .default("https://api.open-meteo.com/v1/forecast"),
+  FORECAST_TIMEOUT_MS: z.coerce.number().int().positive().default(5000),
+  FORECAST_CACHE_TTL_MINUTES: z.coerce.number().int().min(0).default(30),
 });
 
 const result = environmentSchema.safeParse(process.env);
