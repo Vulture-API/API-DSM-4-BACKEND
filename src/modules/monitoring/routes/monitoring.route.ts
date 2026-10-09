@@ -1,5 +1,6 @@
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 
+import { ApplicationError } from "@/errors/application.error.js";
 import type { MonitoringRepository } from "@/modules/monitoring/repositories/monitoring.repository.js";
 import {
   currentQuerySchema,
@@ -15,6 +16,28 @@ import { GetReadingSeriesService } from "@/modules/monitoring/services/get-readi
 import type { ReadingsBroadcaster } from "@/modules/monitoring/services/readings-broadcaster.js";
 import { StationNotFoundError } from "@/modules/stations/errors/station-not-found.error.js";
 
+export type LiveLimits = {
+  maxConnections: number;
+  heartbeatMs: number;
+  maxBufferedBytes: number;
+};
+
+const DEFAULT_LIVE_LIMITS: LiveLimits = {
+  maxConnections: 200,
+  heartbeatMs: 30_000,
+  maxBufferedBytes: 1024 * 1024,
+};
+
+class TooManyConnectionsError extends ApplicationError {
+  constructor() {
+    super(
+      503,
+      "TOO_MANY_CONNECTIONS",
+      "Live readings connection limit reached.",
+    );
+  }
+}
+
 /**
  * Rotas de monitoramento, no mesmo prefixo /api/stations:
  *   GET /overview              status + última leitura de todas as estações
@@ -29,6 +52,7 @@ export function buildMonitoringRoutes(
   offlineThresholdMinutes: number,
   clock?: () => Date,
   broadcaster?: ReadingsBroadcaster,
+  liveLimits?: Partial<LiveLimits>,
 ): FastifyPluginAsyncZod {
   return async (app) => {
     const overview = new GetOverviewService(
@@ -62,12 +86,18 @@ export function buildMonitoringRoutes(
     );
 
     if (broadcaster) {
+      const limits = { ...DEFAULT_LIVE_LIMITS, ...liveLimits };
+      let connections = 0;
+
       app.get(
         "/current/ws",
         {
           websocket: true,
           schema: { querystring: liveReadingsQuerySchema },
           preHandler: async (request) => {
+            if (connections >= limits.maxConnections) {
+              throw new TooManyConnectionsError();
+            }
             const { station_id } = request.query;
             if (
               station_id !== undefined &&
@@ -79,12 +109,47 @@ export function buildMonitoringRoutes(
         },
         (socket, request) => {
           const { station_id } = request.query;
-          const unsubscribe = broadcaster.subscribe((reading) => {
+          // O preHandler pode esperar o banco; aberturas simultâneas passam
+          // juntas pela primeira checagem.
+          if (connections >= limits.maxConnections) {
+            socket.close(1013, "TOO_MANY_CONNECTIONS");
+            return;
+          }
+          connections++;
+
+          // Conexão que não responde ao ping some sem disparar "close"
+          // até o timeout do TCP; o heartbeat derruba antes.
+          let alive = true;
+          socket.on("pong", () => {
+            alive = true;
+          });
+          const heartbeat = setInterval(() => {
+            if (!alive) {
+              socket.terminate();
+              return;
+            }
+            alive = false;
+            socket.ping();
+          }, limits.heartbeatMs);
+
+          const unsubscribe = broadcaster.subscribe((reading, message) => {
             if (station_id !== undefined && reading.station_id !== station_id)
               return;
-            socket.send(JSON.stringify({ type: "reading", ...reading }));
+            if (socket.readyState !== socket.OPEN) return;
+            // Cliente que não consome as mensagens não pode crescer a
+            // memória do servidor sem limite.
+            if (socket.bufferedAmount > limits.maxBufferedBytes) {
+              socket.terminate();
+              return;
+            }
+            socket.send(message);
           });
-          socket.on("close", unsubscribe);
+
+          socket.on("close", () => {
+            connections--;
+            clearInterval(heartbeat);
+            unsubscribe();
+          });
         },
       );
     }

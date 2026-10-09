@@ -1,5 +1,5 @@
 import type { FastifyInstance } from "fastify";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { buildApp } from "@/app.js";
 import { InMemoryMonitoringRepository } from "@/modules/monitoring/repositories/monitoring.repository.js";
@@ -212,6 +212,7 @@ describe("WebSocket de leituras atuais", () => {
       stationRepository: new InMemoryStationRepository(),
       monitoringRepository: monitoring,
       readingsBroadcaster: broadcaster,
+      liveLimits: { maxConnections: 2 },
     });
     await app.ready();
   });
@@ -232,35 +233,101 @@ describe("WebSocket de leituras atuais", () => {
     unix_time: 1_790_000_000,
   });
 
-  const waitFor = async (check: () => boolean) => {
-    for (let i = 0; i < 100 && !check(); i++)
-      await new Promise((resolve) => setTimeout(resolve, 10));
+  // Conecta e espera o broadcaster ler o último id (ponto de partida).
+  const connect = async (query = "") => {
+    const baseline = vi.spyOn(monitoring, "lastReadingId");
+    const socket = await app.injectWS(`/api/stations/current/ws${query}`);
+    const messages: Array<{ station_id: number }> = [];
+    socket.on("message", (data) => messages.push(JSON.parse(String(data))));
+    await vi.waitFor(() => expect(baseline).toHaveResolved());
+    baseline.mockRestore();
+    return { socket, messages };
   };
 
   it("envia as leituras novas da estação filtrada", async () => {
-    const socket = await app.injectWS("/api/stations/current/ws?station_id=2");
-    const messages: unknown[] = [];
-    socket.on("message", (data) => messages.push(JSON.parse(String(data))));
-    await waitFor(() => broadcaster.subscribers === 1);
-    await new Promise((resolve) => setTimeout(resolve, 30));
+    const { socket, messages } = await connect("?station_id=2");
 
     monitoring.liveReadings.push(live(1, 1), live(2, 2));
-    await waitFor(() => messages.length > 0);
+    await vi.waitFor(() => expect(messages).toHaveLength(1));
 
     expect(messages).toEqual([{ type: "reading", ...live(2, 2) }]);
 
     socket.terminate();
-    await waitFor(() => broadcaster.subscribers === 0);
+    await vi.waitFor(() => expect(broadcaster.subscribers).toBe(0));
+  });
+
+  it("sem filtro, envia as leituras de todas as estações", async () => {
+    const { socket, messages } = await connect();
+
+    monitoring.liveReadings.push(live(1, 1), live(2, 2));
+    await vi.waitFor(() => expect(messages).toHaveLength(2));
+
+    expect(messages.map((m) => m.station_id)).toEqual([1, 2]);
+    socket.terminate();
+  });
+
+  it("recusa estação inexistente com 404 e filtro inválido com 400", async () => {
+    await expect(
+      app.injectWS("/api/stations/current/ws?station_id=99"),
+    ).rejects.toThrow("Unexpected server response: 404");
+    await expect(
+      app.injectWS("/api/stations/current/ws?station_id=abc"),
+    ).rejects.toThrow("Unexpected server response: 400");
     expect(broadcaster.subscribers).toBe(0);
   });
 
-  it("recusa estação inexistente e filtro inválido", async () => {
-    await expect(
-      app.injectWS("/api/stations/current/ws?station_id=99"),
-    ).rejects.toThrow();
-    await expect(
-      app.injectWS("/api/stations/current/ws?station_id=abc"),
-    ).rejects.toThrow();
-    expect(broadcaster.subscribers).toBe(0);
+  it("recusa conexões acima do limite com 503 e libera a vaga ao fechar", async () => {
+    const first = await app.injectWS("/api/stations/current/ws");
+    const second = await app.injectWS("/api/stations/current/ws");
+
+    await expect(app.injectWS("/api/stations/current/ws")).rejects.toThrow(
+      "Unexpected server response: 503",
+    );
+
+    first.terminate();
+    await vi.waitFor(() => expect(broadcaster.subscribers).toBe(1));
+    const third = await app.injectWS("/api/stations/current/ws");
+    expect(broadcaster.subscribers).toBe(2);
+
+    second.terminate();
+    third.terminate();
+  });
+});
+
+describe("WebSocket de leituras atuais (aberturas simultâneas)", () => {
+  it("não passa do limite quando várias aberturas esperam o banco juntas", async () => {
+    const monitoring = new InMemoryMonitoringRepository();
+    monitoring.current = [
+      {
+        id: 1,
+        name: "Estação 1",
+        property_id: 1,
+        property_name: "Fazenda",
+        last_communication_at: null,
+        active_alerts: 0,
+        readings: [],
+      },
+    ];
+    const broadcaster = new ReadingsBroadcaster(monitoring, { intervalMs: 10 });
+    const app = buildApp({
+      stationRepository: new InMemoryStationRepository(),
+      monitoringRepository: monitoring,
+      readingsBroadcaster: broadcaster,
+      liveLimits: { maxConnections: 1 },
+    });
+    await app.ready();
+
+    const sockets = await Promise.all(
+      [1, 2, 3].map(() =>
+        app.injectWS("/api/stations/current/ws?station_id=1"),
+      ),
+    );
+    await vi.waitFor(() =>
+      expect(sockets.filter((s) => s.readyState === s.CLOSED)).toHaveLength(2),
+    );
+
+    expect(broadcaster.subscribers).toBe(1);
+    for (const socket of sockets) socket.terminate();
+    await app.close();
   });
 });

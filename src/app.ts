@@ -26,7 +26,10 @@ import {
 import { buildAlertRoutes } from "@/modules/alerts/routes/alerts.route.js";
 import type { MonitoringRepository } from "@/modules/monitoring/repositories/monitoring.repository.js";
 import { PgMonitoringRepository } from "@/modules/monitoring/repositories/pg-monitoring.repository.js";
-import { buildMonitoringRoutes } from "@/modules/monitoring/routes/monitoring.route.js";
+import {
+  buildMonitoringRoutes,
+  type LiveLimits,
+} from "@/modules/monitoring/routes/monitoring.route.js";
 import { ReadingsBroadcaster } from "@/modules/monitoring/services/readings-broadcaster.js";
 import {
   RoleRepository,
@@ -61,6 +64,7 @@ export type BuildAppOptions = {
   stationRepository?: StationRepository;
   monitoringRepository?: MonitoringRepository;
   readingsBroadcaster?: ReadingsBroadcaster;
+  liveLimits?: Partial<LiveLimits>;
   stationOfflineThresholdMinutes?: number;
   clock?: () => Date;
   alertConfigRepository?: AlertConfigRepository;
@@ -80,7 +84,7 @@ export function buildApp(options: BuildAppOptions = {}) {
   app.setSerializerCompiler(serializerCompiler);
   app.setErrorHandler(handleError);
   app.register(cookie);
-  app.register(websocket);
+  app.register(websocket, { options: { maxPayload: 1024 } });
   const health = async () => ({
     status: "ok",
     rules_engine: options.rulesEngineWorker?.isRunning ?? false,
@@ -171,7 +175,10 @@ export function buildApp(options: BuildAppOptions = {}) {
       await broadcaster.close();
     });
     stations.register(
-      buildMonitoringRoutes(monitoring, threshold, options.clock, broadcaster),
+      buildMonitoringRoutes(monitoring, threshold, options.clock, broadcaster, {
+        maxConnections: env.CURRENT_READINGS_MAX_CONNECTIONS,
+        ...options.liveLimits,
+      }),
       { prefix: "/api/stations" },
     );
   });

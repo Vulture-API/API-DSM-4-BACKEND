@@ -1,7 +1,8 @@
 import type { MonitoringRepository } from "@/modules/monitoring/repositories/monitoring.repository.js";
 import type { LiveReading } from "@/modules/monitoring/types/monitoring.type.js";
 
-type Listener = (reading: LiveReading) => void;
+/** Recebe a leitura e a mensagem já serializada (uma vez para todos). */
+type Listener = (reading: LiveReading, message: string) => void;
 
 export type ReadingsBroadcasterOptions = {
   intervalMs: number;
@@ -13,7 +14,13 @@ export type ReadingsBroadcasterOptions = {
  * Busca as leituras novas por id e repassa para quem está conectado.
  * Só consulta o banco enquanto houver inscritos e não usa o checkpoint do
  * motor de regras. Ao conectar o primeiro cliente parte do último id
- * existente, sem reenviar o histórico.
+ * existente, sem reenviar o histórico. Lote cheio = consulta de novo sem
+ * esperar, para não acumular atraso.
+ *
+ * O cursor por id assume que as leituras são gravadas em ordem de id, como
+ * faz o persistidor (um consumidor, um lote por transação). Com gravações
+ * concorrentes, um id menor que fizer commit depois não é enviado; a
+ * consulta REST continua com o dado.
  */
 export class ReadingsBroadcaster {
   private readonly listeners = new Set<Listener>();
@@ -36,6 +43,10 @@ export class ReadingsBroadcaster {
     return this.loop !== null;
   }
 
+  private get batchSize(): number {
+    return this.options.batchSize ?? 500;
+  }
+
   subscribe(listener: Listener): () => void {
     this.listeners.add(listener);
     if (!this.loop && !this.closed) this.loop = this.run();
@@ -45,25 +56,28 @@ export class ReadingsBroadcaster {
     };
   }
 
-  async poll(): Promise<void> {
+  /** Devolve quantas leituras novas foram repassadas. */
+  async poll(): Promise<number> {
     if (this.lastReadingId === null) {
       this.lastReadingId = await this.repository.lastReadingId();
-      return;
+      return 0;
     }
     const readings = await this.repository.readingsAfter(
       this.lastReadingId,
-      this.options.batchSize ?? 500,
+      this.batchSize,
     );
     for (const reading of readings) {
       this.lastReadingId = reading.reading_id;
+      const message = JSON.stringify({ type: "reading", ...reading });
       for (const listener of this.listeners) {
         try {
-          listener(reading);
+          listener(reading, message);
         } catch (error) {
-          this.options.onError?.(error);
+          this.report(error);
         }
       }
     }
+    return readings.length;
   }
 
   async close(): Promise<void> {
@@ -73,17 +87,29 @@ export class ReadingsBroadcaster {
   }
 
   private async run(): Promise<void> {
-    while (this.listeners.size > 0 && !this.closed) {
-      try {
-        await this.poll();
-      } catch (error) {
-        this.options.onError?.(error);
+    try {
+      while (this.listeners.size > 0 && !this.closed) {
+        let full = false;
+        try {
+          full = (await this.poll()) >= this.batchSize;
+        } catch (error) {
+          this.report(error);
+        }
+        if (this.listeners.size === 0 || this.closed) break;
+        if (!full) await this.sleep();
       }
-      if (this.listeners.size === 0 || this.closed) break;
-      await this.sleep();
+    } finally {
+      this.lastReadingId = null;
+      this.loop = null;
     }
-    this.lastReadingId = null;
-    this.loop = null;
+  }
+
+  private report(error: unknown): void {
+    try {
+      this.options.onError?.(error);
+    } catch {
+      // O callback de log não pode derrubar o loop.
+    }
   }
 
   private sleep(): Promise<void> {

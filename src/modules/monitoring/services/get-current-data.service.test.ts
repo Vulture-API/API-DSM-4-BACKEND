@@ -37,7 +37,7 @@ describe("GetCurrentDataService", () => {
 
   it("devolve as leituras atuais com status e última atualização", async () => {
     repository.current = [
-      row(1, minutesAgo(2), {
+      row(1, minutesAgo(1), {
         readings: [
           {
             sensor_id: 10,
@@ -133,6 +133,37 @@ describe("GetCurrentDataService", () => {
     await expect(service.execute({ station_id: 99 })).rejects.toBeInstanceOf(
       StationNotFoundError,
     );
+  });
+
+  it("usa a leitura mais recente como última atualização, ignorando sensores sem dado", async () => {
+    repository.current = [
+      row(1, minutesAgo(1), {
+        readings: [
+          {
+            sensor_id: 10,
+            local_identifier: "temp",
+            sensor_type_id: 1,
+            sensor_type: "Temperatura",
+            unit_of_measure: "°C",
+            value: null,
+            unix_time: null,
+          },
+          {
+            sensor_id: 11,
+            local_identifier: "umid",
+            sensor_type_id: 2,
+            sensor_type: "Umidade",
+            unit_of_measure: "%",
+            value: 60,
+            unix_time: unix(minutesAgo(7)),
+          },
+        ],
+      }),
+    ];
+
+    const result = await service.execute({});
+
+    expect(result.stations[0]!.last_update).toEqual(minutesAgo(7));
   });
 
   it("devolve lista vazia sem estações", async () => {
