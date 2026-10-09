@@ -183,15 +183,19 @@ export function buildApp(options: BuildAppOptions = {}) {
           baseUrl: env.FORECAST_API_URL,
           timeoutMs: env.FORECAST_TIMEOUT_MS,
         }),
-        env.FORECAST_CACHE_TTL_MINUTES * 60_000,
+        { ttlMs: env.FORECAST_CACHE_TTL_MINUTES * 60_000 },
       );
     stations.register(
       buildForecastRoutes(
         repository,
         forecastProvider,
         options.clock,
-        (error) =>
-          console.error("[forecast] falha no provedor de previsão:", error),
+        (error, context) =>
+          console.error(
+            "[forecast] falha no provedor de previsão:",
+            context,
+            error,
+          ),
       ),
       { prefix: "/api/stations" },
     );

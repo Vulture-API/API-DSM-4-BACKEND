@@ -30,11 +30,20 @@ const environmentSchema = z.object({
     .default(500),
   // Previsão meteorológica (Open-Meteo)
   FORECAST_API_URL: z
-    .string()
-    .url()
+    .url({ protocol: /^https$/ })
     .default("https://api.open-meteo.com/v1/forecast"),
-  FORECAST_TIMEOUT_MS: z.coerce.number().int().positive().default(5000),
-  FORECAST_CACHE_TTL_MINUTES: z.coerce.number().int().min(0).default(30),
+  FORECAST_TIMEOUT_MS: z.coerce
+    .number()
+    .int()
+    .min(500)
+    .max(30_000)
+    .default(5000),
+  FORECAST_CACHE_TTL_MINUTES: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .max(24 * 60)
+    .default(30),
 });
 
 const result = environmentSchema.safeParse(process.env);

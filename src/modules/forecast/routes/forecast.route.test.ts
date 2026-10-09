@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { buildApp } from "@/app.js";
+import { ForecastProviderError } from "@/modules/forecast/errors/forecast.errors.js";
 import type { ForecastProvider } from "@/modules/forecast/providers/forecast.provider.js";
 import { InMemoryStationRepository } from "@/modules/stations/repositories/in-memory-station.repository.js";
 
@@ -31,7 +32,7 @@ describe("previsão meteorológica por estação", () => {
       source: "fake",
       daily: vi.fn(async ({ days }) =>
         Array.from({ length: days }, (_, i) => ({
-          date: `2026-10-0${8 + i}`,
+          date: `2026-10-${String(8 + i).padStart(2, "0")}`,
           temperature_max: 30,
           temperature_min: 18,
           precipitation_mm: 0,
@@ -97,7 +98,9 @@ describe("previsão meteorológica por estação", () => {
   });
 
   it("503 quando o provedor falha, sem expor o erro", async () => {
-    vi.mocked(provider.daily).mockRejectedValueOnce(new Error("timeout"));
+    vi.mocked(provider.daily).mockRejectedValueOnce(
+      new ForecastProviderError("timeout"),
+    );
 
     const response = await app.inject("/api/stations/1/forecast");
 
@@ -107,5 +110,44 @@ describe("previsão meteorológica por estação", () => {
       message: "Forecast provider is unavailable.",
     });
     expect(errorSpy).toHaveBeenCalled();
+  });
+
+  it("erro que não é do provedor sobe como 500", async () => {
+    vi.mocked(provider.daily).mockRejectedValueOnce(new TypeError("bug"));
+
+    const response = await app.inject("/api/stations/1/forecast");
+
+    expect(response.statusCode).toBe(500);
+    expect(errorSpy).not.toHaveBeenCalled();
+  });
+
+  it("estação na latitude ou longitude zero tem previsão", async () => {
+    const stations = new InMemoryStationRepository();
+    await stations.create({
+      property_id: 1,
+      mac_address: "AA:BB:CC:DD:EE:03",
+      name: "Equador",
+      latitude: 0,
+      longitude: 0,
+    });
+    const other = buildApp({
+      stationRepository: stations,
+      forecastProvider: provider,
+      clock: () => now,
+    });
+
+    const response = await other.inject("/api/stations/1/forecast?days=1");
+
+    expect(response.statusCode).toBe(200);
+    await other.close();
+  });
+
+  it("valida id e days", async () => {
+    expect((await app.inject("/api/stations/abc/forecast")).statusCode).toBe(
+      400,
+    );
+    expect(
+      (await app.inject("/api/stations/1/forecast?days=1.5")).statusCode,
+    ).toBe(400);
   });
 });
