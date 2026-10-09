@@ -2,8 +2,11 @@ import type { Pool } from "pg";
 
 import type { MonitoringRepository } from "@/modules/monitoring/repositories/monitoring.repository.js";
 import type {
+  CurrentFilters,
+  LiveReading,
   SensorTypeSeries,
   SeriesFilters,
+  StationCurrentRow,
   StationSnapshot,
 } from "@/modules/monitoring/types/monitoring.type.js";
 
@@ -98,6 +101,73 @@ const SERIES_SQL = `
   ORDER BY t.name ASC
 `;
 
+// Última leitura consistente de cada sensor da estação. Sensor sem leitura
+// entra com value/unix_time nulos para a tela mostrar o parâmetro vazio.
+const CURRENT_SQL = `
+  SELECT
+    st.id,
+    st.name,
+    st.property_id,
+    p.name AS property_name,
+    st.last_communication_at,
+    COALESCE(al.pending, 0)::int AS active_alerts,
+    COALESCE(lr.readings, '[]'::json) AS readings
+  FROM stations st
+  JOIN properties p ON p.id = st.property_id
+  LEFT JOIN LATERAL (
+    SELECT count(*) AS pending
+    FROM triggered_alerts ta
+    JOIN alert_configs ac ON ac.id = ta.alert_config_id
+    JOIN sensors s ON s.id = ac.sensor_id
+    WHERE s.station_id = st.id AND ta.acknowledged_at IS NULL
+  ) al ON true
+  LEFT JOIN LATERAL (
+    SELECT json_agg(
+             json_build_object(
+               'sensor_id', s.id,
+               'local_identifier', s.local_identifier,
+               'sensor_type_id', t.id,
+               'sensor_type', t.name,
+               'unit_of_measure', t.unit_of_measure,
+               'value', r.value::float8,
+               'unix_time', r.unix_time
+             ) ORDER BY t.name, s.local_identifier
+           ) AS readings
+    FROM sensors s
+    JOIN sensor_types t ON t.id = s.sensor_type_id
+    LEFT JOIN LATERAL (
+      SELECT value, unix_time
+      FROM readings r
+      WHERE r.sensor_id = s.id AND r.data_consistent
+      ORDER BY r.unix_time DESC
+      LIMIT 1
+    ) r ON true
+    WHERE s.station_id = st.id
+  ) lr ON true
+  WHERE ($1::int IS NULL OR st.id = $1::int)
+    AND ($2::int IS NULL OR st.property_id = $2::int)
+  ORDER BY st.name ASC, st.id ASC
+`;
+
+const READINGS_AFTER_SQL = `
+  SELECT
+    r.id AS reading_id,
+    s.station_id,
+    s.id AS sensor_id,
+    s.local_identifier,
+    t.id AS sensor_type_id,
+    t.name AS sensor_type,
+    t.unit_of_measure,
+    r.value::float8 AS value,
+    r.unix_time
+  FROM readings r
+  JOIN sensors s ON s.id = r.sensor_id
+  JOIN sensor_types t ON t.id = s.sensor_type_id
+  WHERE r.id > $1::bigint AND r.data_consistent
+  ORDER BY r.id ASC
+  LIMIT $2::int
+`;
+
 export class PgMonitoringRepository implements MonitoringRepository {
   constructor(private readonly database: Pool) {}
 
@@ -124,5 +194,31 @@ export class PgMonitoringRepository implements MonitoringRepository {
       [stationId],
     );
     return (result.rowCount ?? 0) > 0;
+  }
+
+  async listCurrent(filters: CurrentFilters): Promise<StationCurrentRow[]> {
+    const result = await this.database.query<StationCurrentRow>(CURRENT_SQL, [
+      filters.station_id ?? null,
+      filters.property_id ?? null,
+    ]);
+    return result.rows;
+  }
+
+  async lastReadingId(): Promise<number> {
+    const result = await this.database.query<{ id: number }>(
+      "SELECT COALESCE(max(id), 0)::bigint AS id FROM readings",
+    );
+    return result.rows[0]?.id ?? 0;
+  }
+
+  async readingsAfter(
+    readingId: number,
+    limit: number,
+  ): Promise<LiveReading[]> {
+    const result = await this.database.query<LiveReading>(READINGS_AFTER_SQL, [
+      readingId,
+      limit,
+    ]);
+    return result.rows;
   }
 }

@@ -68,3 +68,57 @@ export type ReadingSeries = {
   bucket_minutes: number;
   series: SensorTypeSeries[];
 };
+
+export type CurrentReading = {
+  sensor_id: number;
+  local_identifier: string;
+  sensor_type_id: number;
+  sensor_type: string;
+  unit_of_measure: string;
+  /** null quando o sensor ainda não tem leitura consistente. */
+  value: number | null;
+  unix_time: number | null;
+};
+
+export type CurrentFilters = {
+  station_id?: number | undefined;
+  property_id?: number | undefined;
+};
+
+export type StationCurrentRow = {
+  id: number;
+  name: string;
+  property_id: number;
+  property_name: string;
+  last_communication_at: Date | null;
+  active_alerts: number;
+  readings: CurrentReading[];
+};
+
+export type StationCurrentData = {
+  station_id: number;
+  name: string;
+  property_id: number;
+  property_name: string;
+  status: OverviewStatus;
+  last_update: Date | null;
+  readings: CurrentReading[];
+};
+
+export type CurrentData = {
+  generated_at: Date;
+  offline_threshold_minutes: number;
+  stations: StationCurrentData[];
+};
+
+export type LiveReading = {
+  reading_id: number;
+  station_id: number;
+  sensor_id: number;
+  local_identifier: string;
+  sensor_type_id: number;
+  sensor_type: string;
+  unit_of_measure: string;
+  value: number;
+  unix_time: number;
+};

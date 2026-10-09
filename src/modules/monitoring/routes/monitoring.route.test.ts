@@ -1,8 +1,9 @@
 import type { FastifyInstance } from "fastify";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { buildApp } from "@/app.js";
 import { InMemoryMonitoringRepository } from "@/modules/monitoring/repositories/monitoring.repository.js";
+import { ReadingsBroadcaster } from "@/modules/monitoring/services/readings-broadcaster.js";
 import { InMemoryStationRepository } from "@/modules/stations/repositories/in-memory-station.repository.js";
 
 describe("rotas de monitoramento", () => {
@@ -26,6 +27,27 @@ describe("rotas de monitoramento", () => {
         sensors_active: 2,
         active_alerts: 0,
         latest_readings: [
+          {
+            sensor_id: 10,
+            local_identifier: "temp",
+            sensor_type_id: 3,
+            sensor_type: "Temperatura",
+            unit_of_measure: "°C",
+            value: 24.5,
+            unix_time: 1790337480,
+          },
+        ],
+      },
+    ];
+    monitoring.current = [
+      {
+        id: 1,
+        name: "Estação 1",
+        property_id: 1,
+        property_name: "Fazenda",
+        last_communication_at: new Date("2026-09-25T11:58:00.000Z"),
+        active_alerts: 0,
+        readings: [
           {
             sensor_id: 10,
             local_identifier: "temp",
@@ -127,5 +149,185 @@ describe("rotas de monitoramento", () => {
     const response = await app.inject("/api/stations/overview");
 
     expect(response.statusCode).not.toBe(400);
+  });
+
+  it("GET /api/stations/current devolve os dados atuais", async () => {
+    const response = await app.inject("/api/stations/current");
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      generated_at: "2026-09-25T12:00:00.000Z",
+      offline_threshold_minutes: 10,
+      stations: [
+        {
+          station_id: 1,
+          status: "Online",
+          last_update: "2026-09-25T11:58:00.000Z",
+          readings: [{ sensor_type: "Temperatura", value: 24.5 }],
+        },
+      ],
+    });
+  });
+
+  it("GET /api/stations/current filtra por propriedade e valida os filtros", async () => {
+    const other = await app.inject("/api/stations/current?property_id=2");
+    expect(other.statusCode).toBe(200);
+    expect(other.json().stations).toEqual([]);
+
+    const invalid = await app.inject("/api/stations/current?station_id=abc");
+    expect(invalid.statusCode).toBe(400);
+
+    const missing = await app.inject("/api/stations/current?station_id=99");
+    expect(missing.statusCode).toBe(404);
+  });
+
+  it("GET /api/stations/:id/current devolve uma estação ou 404", async () => {
+    const ok = await app.inject("/api/stations/1/current");
+    expect(ok.statusCode).toBe(200);
+    expect(ok.json().stations).toHaveLength(1);
+
+    const missing = await app.inject("/api/stations/99/current");
+    expect(missing.statusCode).toBe(404);
+  });
+});
+
+describe("WebSocket de leituras atuais", () => {
+  let app: FastifyInstance;
+  let monitoring: InMemoryMonitoringRepository;
+  let broadcaster: ReadingsBroadcaster;
+
+  beforeEach(async () => {
+    monitoring = new InMemoryMonitoringRepository();
+    monitoring.current = [1, 2].map((id) => ({
+      id,
+      name: `Estação ${id}`,
+      property_id: 1,
+      property_name: "Fazenda",
+      last_communication_at: null,
+      active_alerts: 0,
+      readings: [],
+    }));
+    broadcaster = new ReadingsBroadcaster(monitoring, { intervalMs: 10 });
+    app = buildApp({
+      stationRepository: new InMemoryStationRepository(),
+      monitoringRepository: monitoring,
+      readingsBroadcaster: broadcaster,
+      liveLimits: { maxConnections: 2 },
+    });
+    await app.ready();
+  });
+
+  afterEach(async () => {
+    await app.close();
+  });
+
+  const live = (id: number, stationId: number) => ({
+    reading_id: id,
+    station_id: stationId,
+    sensor_id: 10,
+    local_identifier: "temp",
+    sensor_type_id: 1,
+    sensor_type: "Temperatura",
+    unit_of_measure: "°C",
+    value: 21.5,
+    unix_time: 1_790_000_000,
+  });
+
+  // Conecta e espera o broadcaster ler o último id (ponto de partida).
+  const connect = async (query = "") => {
+    const baseline = vi.spyOn(monitoring, "lastReadingId");
+    const socket = await app.injectWS(`/api/stations/current/ws${query}`);
+    const messages: Array<{ station_id: number }> = [];
+    socket.on("message", (data) => messages.push(JSON.parse(String(data))));
+    await vi.waitFor(() => expect(baseline).toHaveResolved());
+    baseline.mockRestore();
+    return { socket, messages };
+  };
+
+  it("envia as leituras novas da estação filtrada", async () => {
+    const { socket, messages } = await connect("?station_id=2");
+
+    monitoring.liveReadings.push(live(1, 1), live(2, 2));
+    await vi.waitFor(() => expect(messages).toHaveLength(1));
+
+    expect(messages).toEqual([{ type: "reading", ...live(2, 2) }]);
+
+    socket.terminate();
+    await vi.waitFor(() => expect(broadcaster.subscribers).toBe(0));
+  });
+
+  it("sem filtro, envia as leituras de todas as estações", async () => {
+    const { socket, messages } = await connect();
+
+    monitoring.liveReadings.push(live(1, 1), live(2, 2));
+    await vi.waitFor(() => expect(messages).toHaveLength(2));
+
+    expect(messages.map((m) => m.station_id)).toEqual([1, 2]);
+    socket.terminate();
+  });
+
+  it("recusa estação inexistente com 404 e filtro inválido com 400", async () => {
+    await expect(
+      app.injectWS("/api/stations/current/ws?station_id=99"),
+    ).rejects.toThrow("Unexpected server response: 404");
+    await expect(
+      app.injectWS("/api/stations/current/ws?station_id=abc"),
+    ).rejects.toThrow("Unexpected server response: 400");
+    expect(broadcaster.subscribers).toBe(0);
+  });
+
+  it("recusa conexões acima do limite com 503 e libera a vaga ao fechar", async () => {
+    const first = await app.injectWS("/api/stations/current/ws");
+    const second = await app.injectWS("/api/stations/current/ws");
+
+    await expect(app.injectWS("/api/stations/current/ws")).rejects.toThrow(
+      "Unexpected server response: 503",
+    );
+
+    first.terminate();
+    await vi.waitFor(() => expect(broadcaster.subscribers).toBe(1));
+    const third = await app.injectWS("/api/stations/current/ws");
+    expect(broadcaster.subscribers).toBe(2);
+
+    second.terminate();
+    third.terminate();
+  });
+});
+
+describe("WebSocket de leituras atuais (aberturas simultâneas)", () => {
+  it("não passa do limite quando várias aberturas esperam o banco juntas", async () => {
+    const monitoring = new InMemoryMonitoringRepository();
+    monitoring.current = [
+      {
+        id: 1,
+        name: "Estação 1",
+        property_id: 1,
+        property_name: "Fazenda",
+        last_communication_at: null,
+        active_alerts: 0,
+        readings: [],
+      },
+    ];
+    const broadcaster = new ReadingsBroadcaster(monitoring, { intervalMs: 10 });
+    const app = buildApp({
+      stationRepository: new InMemoryStationRepository(),
+      monitoringRepository: monitoring,
+      readingsBroadcaster: broadcaster,
+      liveLimits: { maxConnections: 1 },
+    });
+    await app.ready();
+
+    const sockets = await Promise.all(
+      [1, 2, 3].map(() =>
+        app.injectWS("/api/stations/current/ws?station_id=1"),
+      ),
+    );
+    await vi.waitFor(() =>
+      expect(sockets.filter((s) => s.readyState === s.CLOSED)).toHaveLength(2),
+    );
+
+    expect(broadcaster.subscribers).toBe(1);
+    for (const socket of sockets) socket.terminate();
+    await app.close();
   });
 });

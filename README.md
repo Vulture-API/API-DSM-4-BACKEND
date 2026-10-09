@@ -55,6 +55,7 @@ Cada módulo mantém controllers, schemas, serviços e repositórios próprios. 
 | Tipos e sensores        | `/api/sensor-types`, `/api/sensors`                                                                                        |
 | Estações e propriedades | `/api/stations`, `/api/stations/properties`, `/api/properties`                                                             |
 | Status e monitoramento  | `/api/stations/:id/status`, `/api/stations/overview`, `/api/stations/readings/series`, `/api/stations/:id/readings/series` |
+| Dados atuais            | `/api/stations/current`, `/api/stations/:id/current`, WebSocket `/api/stations/current/ws`                                 |
 | Configurações e alertas | `/api/alerts/config`, `/api/alerts/triggered`, `/api/alerts/triggered/:id/acknowledge`                                     |
 | Operação do motor       | `POST /internal/rules-engine/run`                                                                                          |
 
@@ -64,19 +65,27 @@ Os healthchecks foram unificados e as portas antigas 3001, 3002 e 3005 deixaram 
 
 ## Variáveis de ambiente
 
-| Variável                            | Padrão        | Uso                            |
-| ----------------------------------- | ------------- | ------------------------------ |
-| `NODE_ENV`                          | `development` | Ambiente da aplicação          |
-| `PORT`                              | `3000`        | Porta HTTP                     |
-| `DATABASE_URL`                      | obrigatório   | Única conexão PostgreSQL       |
-| `STATION_OFFLINE_THRESHOLD_MINUTES` | `10`          | Limite para estação Offline    |
-| `RULES_ENGINE_ENABLED`              | `false`       | Ativa o agendamento do motor   |
-| `RULES_ENGINE_INTERVAL_MS`          | `15000`       | Intervalo entre ciclos         |
-| `RULES_ENGINE_BATCH_SIZE`           | `500`         | Leituras por lote, máximo 5000 |
+| Variável                            | Padrão        | Uso                                |
+| ----------------------------------- | ------------- | ---------------------------------- |
+| `NODE_ENV`                          | `development` | Ambiente da aplicação              |
+| `PORT`                              | `3000`        | Porta HTTP                         |
+| `DATABASE_URL`                      | obrigatório   | Única conexão PostgreSQL           |
+| `STATION_OFFLINE_THRESHOLD_MINUTES` | `10`          | Limite para estação Offline        |
+| `RULES_ENGINE_ENABLED`              | `false`       | Ativa o agendamento do motor       |
+| `RULES_ENGINE_INTERVAL_MS`          | `15000`       | Intervalo entre ciclos             |
+| `RULES_ENGINE_BATCH_SIZE`           | `500`         | Leituras por lote, máximo 5000     |
+| `CURRENT_READINGS_POLL_MS`          | `3000`        | Intervalo do WebSocket de leituras |
+| `CURRENT_READINGS_MAX_CONNECTIONS`  | `200`         | Conexões simultâneas no WebSocket  |
 
 O motor fica desligado por padrão para não avançar o checkpoint do banco compartilhado durante desenvolvimento. O Compose o habilita e usa intervalo de 5000 ms. A rota manual permanece disponível quando um motor está anexado, mesmo sem agendamento, e retorna 409 durante um ciclo concorrente.
 
 O pool preserva timestamps sem fuso como UTC, IDs bigint numéricos e o listener de falhas de conexões ociosas. Transações, checkpoint e índices de prevenção de duplicidade continuam seguindo o modelo existente. Redis e MQTT são utilizados pelos processos Python; o backend lê o PostgreSQL e não cria clientes adicionais para esses serviços.
+
+## Dados atuais em tempo real
+
+`GET /api/stations/current` devolve, por estação, a última leitura consistente de cada sensor, o status e `last_update`. Aceita `station_id` e `property_id`. Sensores sem leitura aparecem com `value` e `unix_time` nulos.
+
+O WebSocket `/api/stations/current/ws` envia `{"type":"reading", ...}` a cada leitura nova gravada pelo persistidor. Use `?station_id=` para receber só uma estação. O backend só consulta o banco enquanto houver cliente conectado e não usa o checkpoint do motor de regras. Acima de `CURRENT_READINGS_MAX_CONNECTIONS` conexões, a abertura recebe 503 `TOO_MANY_CONNECTIONS`. O servidor manda ping a cada 30 s e derruba a conexão que não responde até o ping seguinte, além de clientes com mais de 1 MiB pendente. Atrás do Nginx, a rota precisa repassar os cabeçalhos `Upgrade` e `Connection`.
 
 ## Verificação
 
