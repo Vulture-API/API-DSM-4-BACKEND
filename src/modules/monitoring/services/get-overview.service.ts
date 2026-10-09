@@ -1,8 +1,8 @@
 import type { MonitoringRepository } from "@/modules/monitoring/repositories/monitoring.repository.js";
+import { stationStatus } from "@/modules/monitoring/services/station-status.js";
 import type {
   Overview,
   OverviewStatus,
-  StationSnapshot,
 } from "@/modules/monitoring/types/monitoring.type.js";
 
 type Clock = () => Date;
@@ -10,10 +10,6 @@ type Clock = () => Date;
 /**
  * Visão geral das estações para o dashboard (US04): status de comunicação,
  * sensores, alertas pendentes e a última leitura de cada sensor.
- *
- * Status: Offline se a última comunicação passou do limite (ou nunca houve);
- * senão "Com alerta" se há alerta não reconhecido; senão Online. Mesmo limite
- * do GET /api/stations/:id/status.
  */
 export class GetOverviewService {
   constructor(
@@ -29,7 +25,12 @@ export class GetOverviewService {
     const snapshots = await this.repository.listSnapshots(filters.property_id);
     const stations = snapshots.map((s) => ({
       ...s,
-      status: this.statusOf(s, now),
+      status: stationStatus(
+        s.last_communication_at,
+        s.active_alerts,
+        now,
+        this.offlineThresholdMinutes,
+      ),
     }));
 
     const count = (status: OverviewStatus) =>
@@ -46,12 +47,5 @@ export class GetOverviewService {
       },
       stations,
     };
-  }
-
-  private statusOf(station: StationSnapshot, now: Date): OverviewStatus {
-    const limitMs = this.offlineThresholdMinutes * 60_000;
-    const last = station.last_communication_at;
-    if (!last || now.getTime() - last.getTime() > limitMs) return "Offline";
-    return station.active_alerts > 0 ? "Com alerta" : "Online";
   }
 }
