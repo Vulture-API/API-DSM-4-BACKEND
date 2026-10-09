@@ -84,9 +84,9 @@ O pool preserva timestamps sem fuso como UTC, IDs bigint numéricos e o listener
 
 ## Estatísticas e previsão
 
-`GET /api/stations/statistics` calcula, por tipo de sensor, contagem, média, mínimo, máximo e desvio padrão das leituras consistentes do período. `from` e `to` aceitam datas ISO 8601; sem eles, vale os últimos 7 dias. O período vai até 366 dias e `from` precisa ser anterior a `to` (senão 400 `INVALID_PERIOD`). Filtra por `property_id`, ou por estação em `/api/stations/:id/statistics`. Com menos de duas leituras, `stddev` vem nulo.
+`GET /api/stations/statistics` calcula, por tipo de sensor, contagem, média, mínimo, máximo e desvio padrão das leituras consistentes do período. `from` e `to` aceitam data (`2026-09-01`, em UTC) ou data-hora com fuso (`2026-09-01T00:00:00-03:00`); data-hora sem fuso é recusada. Na URL, o `+` de um fuso positivo vai como `%2B`. Uma data pura em `to` inclui o dia inteiro. Sem período, vale os últimos 7 dias. Filtra por `property_id`, ou por estação em `/api/stations/:id/statistics`. O período vai até 366 dias com estação ou propriedade e até 31 dias para todas as estações; fora disso, ou com `from` depois de `to`, a resposta é 400 `INVALID_PERIOD`. Com menos de duas leituras, `stddev` vem nulo.
 
-`GET /api/stations/:id/forecast?days=1..7` devolve a previsão diária (temperatura máxima e mínima, chuva, probabilidade de chuva, vento e código WMO) para a latitude e longitude da estação. A fonte é o [Open-Meteo](https://open-meteo.com), que é gratuito e não exige chave. A resposta fica em cache por 30 minutos por posição. Estação sem coordenadas devolve 422 `STATION_WITHOUT_COORDINATES`, e falha ou timeout do provedor devolve 503 `FORECAST_UNAVAILABLE`.
+`GET /api/stations/:id/forecast?days=1..7` devolve a previsão diária (temperatura máxima e mínima, chuva, probabilidade de chuva, vento e código WMO) para a latitude e longitude da estação. A fonte é o [Open-Meteo](https://open-meteo.com), que é gratuito e não exige chave. A previsão de 7 dias fica em cache por 30 minutos por posição (até 500 posições), e chamadas simultâneas para a mesma posição compartilham uma consulta. Estação sem coordenadas devolve 422 `STATION_WITHOUT_COORDINATES`. Falha, timeout ou resposta fora do formato do provedor devolve 503 `FORECAST_UNAVAILABLE`.
 
 ## Verificação
 

@@ -7,6 +7,8 @@ type Clock = () => Date;
 
 export const DEFAULT_PERIOD_DAYS = 7;
 export const MAX_PERIOD_DAYS = 366;
+/** Sem estação nem propriedade a consulta varre todas as leituras. */
+export const MAX_GLOBAL_PERIOD_DAYS = 31;
 const DAY_MS = 86_400_000;
 
 export type StatisticsInput = {
@@ -18,7 +20,8 @@ export type StatisticsInput = {
 
 /**
  * Estatísticas dos dados meteorológicos por tipo de sensor (US11).
- * Sem período informado, usa os últimos 7 dias até agora.
+ * Sem período informado, usa os últimos 7 dias até agora. Até 366 dias
+ * por estação ou propriedade; 31 dias para todas as estações.
  */
 export class GetStatisticsService {
   constructor(
@@ -34,9 +37,14 @@ export class GetStatisticsService {
     if (from.getTime() >= to.getTime()) {
       throw new InvalidPeriodError("from must be earlier than to.");
     }
-    if (to.getTime() - from.getTime() > MAX_PERIOD_DAYS * DAY_MS) {
+    const scoped =
+      input.station_id !== undefined || input.property_id !== undefined;
+    const maxDays = scoped ? MAX_PERIOD_DAYS : MAX_GLOBAL_PERIOD_DAYS;
+    if (to.getTime() - from.getTime() > maxDays * DAY_MS) {
       throw new InvalidPeriodError(
-        `The period must be at most ${MAX_PERIOD_DAYS} days.`,
+        scoped
+          ? `The period must be at most ${MAX_PERIOD_DAYS} days.`
+          : `Without station_id or property_id the period must be at most ${MAX_GLOBAL_PERIOD_DAYS} days.`,
       );
     }
     if (

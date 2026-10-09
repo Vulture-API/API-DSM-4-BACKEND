@@ -57,8 +57,16 @@ describe("rotas de estatísticas", () => {
     );
 
     expect(response.statusCode).toBe(200);
-    expect(statistics.lastFilters).toMatchObject({ property_id: 2 });
-    expect(response.json().from).toBe("2026-09-01T00:00:00.000Z");
+    expect(response.json()).toMatchObject({
+      from: "2026-09-01T00:00:00.000Z",
+      to: "2026-09-30T23:59:59.000Z",
+      property_id: 2,
+    });
+    expect(statistics.lastFilters).toMatchObject({
+      property_id: 2,
+      from_unix: Date.parse("2026-09-01T00:00:00Z") / 1000,
+      to_unix: Date.parse("2026-09-30T23:59:59Z") / 1000,
+    });
   });
 
   it("devolve 400 para data inválida ou período inválido", async () => {
@@ -81,5 +89,43 @@ describe("rotas de estatísticas", () => {
 
     const missing = await app.inject("/api/stations/99/statistics");
     expect(missing.statusCode).toBe(404);
+  });
+
+  it("data pura no fim inclui o dia inteiro", async () => {
+    const response = await app.inject(
+      "/api/stations/1/statistics?from=2026-09-01&to=2026-09-30",
+    );
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().to).toBe("2026-10-01T00:00:00.000Z");
+  });
+
+  it("aceita data-hora com fuso e converte para UTC", async () => {
+    const response = await app.inject(
+      "/api/stations/1/statistics?from=2026-09-01T00:00:00-03:00&to=2026-09-02T00:00:00-03:00",
+    );
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().from).toBe("2026-09-01T03:00:00.000Z");
+  });
+
+  it.each([
+    ["data-hora sem fuso", "from=2026-09-01T00:00:00"],
+    ["dia inexistente", "from=2026-02-30"],
+    ["número", "from=1"],
+    ["parâmetro desconhecido", "propertyId=2"],
+  ])("recusa %s com 400", async (_case, query) => {
+    const response = await app.inject(`/api/stations/statistics?${query}`);
+
+    expect(response.statusCode).toBe(400);
+  });
+
+  it("recusa período global maior que 31 dias com INVALID_PERIOD", async () => {
+    const response = await app.inject(
+      "/api/stations/statistics?from=2026-08-01&to=2026-09-30",
+    );
+
+    expect(response.statusCode).toBe(400);
+    expect(response.json().code).toBe("INVALID_PERIOD");
   });
 });

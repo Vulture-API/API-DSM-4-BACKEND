@@ -92,13 +92,57 @@ describe("GetStatisticsService", () => {
     ).rejects.toBeInstanceOf(InvalidPeriodError);
   });
 
-  it("recusa período maior que 366 dias", async () => {
+  it("aceita exatamente 366 dias por estação e recusa 1 ms a mais", async () => {
+    const to = new Date("2026-10-01T00:00:00.000Z");
+    const from = new Date(to.getTime() - 366 * 86_400_000);
+
+    await expect(
+      service.execute({ station_id: 1, from, to }),
+    ).resolves.toBeDefined();
     await expect(
       service.execute({
-        from: new Date("2025-01-01T00:00:00.000Z"),
-        to: new Date("2026-10-01T00:00:00.000Z"),
+        station_id: 1,
+        from: new Date(from.getTime() - 1),
+        to,
       }),
     ).rejects.toThrow("366 days");
+  });
+
+  it("sem estação nem propriedade limita o período a 31 dias", async () => {
+    const to = new Date("2026-10-01T00:00:00.000Z");
+    const from = new Date(to.getTime() - 31 * 86_400_000);
+
+    await expect(service.execute({ from, to })).resolves.toBeDefined();
+    await expect(
+      service.execute({ from: new Date(from.getTime() - 1), to }),
+    ).rejects.toThrow("31 days");
+    await expect(
+      service.execute({
+        property_id: 2,
+        from: new Date(from.getTime() - 1),
+        to,
+      }),
+    ).resolves.toBeDefined();
+  });
+
+  it("com só o fim informado, começa 7 dias antes dele", async () => {
+    const to = new Date("2026-09-30T00:00:00.000Z");
+
+    const result = await service.execute({ to });
+
+    expect(result.from).toEqual(new Date("2026-09-23T00:00:00.000Z"));
+  });
+
+  it("arredonda o início para baixo e o fim para cima no segundo", async () => {
+    await service.execute({
+      from: new Date("2026-10-01T00:00:00.900Z"),
+      to: new Date("2026-10-02T00:00:00.100Z"),
+    });
+
+    expect(repository.lastFilters).toMatchObject({
+      from_unix: unix("2026-10-01T00:00:00.000Z"),
+      to_unix: unix("2026-10-02T00:00:01.000Z"),
+    });
   });
 
   it("recusa estação inexistente com 404", async () => {
