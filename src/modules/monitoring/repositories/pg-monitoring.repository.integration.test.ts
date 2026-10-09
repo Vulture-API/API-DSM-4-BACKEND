@@ -48,14 +48,16 @@ describe.skipIf(!TEST_DATABASE_URL)(
           (2, 2, 'BB', 'Alfa', NULL, NULL, NULL);
         INSERT INTO sensor_types VALUES (1, 'Temperatura', '°C'), (2, 'Umidade', '%');
         INSERT INTO sensors VALUES
-          (10, 1, 1, 'temp', true), (11, 1, 2, 'umid', false), (20, 2, 1, 'temp', true);
+          (10, 1, 1, 'temp', true), (11, 1, 2, 'umid', false), (20, 2, 1, 'temp', true),
+          (21, 2, 2, 'umid', true);
         INSERT INTO readings (sensor_id, value, unix_time, data_consistent) VALUES
           (10, 20, ${base} + 60, true),
           (10, 30, ${base} + 120, true),
           (10, 99, ${base} + 180, false),
           (10, 25, ${base} + 3700, true),
           (11, 60, ${base} + 100, true),
-          (20, 10, ${base} + 100, true);
+          (20, 10, ${base} + 100, true),
+          (21, 55, ${base} + 200, false);
         INSERT INTO alert_configs VALUES (1, 10);
         INSERT INTO triggered_alerts (alert_config_id, reading_id, acknowledged_at) VALUES
           (1, 1, NULL), (1, 2, NULL), (1, 4, now());
@@ -158,6 +160,59 @@ describe.skipIf(!TEST_DATABASE_URL)(
     it("confere se a estação existe", async () => {
       expect(await repository.stationExists(1)).toBe(true);
       expect(await repository.stationExists(9)).toBe(false);
+    });
+
+    it("lista a última leitura consistente de cada sensor por estação", async () => {
+      const rows = await repository.listCurrent({});
+
+      expect(rows.map((r) => r.name)).toEqual(["Alfa", "Beta"]);
+      const beta = rows[1]!;
+      expect(beta).toMatchObject({
+        id: 1,
+        property_name: "Fazenda A",
+        active_alerts: 2,
+      });
+      expect(beta.readings.map((r) => [r.sensor_id, r.value])).toEqual([
+        [10, 25],
+        [11, 60],
+      ]);
+      // A única leitura do sensor 21 é inconsistente: entra sem valor.
+      expect(rows[0]!.readings).toEqual([
+        expect.objectContaining({ sensor_id: 20, value: 10 }),
+        expect.objectContaining({
+          sensor_id: 21,
+          value: null,
+          unix_time: null,
+        }),
+      ]);
+    });
+
+    it("filtra os dados atuais por estação e propriedade", async () => {
+      expect(
+        (await repository.listCurrent({ station_id: 1 })).map((r) => r.id),
+      ).toEqual([1]);
+      expect(
+        (await repository.listCurrent({ property_id: 2 })).map((r) => r.id),
+      ).toEqual([2]);
+    });
+
+    it("lê as leituras novas a partir de um id, sem as inconsistentes", async () => {
+      expect(await repository.lastReadingId()).toBe(7);
+
+      const after = await repository.readingsAfter(3, 10);
+      expect(after.map((r) => r.reading_id)).toEqual([4, 5, 6]);
+      expect(after[0]).toEqual({
+        reading_id: 4,
+        station_id: 1,
+        sensor_id: 10,
+        local_identifier: "temp",
+        sensor_type_id: 1,
+        sensor_type: "Temperatura",
+        unit_of_measure: "°C",
+        value: 25,
+        unix_time: base + 3700,
+      });
+      expect(await repository.readingsAfter(0, 2)).toHaveLength(2);
     });
   },
 );

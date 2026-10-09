@@ -1,6 +1,7 @@
 import "@/config/zod.config.js";
 
 import cookie from "@fastify/cookie";
+import websocket from "@fastify/websocket";
 import Fastify, { type FastifyReply } from "fastify";
 import {
   serializerCompiler,
@@ -29,7 +30,11 @@ import { OpenMeteoProvider } from "@/modules/forecast/providers/open-meteo.provi
 import { buildForecastRoutes } from "@/modules/forecast/routes/forecast.route.js";
 import type { MonitoringRepository } from "@/modules/monitoring/repositories/monitoring.repository.js";
 import { PgMonitoringRepository } from "@/modules/monitoring/repositories/pg-monitoring.repository.js";
-import { buildMonitoringRoutes } from "@/modules/monitoring/routes/monitoring.route.js";
+import {
+  buildMonitoringRoutes,
+  type LiveLimits,
+} from "@/modules/monitoring/routes/monitoring.route.js";
+import { ReadingsBroadcaster } from "@/modules/monitoring/services/readings-broadcaster.js";
 import {
   RoleRepository,
   type RoleRepositoryPort,
@@ -86,6 +91,7 @@ export function buildApp(options: BuildAppOptions = {}) {
   app.setSerializerCompiler(serializerCompiler);
   app.setErrorHandler(handleError);
   app.register(cookie);
+  app.register(websocket, { options: { maxPayload: 1024 } });
   const health = async () => ({
     status: "ok",
     rules_engine: options.rulesEngineWorker?.isRunning ?? false,
@@ -165,8 +171,21 @@ export function buildApp(options: BuildAppOptions = {}) {
       buildStationRoutes(repository, threshold, options.clock),
       { prefix: "/api/stations" },
     );
+    const broadcaster =
+      options.readingsBroadcaster ??
+      new ReadingsBroadcaster(monitoring, {
+        intervalMs: env.CURRENT_READINGS_POLL_MS,
+        onError: (error) =>
+          console.error("[current-readings] falha ao buscar leituras:", error),
+      });
+    stations.addHook("onClose", async () => {
+      await broadcaster.close();
+    });
     stations.register(
-      buildMonitoringRoutes(monitoring, threshold, options.clock),
+      buildMonitoringRoutes(monitoring, threshold, options.clock, broadcaster, {
+        maxConnections: env.CURRENT_READINGS_MAX_CONNECTIONS,
+        ...options.liveLimits,
+      }),
       { prefix: "/api/stations" },
     );
     stations.register(
