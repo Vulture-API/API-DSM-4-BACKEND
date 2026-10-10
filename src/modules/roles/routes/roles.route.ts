@@ -1,6 +1,7 @@
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 import z from "zod";
 
+import type { PermissionRepositoryPort } from "@/modules/permissions/repositories/permission.repository.js";
 import { RoleController } from "@/modules/roles/controllers/role.controller.js";
 import type { RoleRepositoryPort } from "@/modules/roles/repositories/role.repository.js";
 import {
@@ -16,6 +17,7 @@ import { UpdateRoleService } from "@/modules/roles/services/update-role.service.
 
 export type RoleRoutesOptions = {
   roleRepository: RoleRepositoryPort;
+  permissionRepository: PermissionRepositoryPort;
 };
 
 export const roleRoutes: FastifyPluginAsyncZod<RoleRoutesOptions> = async (
@@ -28,27 +30,38 @@ export const roleRoutes: FastifyPluginAsyncZod<RoleRoutesOptions> = async (
     new GetRoleService(options.roleRepository),
     new UpdateRoleService(options.roleRepository),
     new DeleteRoleService(options.roleRepository),
+    options.permissionRepository,
   );
 
   app.get(
     "/",
-    { schema: { response: { 200: z.array(roleSchema) } } },
+    {
+      config: { access: { permission: "roles.read" } },
+      schema: { response: { 200: z.array(roleSchema) } },
+    },
     controller.list,
   );
 
   app.post(
     "/",
-    { schema: { body: roleInputSchema, response: { 201: roleSchema } } },
+    {
+      config: { access: { permission: "roles.create" } },
+      schema: { body: roleInputSchema, response: { 201: roleSchema } },
+    },
     controller.create,
   );
   app.get(
     "/:id",
-    { schema: { params: roleIdSchema, response: { 200: roleSchema } } },
+    {
+      config: { access: { permission: "roles.read" } },
+      schema: { params: roleIdSchema, response: { 200: roleSchema } },
+    },
     controller.get,
   );
   app.put(
     "/:id",
     {
+      config: { access: { permission: "roles.update" } },
       schema: {
         params: roleIdSchema,
         body: roleInputSchema,
@@ -57,5 +70,12 @@ export const roleRoutes: FastifyPluginAsyncZod<RoleRoutesOptions> = async (
     },
     controller.update,
   );
-  app.delete("/:id", { schema: { params: roleIdSchema } }, controller.delete);
+  app.delete(
+    "/:id",
+    {
+      config: { access: { permission: "roles.delete" } },
+      schema: { params: roleIdSchema },
+    },
+    controller.delete,
+  );
 };

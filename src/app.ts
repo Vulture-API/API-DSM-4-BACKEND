@@ -2,17 +2,6 @@ import "@/config/zod.config.js";
 
 import cookie from "@fastify/cookie";
 import jwt from "@fastify/jwt";
-import {
-  AccessControl,
-  JWT_AUDIENCE,
-  JWT_ISSUER,
-  JWT_TTL_SECONDS,
-} from "@/modules/auth/access-control.js";
-import {
-  type AuthRepositoryPort,
-  PgAuthRepository,
-} from "@/modules/auth/repositories/auth.repository.js";
-import { authRoutes } from "@/modules/auth/routes/auth.route.js";
 import websocket from "@fastify/websocket";
 import Fastify, { type FastifyReply } from "fastify";
 import {
@@ -36,6 +25,17 @@ import {
   PgTriggeredAlertRepository,
 } from "@/modules/alerts/repositories/pg-alert.repository.js";
 import { buildAlertRoutes } from "@/modules/alerts/routes/alerts.route.js";
+import {
+  AccessControl,
+  JWT_AUDIENCE,
+  JWT_ISSUER,
+  JWT_TTL_SECONDS,
+} from "@/modules/auth/access-control.js";
+import {
+  type AuthRepositoryPort,
+  PgAuthRepository,
+} from "@/modules/auth/repositories/auth.repository.js";
+import { authRoutes } from "@/modules/auth/routes/auth.route.js";
 import type { MonitoringRepository } from "@/modules/monitoring/repositories/monitoring.repository.js";
 import { PgMonitoringRepository } from "@/modules/monitoring/repositories/pg-monitoring.repository.js";
 import {
@@ -43,6 +43,12 @@ import {
   type LiveLimits,
 } from "@/modules/monitoring/routes/monitoring.route.js";
 import { ReadingsBroadcaster } from "@/modules/monitoring/services/readings-broadcaster.js";
+import {
+  type PermissionRepositoryPort,
+  PgPermissionRepository,
+} from "@/modules/permissions/repositories/permission.repository.js";
+import { permissionRoutes } from "@/modules/permissions/routes/permissions.route.js";
+import { FakePermissionRepository } from "@/modules/permissions/testing/fake-permission.repository.js";
 import {
   RoleRepository,
   type RoleRepositoryPort,
@@ -74,6 +80,7 @@ import type { PasswordHasher } from "@/modules/users/services/password-hasher.js
 export type BuildAppOptions = {
   database?: Pool;
   authRepository?: AuthRepositoryPort;
+  permissionRepository?: PermissionRepositoryPort;
   jwtSecret?: string;
   accessControlEnabled?: boolean;
   stationRepository?: StationRepository;
@@ -164,7 +171,22 @@ export function buildApp(options: BuildAppOptions = {}) {
         ? { passwordHasher: options.passwordHasher }
         : {}),
     });
-    users.register(roleRoutes, { prefix: "/api/roles", roleRepository });
+    const permissionRepository =
+      options.permissionRepository ??
+      (process.env.NODE_ENV === "test" &&
+      !options.database &&
+      options.roleRepository
+        ? new FakePermissionRepository(roleRepository)
+        : new PgPermissionRepository(pool));
+    users.register(roleRoutes, {
+      prefix: "/api/roles",
+      roleRepository,
+      permissionRepository,
+    });
+    users.register(permissionRoutes, {
+      prefix: "/api",
+      repository: permissionRepository,
+    });
   });
   app.register(async (parameters) => {
     parameters.setErrorHandler(handleParametersError);
