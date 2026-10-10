@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { Pool } from "pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
+import { buildApp } from "@/app.js";
 import {
   RoleDeletionConflictError,
   RoleNameConflictError,
@@ -129,6 +130,113 @@ describe.skipIf(!TEST_DATABASE_URL)("RoleRepository (Postgres real)", () => {
     const rejected = results.find((result) => result.status === "rejected");
     expect(rejected?.reason).toBeInstanceOf(RoleNameConflictError);
     expect(await repository.findAll()).toHaveLength(1);
+  });
+
+  it("allows only one concurrent rename to the same name", async () => {
+    const first = await repository.create({ name: "First", description: null });
+    const second = await repository.create({
+      name: "Second",
+      description: null,
+    });
+    const results = await Promise.allSettled([
+      repository.update(first.id, { name: "Shared", description: null }),
+      repository.update(second.id, { name: "Shared", description: null }),
+    ]);
+    expect(
+      results.filter((result) => result.status === "fulfilled"),
+    ).toHaveLength(1);
+    expect(
+      results.find((result) => result.status === "rejected")?.reason,
+    ).toBeInstanceOf(RoleNameConflictError);
+    expect(
+      (await repository.findAll()).filter((role) => role.name === "Shared"),
+    ).toHaveLength(1);
+  });
+
+  it("manages roles over HTTP and enforces references from newly created users", async () => {
+    const app = buildApp({
+      database: pool,
+      passwordHasher: async () => "test-hash",
+    });
+    try {
+      const created = await app.inject({
+        method: "POST",
+        url: "/api/roles",
+        payload: { name: "  Analyst  ", description: "Reports" },
+      });
+      expect(created.statusCode).toBe(201);
+      const role = created.json();
+      expect(role).toMatchObject({ name: "Analyst", description: "Reports" });
+      const url = `/api/roles/${role.id}`;
+      expect((await app.inject({ method: "GET", url })).json()).toEqual(role);
+      expect(
+        (await app.inject({ method: "GET", url: "/api/roles" })).json(),
+      ).toEqual([role]);
+      const duplicate = await app.inject({
+        method: "POST",
+        url: "/api/roles",
+        payload: { name: "Analyst" },
+      });
+      expect(duplicate.statusCode).toBe(409);
+      expect(duplicate.json()).toMatchObject({
+        code: 409,
+        message: "A role with this name already exists.",
+      });
+      const updated = await app.inject({
+        method: "PUT",
+        url,
+        payload: { name: "Supervisor" },
+      });
+      expect(updated.statusCode).toBe(200);
+      expect(updated.json()).toEqual({
+        ...role,
+        name: "Supervisor",
+        description: null,
+      });
+
+      const userResponse = await app.inject({
+        method: "POST",
+        url: "/api/users",
+        payload: {
+          role_id: role.id,
+          name: "Test user",
+          email: "scrum431@example.com",
+          password: "password123",
+        },
+      });
+      expect(userResponse.statusCode).toBe(201);
+      const user = userResponse.json();
+      const blocked = await app.inject({ method: "DELETE", url });
+      expect(blocked.statusCode).toBe(409);
+      expect(blocked.json()).toEqual({
+        code: 409,
+        message:
+          "The role cannot be deleted because it is referenced by a user.",
+        details: [],
+      });
+      const deactivated = await app.inject({
+        method: "PUT",
+        url: `/api/users/${user.id}`,
+        payload: { role_id: role.id, name: user.name, active: false },
+      });
+      expect(deactivated.statusCode).toBe(200);
+      expect((await app.inject({ method: "DELETE", url })).statusCode).toBe(
+        409,
+      );
+      expect(
+        (await app.inject({ method: "DELETE", url: `/api/users/${user.id}` }))
+          .statusCode,
+      ).toBe(204);
+      const deleted = await app.inject({ method: "DELETE", url });
+      expect(deleted.statusCode).toBe(204);
+      expect(deleted.body).toBe("");
+      expect((await app.inject({ method: "GET", url })).statusCode).toBe(404);
+      expect(
+        (await app.inject({ method: "GET", url: "/api/roles" })).json(),
+      ).toEqual([]);
+    } finally {
+      await app.close();
+    }
   });
 
   it.each([true, false])(

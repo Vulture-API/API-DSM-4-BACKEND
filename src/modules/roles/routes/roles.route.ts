@@ -3,8 +3,16 @@ import z from "zod";
 
 import { RoleController } from "@/modules/roles/controllers/role.controller.js";
 import type { RoleRepositoryPort } from "@/modules/roles/repositories/role.repository.js";
-import { roleSchema } from "@/modules/roles/schemas/role.schema.js";
+import {
+  roleIdSchema,
+  roleInputSchema,
+  roleSchema,
+} from "@/modules/roles/schemas/role.schema.js";
+import { CreateRoleService } from "@/modules/roles/services/create-role.service.js";
+import { DeleteRoleService } from "@/modules/roles/services/delete-role.service.js";
+import { GetRoleService } from "@/modules/roles/services/get-role.service.js";
 import { ListRolesService } from "@/modules/roles/services/list-roles.service.js";
+import { UpdateRoleService } from "@/modules/roles/services/update-role.service.js";
 
 export type RoleRoutesOptions = {
   roleRepository: RoleRepositoryPort;
@@ -16,6 +24,10 @@ export const roleRoutes: FastifyPluginAsyncZod<RoleRoutesOptions> = async (
 ) => {
   const controller = new RoleController(
     new ListRolesService(options.roleRepository),
+    new CreateRoleService(options.roleRepository),
+    new GetRoleService(options.roleRepository),
+    new UpdateRoleService(options.roleRepository),
+    new DeleteRoleService(options.roleRepository),
   );
 
   app.get(
@@ -23,4 +35,27 @@ export const roleRoutes: FastifyPluginAsyncZod<RoleRoutesOptions> = async (
     { schema: { response: { 200: z.array(roleSchema) } } },
     controller.list,
   );
+
+  app.post(
+    "/",
+    { schema: { body: roleInputSchema, response: { 201: roleSchema } } },
+    controller.create,
+  );
+  app.get(
+    "/:id",
+    { schema: { params: roleIdSchema, response: { 200: roleSchema } } },
+    controller.get,
+  );
+  app.put(
+    "/:id",
+    {
+      schema: {
+        params: roleIdSchema,
+        body: roleInputSchema,
+        response: { 200: roleSchema },
+      },
+    },
+    controller.update,
+  );
+  app.delete("/:id", { schema: { params: roleIdSchema } }, controller.delete);
 };
