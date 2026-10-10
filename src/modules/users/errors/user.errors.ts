@@ -1,14 +1,10 @@
 import { ApplicationError } from "@/errors/application.error.js";
 
+export { RoleNotFoundError } from "@/modules/roles/errors/role.errors.js";
+
 export class UserNotFoundError extends ApplicationError {
   constructor() {
     super(404, "User not found.");
-  }
-}
-
-export class RoleNotFoundError extends ApplicationError {
-  constructor() {
-    super(404, "Role not found.");
   }
 }
 
