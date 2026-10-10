@@ -1,6 +1,18 @@
 import "@/config/zod.config.js";
 
 import cookie from "@fastify/cookie";
+import jwt from "@fastify/jwt";
+import {
+  AccessControl,
+  JWT_AUDIENCE,
+  JWT_ISSUER,
+  JWT_TTL_SECONDS,
+} from "@/modules/auth/access-control.js";
+import {
+  type AuthRepositoryPort,
+  PgAuthRepository,
+} from "@/modules/auth/repositories/auth.repository.js";
+import { authRoutes } from "@/modules/auth/routes/auth.route.js";
 import websocket from "@fastify/websocket";
 import Fastify, { type FastifyReply } from "fastify";
 import {
@@ -61,6 +73,9 @@ import type { PasswordHasher } from "@/modules/users/services/password-hasher.js
 
 export type BuildAppOptions = {
   database?: Pool;
+  authRepository?: AuthRepositoryPort;
+  jwtSecret?: string;
+  accessControlEnabled?: boolean;
   stationRepository?: StationRepository;
   monitoringRepository?: MonitoringRepository;
   readingsBroadcaster?: ReadingsBroadcaster;
@@ -83,7 +98,51 @@ export function buildApp(options: BuildAppOptions = {}) {
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
   app.setErrorHandler(handleError);
+  const secret = options.jwtSecret ?? env.JWT_SECRET;
+  const accessControlEnabled =
+    options.accessControlEnabled ?? env.ACCESS_CONTROL_ENABLED;
+  if (
+    (secret !== undefined && secret.length < 32) ||
+    (accessControlEnabled && !secret)
+  ) {
+    throw new Error(
+      "A JWT_SECRET of at least 32 characters is required for access control.",
+    );
+  }
+  const authRepository = options.authRepository ?? new PgAuthRepository(pool);
+  const accessControl = new AccessControl(
+    app,
+    authRepository,
+    accessControlEnabled,
+    !!secret,
+  );
+  app.decorateRequest("actor", null);
+  app.addHook("onRequest", async (request) => accessControl.enforce(request));
   app.register(cookie);
+  if (secret)
+    app.register(jwt, {
+      secret,
+      sign: {
+        algorithm: "HS256",
+        iss: JWT_ISSUER,
+        aud: JWT_AUDIENCE,
+        expiresIn: JWT_TTL_SECONDS,
+      },
+      verify: {
+        algorithms: ["HS256"],
+        allowedIss: JWT_ISSUER,
+        allowedAud: JWT_AUDIENCE,
+      },
+    });
+  app.register(async (auth) => {
+    auth.setErrorHandler(handleUsersError);
+    auth.register(authRoutes, {
+      prefix: "/api/auth",
+      repository: authRepository,
+      configured: !!secret,
+      secureCookie: env.NODE_ENV === "production",
+    });
+  });
   app.register(websocket, { options: { maxPayload: 1024 } });
   const health = async () => ({
     status: "ok",
