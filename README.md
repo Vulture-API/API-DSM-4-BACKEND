@@ -65,6 +65,8 @@ Perfis de acesso (`roles`) oferecem listagem e criação em `/api/roles`, além 
 
 Os perfis retornam também `permissions`, uma lista ordenada de códigos. O catálogo está em `GET /api/permissions`, e a associação é consultada ou substituída em `/api/roles/:id/permissions`. Essas novas rotas sempre exigem JWT e a permissão correspondente. `POST /api/auth/login` utiliza as credenciais scrypt existentes; `GET /api/auth/me` retorna o usuário e suas permissões atuais. Configure `JWT_SECRET` para utilizar esses recursos. A proteção das APIs anteriores permanece desligada até `ACCESS_CONTROL_ENABLED=true`, permitindo a integração posterior do frontend. Veja o [contrato e a ativação da SCRUM-432](docs/permissoes.md).
 
+`PATCH /api/users/:id/access` altera apenas o acesso do usuário: `{ "active": false }` bloqueia e `{ "active": true }` desbloqueia. A rota sempre exige JWT e `users.update`. O estado usa o campo existente `users.active`, preservando cadastro, credenciais e permissões; usuários bloqueados recebem 401 no login e nas rotas protegidas, e seus WebSockets protegidos são encerrados no próximo ciclo de autorização. Veja o [contrato e as evidências da SCRUM-433](docs/bloqueio-usuarios.md).
+
 A API limita requisições antes de autenticar ou acessar o banco: por padrão, 300 por minuto por IP, compartilhadas entre rotas, métodos e aliases. O login possui um orçamento separado de 10 por minuto. O excesso recebe 429 com `Retry-After`; identificação do backend, healthchecks e preflight são isentos. Os limites permanecem ativos com `ACCESS_CONTROL_ENABLED=false`.
 
 Os healthchecks foram unificados e as portas antigas 3001, 3002 e 3005 deixaram de existir. O frontend continua chamando URLs relativas; o INFRA aponta seus quatro destinos de build para o mesmo backend, sem modificar seu código.
@@ -127,5 +129,6 @@ Publique os commits do BACKEND antes de publicar o gitlink correspondente do INF
 - [Verificação e aceite](docs/validacao.md)
 - [Perfis de acesso — SCRUM-431](docs/perfis-acesso.md)
 - [Permissões e autenticação — SCRUM-432](docs/permissoes.md)
+- [Bloqueio e desbloqueio de usuários — SCRUM-433](docs/bloqueio-usuarios.md)
 
 A pasta local `confluence/` contém material para publicação e validação pelo time. Ela está ignorada pelo Git e pelo contexto Docker; sua publicação e o aceite do time são etapas externas.

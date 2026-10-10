@@ -22,6 +22,7 @@ export interface UserRepositoryPort {
   findAll(page: number, limit: number): Promise<PaginatedUsers>;
   findById(id: number): Promise<User | null>;
   update(id: number, input: UpdateUserRecord): Promise<User | null>;
+  updateAccess(id: number, active: boolean): Promise<User | null>;
   delete(id: number): Promise<boolean>;
 }
 
@@ -151,6 +152,21 @@ export class UserRepository implements UserRepositoryPort {
     ]);
 
     return (result.rowCount ?? 0) > 0;
+  }
+
+  async updateAccess(id: number, active: boolean): Promise<User | null> {
+    const result = await this.pool.query<UserRow>(
+      `
+        UPDATE users u
+        SET active = $2
+        FROM credentials c
+        WHERE u.id = $1 AND c.user_id = u.id
+        RETURNING u.id, u.role_id, u.name, c.email, u.active, u.created_at
+      `,
+      [id, active],
+    );
+    const row = result.rows[0];
+    return row ? mapUser(row) : null;
   }
 
   private async rollback(client: PoolClient): Promise<void> {
