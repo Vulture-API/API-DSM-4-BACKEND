@@ -13,6 +13,24 @@ const environmentSchema = z
       .enum(["true", "false"])
       .default("false")
       .transform((value) => value === "true"),
+    RATE_LIMIT_MAX: z.coerce
+      .number()
+      .int()
+      .positive()
+      .max(1_000_000)
+      .default(300),
+    LOGIN_RATE_LIMIT_MAX: z.coerce
+      .number()
+      .int()
+      .positive()
+      .max(1_000_000)
+      .default(10),
+    RATE_LIMIT_WINDOW_MS: z.coerce
+      .number()
+      .int()
+      .positive()
+      .max(86_400_000)
+      .default(60_000),
     PORT: z.coerce.number().int().positive().max(65535).default(3000),
     DATABASE_URL: z.string().min(1),
     STATION_OFFLINE_THRESHOLD_MINUTES: z.coerce

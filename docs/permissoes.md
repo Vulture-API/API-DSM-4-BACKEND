@@ -54,6 +54,10 @@ Quando o controle das rotas existentes está ativo:
 
 ## Configuração e sequência de ativação
 
+A limitação de requisições usa `@fastify/rate-limit` em `onRequest`, antes das consultas de autorização e dos handlers. `RATE_LIMIT_MAX=300` define o orçamento compartilhado por IP entre rotas, métodos, aliases e abertura de WebSockets. O login tem orçamento separado com `LOGIN_RATE_LIMIT_MAX=10`. Ambos usam `RATE_LIMIT_WINDOW_MS=60000`, e valores inválidos impedem a inicialização. Login bem-sucedido, falho e corpos inválidos consomem esse orçamento.
+
+O excesso retorna 429 com `Retry-After` e cabeçalhos `X-RateLimit-*`, preservando o envelope de erro de cada módulo. Identificação do backend, healthchecks e preflight não consomem orçamento. A proteção funciona também com controle de acesso desligado. O contador fica em memória por processo, com cache limitado; reiniciar o backend reinicia as janelas. O backend utiliza o IP da conexão e não confia em `X-Forwarded-For`; atrás de um proxy, seus clientes compartilham o orçamento do endereço desse proxy. A configuração de confiança no proxy e um contador distribuído exigem ajuste específico antes de escalar para múltiplas instâncias.
+
 `ACCESS_CONTROL_ENABLED=false` é o padrão escolhido para preservar as chamadas atuais do frontend. Nessa fase, as APIs anteriores mantêm seu comportamento, inclusive o corpo legado `acknowledged_by` no reconhecimento de alertas. As novas APIs de permissões e `/api/auth/me` permanecem protegidas independentemente da flag.
 
 `JWT_SECRET` não tem valor padrão e deve conter pelo menos 32 caracteres aleatórios, configurados fora do Git. Sem ele, login e APIs novas protegidas retornam 503; a aplicação ainda funciona em modo legado. Com `ACCESS_CONTROL_ENABLED=true`, a inicialização falha se o segredo estiver ausente ou inválido.
@@ -91,3 +95,9 @@ As integrações criam schemas temporários exclusivos e os removem ao final. O 
 Commits funcionais do backend: `edcf4f1` (autenticação), `8c5aa79` (associações) e `d25d3a6` (autorização). Migration do BANCO: `d218b74`.
 
 A migration foi aplicada ao banco de desenvolvimento autorizado. A consulta após aplicação confirmou 31 concessões para Administrador e zero para Gerente Agrícola/Cliente. A conferência final encontrou zero schemas remanescentes dos testes de autenticação, permissões e perfis. Não houve alteração de credenciais existentes, push, deploy ou execução do CI remoto.
+
+### Correção do alerta de limitação de requisições
+
+O alerta [Missing rate limiting](https://codeql.github.com/codeql-query-help/javascript/js-missing-rate-limiting/) motivou a adição do middleware e a ordem explícita dos hooks: limite → autorização → validação/handler. Os testes verificam que requisições excedentes não consultam credenciais, usuários ou recursos, incluindo HEAD e upgrades WebSocket; também cobrem orçamento compartilhado dos aliases, independência do login, isolamento de IPs, cabeçalhos de encaminhamento e reinício da janela.
+
+Após a correção, a suíte completa com PostgreSQL aprovou 381 testes em 51 arquivos, sem testes pulados, com cobertura de linhas de 95,77%. Lint, formatação, tipos e build passaram. A análise CodeQL remota deverá executar após a publicação do commit; este resultado local não confirma o encerramento do alerta no GitHub.

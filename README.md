@@ -65,6 +65,8 @@ Perfis de acesso (`roles`) oferecem listagem e criação em `/api/roles`, além 
 
 Os perfis retornam também `permissions`, uma lista ordenada de códigos. O catálogo está em `GET /api/permissions`, e a associação é consultada ou substituída em `/api/roles/:id/permissions`. Essas novas rotas sempre exigem JWT e a permissão correspondente. `POST /api/auth/login` utiliza as credenciais scrypt existentes; `GET /api/auth/me` retorna o usuário e suas permissões atuais. Configure `JWT_SECRET` para utilizar esses recursos. A proteção das APIs anteriores permanece desligada até `ACCESS_CONTROL_ENABLED=true`, permitindo a integração posterior do frontend. Veja o [contrato e a ativação da SCRUM-432](docs/permissoes.md).
 
+A API limita requisições antes de autenticar ou acessar o banco: por padrão, 300 por minuto por IP, compartilhadas entre rotas, métodos e aliases. O login possui um orçamento separado de 10 por minuto. O excesso recebe 429 com `Retry-After`; identificação do backend, healthchecks e preflight são isentos. Os limites permanecem ativos com `ACCESS_CONTROL_ENABLED=false`.
+
 Os healthchecks foram unificados e as portas antigas 3001, 3002 e 3005 deixaram de existir. O frontend continua chamando URLs relativas; o INFRA aponta seus quatro destinos de build para o mesmo backend, sem modificar seu código.
 
 ## Variáveis de ambiente
@@ -76,6 +78,9 @@ Os healthchecks foram unificados e as portas antigas 3001, 3002 e 3005 deixaram 
 | `DATABASE_URL`                      | obrigatório   | Única conexão PostgreSQL                                                           |
 | `JWT_SECRET`                        | sem padrão    | Segredo de ao menos 32 caracteres para login e JWT; obrigatório com controle ativo |
 | `ACCESS_CONTROL_ENABLED`            | `false`       | Ativa autorização das rotas existentes e do WebSocket                              |
+| `RATE_LIMIT_MAX`                    | `300`         | Requisições por IP no orçamento compartilhado da API                               |
+| `LOGIN_RATE_LIMIT_MAX`              | `10`          | Requisições de login por IP, em orçamento separado                                 |
+| `RATE_LIMIT_WINDOW_MS`              | `60000`       | Janela de contagem dos limites de requisição                                       |
 | `STATION_OFFLINE_THRESHOLD_MINUTES` | `10`          | Limite para estação Offline                                                        |
 | `RULES_ENGINE_ENABLED`              | `false`       | Ativa o agendamento do motor                                                       |
 | `RULES_ENGINE_INTERVAL_MS`          | `15000`       | Intervalo entre ciclos                                                             |

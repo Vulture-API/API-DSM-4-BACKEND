@@ -13,12 +13,20 @@ export const authRoutes: FastifyPluginAsyncZod<{
   repository: AuthRepositoryPort;
   configured: boolean;
   secureCookie: boolean;
+  loginRateLimitMax: number;
+  rateLimitWindowMs: number;
 }> = async (app, options) => {
   const loginService = new LoginService(options.repository);
   app.post(
     "/login",
     {
-      config: { access: { public: true } },
+      config: {
+        access: { public: true },
+        rateLimit: {
+          max: options.loginRateLimitMax,
+          timeWindow: options.rateLimitWindowMs,
+        },
+      },
       schema: { body: loginSchema, response: { 200: tokenSchema } },
     },
     async (request, reply) => {

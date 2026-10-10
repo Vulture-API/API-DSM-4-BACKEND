@@ -2,6 +2,7 @@ import "@/config/zod.config.js";
 
 import cookie from "@fastify/cookie";
 import jwt from "@fastify/jwt";
+import rateLimit, { normalizeIP } from "@fastify/rate-limit";
 import websocket from "@fastify/websocket";
 import Fastify, { type FastifyReply } from "fastify";
 import {
@@ -13,6 +14,7 @@ import type { Pool } from "pg";
 
 import { database } from "@/config/database.js";
 import { env } from "@/config/environment.js";
+import { ApplicationError } from "@/errors/application.error.js";
 import { handleError } from "@/errors/error-handler.js";
 import { handleParametersError } from "@/errors/handlers/parameters.js";
 import { handleUsersError } from "@/errors/handlers/users.js";
@@ -83,6 +85,7 @@ export type BuildAppOptions = {
   permissionRepository?: PermissionRepositoryPort;
   jwtSecret?: string;
   accessControlEnabled?: boolean;
+  rateLimits?: { max?: number; loginMax?: number; timeWindowMs?: number };
   stationRepository?: StationRepository;
   monitoringRepository?: MonitoringRepository;
   readingsBroadcaster?: ReadingsBroadcaster;
@@ -128,200 +131,254 @@ export function buildApp(options: BuildAppOptions = {}) {
       throw new Error(`Missing access policy for ${route.method} ${route.url}`);
   });
   app.decorateRequest("actor", null);
-  app.addHook("onRequest", async (request) => accessControl.enforce(request));
-  app.register(cookie);
-  if (secret)
-    app.register(jwt, {
-      secret,
-      sign: {
-        algorithm: "HS256",
-        iss: JWT_ISSUER,
-        aud: JWT_AUDIENCE,
-        expiresIn: JWT_TTL_SECONDS,
-      },
-      verify: {
-        algorithms: ["HS256"],
-        allowedIss: JWT_ISSUER,
-        allowedAud: JWT_AUDIENCE,
-      },
-    });
-  app.register(async (auth) => {
-    auth.setErrorHandler(handleUsersError);
-    auth.register(authRoutes, {
-      prefix: "/api/auth",
-      repository: authRepository,
-      configured: !!secret,
-      secureCookie: env.NODE_ENV === "production",
-    });
+  const limits = {
+    max: options.rateLimits?.max ?? env.RATE_LIMIT_MAX,
+    loginMax: options.rateLimits?.loginMax ?? env.LOGIN_RATE_LIMIT_MAX,
+    timeWindowMs: options.rateLimits?.timeWindowMs ?? env.RATE_LIMIT_WINDOW_MS,
+  };
+  if (
+    Object.values(limits).some(
+      (value) => !Number.isSafeInteger(value) || value <= 0,
+    )
+  ) {
+    throw new Error("Rate limits must be positive safe integers.");
+  }
+  app.register(rateLimit, {
+    global: true,
+    hook: "onRequest",
+    max: limits.max,
+    timeWindow: limits.timeWindowMs,
+    // Non-TCP transports (including injected upgrades) may not expose an IP.
+    // They share a bounded bucket rather than bypassing the limiter.
+    keyGenerator: (request) => normalizeIP(request.ip ?? "unknown"),
+    errorResponseBuilder: () =>
+      new ApplicationError(
+        429,
+        "RATE_LIMIT_EXCEEDED",
+        "Too many requests. Please try again later.",
+      ),
   });
-  app.register(websocket, { options: { maxPayload: 1024 } });
-  const health = async () => ({
-    status: "ok",
-    rules_engine: options.rulesEngineWorker?.isRunning ?? false,
-  });
-  for (const path of ["/health", "/api/health", "/api/v1/health"])
-    app.get(path, { config: { access: { public: true } } }, health);
-  app.get("/", { config: { access: { public: true } } }, async () => ({
-    name: "AgriTech - Backend",
-    status: "ok",
-  }));
-
-  app.register(async (users) => {
-    users.setErrorHandler(handleUsersError);
-    const userRepository = options.userRepository ?? new UserRepository(pool);
-    const roleRepository = options.roleRepository ?? new RoleRepository(pool);
-    users.register(userRoutes, {
-      prefix: "/api/users",
-      userRepository,
-      roleRepository,
-      ...(options.passwordHasher
-        ? { passwordHasher: options.passwordHasher }
-        : {}),
+  app.after(() => {
+    // The limiter's onRoute hook runs first; authorization is appended after it.
+    // A root onRequest authorization hook would query PostgreSQL before route hooks.
+    app.addHook("onRoute", (route) => {
+      const hooks = route.onRequest
+        ? Array.isArray(route.onRequest)
+          ? route.onRequest
+          : [route.onRequest]
+        : [];
+      route.onRequest = [
+        ...hooks,
+        async (request) => accessControl.enforce(request),
+      ];
     });
-    const permissionRepository =
-      options.permissionRepository ??
-      (process.env.NODE_ENV === "test" &&
-      !options.database &&
-      options.roleRepository
-        ? new FakePermissionRepository(roleRepository)
-        : new PgPermissionRepository(pool));
-    users.register(roleRoutes, {
-      prefix: "/api/roles",
-      roleRepository,
-      permissionRepository,
-    });
-    users.register(permissionRoutes, {
-      prefix: "/api",
-      repository: permissionRepository,
-    });
-  });
-  app.register(async (parameters) => {
-    parameters.setErrorHandler(handleParametersError);
-    parameters.addHook("onRequest", async (_request, reply) => {
-      reply.header("Access-Control-Allow-Origin", "*");
-      reply.header(
-        "Access-Control-Allow-Methods",
-        "GET, POST, PUT, DELETE, OPTIONS",
-      );
-      reply.header(
-        "Access-Control-Allow-Headers",
-        "Content-Type, Authorization",
-      );
-    });
-    const sensorTypeRepository =
-      options.sensorTypeRepository ??
-      (process.env.NODE_ENV === "test" && !options.database
-        ? new InMemorySensorTypeRepository()
-        : new PgSensorTypeRepository(pool));
-    const sensorRepository =
-      options.sensorRepository ??
-      (process.env.NODE_ENV === "test" && !options.database
-        ? new InMemorySensorRepository()
-        : new PgSensorRepository(pool));
-    for (const prefix of ["", "/v1", "/api", "/api/v1"]) {
-      parameters.register(sensorTypeRoutes, {
-        prefix: `${prefix}/sensor-types`,
-        repository: sensorTypeRepository,
-      });
-      parameters.register(sensorRoutes, {
-        prefix: `${prefix}/sensors`,
-        repository: sensorRepository,
-      });
-      for (const resource of ["sensor-types", "sensors"]) {
-        const preflight = async (_request: unknown, reply: FastifyReply) =>
-          reply.status(204).send();
-        parameters.options(
-          `${prefix}/${resource}`,
-          { config: { access: { public: true } } },
-          preflight,
-        );
-        parameters.options(
-          `${prefix}/${resource}/*`,
-          { config: { access: { public: true } } },
-          preflight,
-        );
-      }
-    }
-  });
-  app.register(async (stations) => {
-    stations.setErrorHandler(handleError);
-    const repository =
-      options.stationRepository ?? new PgStationRepository(pool);
-    const monitoring =
-      options.monitoringRepository ?? new PgMonitoringRepository(pool);
-    const threshold =
-      options.stationOfflineThresholdMinutes ??
-      env.STATION_OFFLINE_THRESHOLD_MINUTES;
-    stations.get(
-      "/api/properties",
-      { config: { access: { permission: "properties.read" } } },
-      async () => (await repository.listProperties?.()) ?? [],
-    );
-    stations.register(
-      buildStationRoutes(repository, threshold, options.clock),
-      { prefix: "/api/stations" },
-    );
-    const broadcaster =
-      options.readingsBroadcaster ??
-      new ReadingsBroadcaster(monitoring, {
-        intervalMs: env.CURRENT_READINGS_POLL_MS,
-        onError: (error) =>
-          console.error("[current-readings] falha ao buscar leituras:", error),
-      });
-    stations.addHook("onClose", async () => {
-      await broadcaster.close();
-    });
-    stations.register(
-      buildMonitoringRoutes(
-        monitoring,
-        threshold,
-        options.clock,
-        broadcaster,
-        {
-          maxConnections: env.CURRENT_READINGS_MAX_CONNECTIONS,
-          ...options.liveLimits,
+    app.register(cookie);
+    if (secret)
+      app.register(jwt, {
+        secret,
+        sign: {
+          algorithm: "HS256",
+          iss: JWT_ISSUER,
+          aud: JWT_AUDIENCE,
+          expiresIn: JWT_TTL_SECONDS,
         },
-        accessControl,
-      ),
-      { prefix: "/api/stations" },
+        verify: {
+          algorithms: ["HS256"],
+          allowedIss: JWT_ISSUER,
+          allowedAud: JWT_AUDIENCE,
+        },
+      });
+    app.register(async (auth) => {
+      auth.setErrorHandler(handleUsersError);
+      auth.register(authRoutes, {
+        prefix: "/api/auth",
+        repository: authRepository,
+        configured: !!secret,
+        secureCookie: env.NODE_ENV === "production",
+        loginRateLimitMax: limits.loginMax,
+        rateLimitWindowMs: limits.timeWindowMs,
+      });
+    });
+    app.register(websocket, { options: { maxPayload: 1024 } });
+    const health = async () => ({
+      status: "ok",
+      rules_engine: options.rulesEngineWorker?.isRunning ?? false,
+    });
+    for (const path of ["/health", "/api/health", "/api/v1/health"])
+      app.get(
+        path,
+        { config: { access: { public: true }, rateLimit: false } },
+        health,
+      );
+    app.get(
+      "/",
+      { config: { access: { public: true }, rateLimit: false } },
+      async () => ({
+        name: "AgriTech - Backend",
+        status: "ok",
+      }),
     );
-  });
-  app.register(async (alerts) => {
-    alerts.setErrorHandler(handleError);
-    alerts.register(
-      buildAlertRoutes(
-        options.alertConfigRepository ?? new PgAlertConfigRepository(pool),
-        options.triggeredAlertRepository ??
-          new PgTriggeredAlertRepository(pool),
-        accessControlEnabled,
-      ),
-      { prefix: "/api/alerts" },
+
+    app.register(async (users) => {
+      users.setErrorHandler(handleUsersError);
+      const userRepository = options.userRepository ?? new UserRepository(pool);
+      const roleRepository = options.roleRepository ?? new RoleRepository(pool);
+      users.register(userRoutes, {
+        prefix: "/api/users",
+        userRepository,
+        roleRepository,
+        ...(options.passwordHasher
+          ? { passwordHasher: options.passwordHasher }
+          : {}),
+      });
+      const permissionRepository =
+        options.permissionRepository ??
+        (process.env.NODE_ENV === "test" &&
+        !options.database &&
+        options.roleRepository
+          ? new FakePermissionRepository(roleRepository)
+          : new PgPermissionRepository(pool));
+      users.register(roleRoutes, {
+        prefix: "/api/roles",
+        roleRepository,
+        permissionRepository,
+      });
+      users.register(permissionRoutes, {
+        prefix: "/api",
+        repository: permissionRepository,
+      });
+    });
+    app.register(async (parameters) => {
+      parameters.setErrorHandler(handleParametersError);
+      parameters.addHook("onRequest", async (_request, reply) => {
+        reply.header("Access-Control-Allow-Origin", "*");
+        reply.header(
+          "Access-Control-Allow-Methods",
+          "GET, POST, PUT, DELETE, OPTIONS",
+        );
+        reply.header(
+          "Access-Control-Allow-Headers",
+          "Content-Type, Authorization",
+        );
+      });
+      const sensorTypeRepository =
+        options.sensorTypeRepository ??
+        (process.env.NODE_ENV === "test" && !options.database
+          ? new InMemorySensorTypeRepository()
+          : new PgSensorTypeRepository(pool));
+      const sensorRepository =
+        options.sensorRepository ??
+        (process.env.NODE_ENV === "test" && !options.database
+          ? new InMemorySensorRepository()
+          : new PgSensorRepository(pool));
+      for (const prefix of ["", "/v1", "/api", "/api/v1"]) {
+        parameters.register(sensorTypeRoutes, {
+          prefix: `${prefix}/sensor-types`,
+          repository: sensorTypeRepository,
+        });
+        parameters.register(sensorRoutes, {
+          prefix: `${prefix}/sensors`,
+          repository: sensorRepository,
+        });
+        for (const resource of ["sensor-types", "sensors"]) {
+          const preflight = async (_request: unknown, reply: FastifyReply) =>
+            reply.status(204).send();
+          parameters.options(
+            `${prefix}/${resource}`,
+            { config: { access: { public: true }, rateLimit: false } },
+            preflight,
+          );
+          parameters.options(
+            `${prefix}/${resource}/*`,
+            { config: { access: { public: true }, rateLimit: false } },
+            preflight,
+          );
+        }
+      }
+    });
+    app.register(async (stations) => {
+      stations.setErrorHandler(handleError);
+      const repository =
+        options.stationRepository ?? new PgStationRepository(pool);
+      const monitoring =
+        options.monitoringRepository ?? new PgMonitoringRepository(pool);
+      const threshold =
+        options.stationOfflineThresholdMinutes ??
+        env.STATION_OFFLINE_THRESHOLD_MINUTES;
+      stations.get(
+        "/api/properties",
+        { config: { access: { permission: "properties.read" } } },
+        async () => (await repository.listProperties?.()) ?? [],
+      );
+      stations.register(
+        buildStationRoutes(repository, threshold, options.clock),
+        { prefix: "/api/stations" },
+      );
+      const broadcaster =
+        options.readingsBroadcaster ??
+        new ReadingsBroadcaster(monitoring, {
+          intervalMs: env.CURRENT_READINGS_POLL_MS,
+          onError: (error) =>
+            console.error(
+              "[current-readings] falha ao buscar leituras:",
+              error,
+            ),
+        });
+      stations.addHook("onClose", async () => {
+        await broadcaster.close();
+      });
+      stations.register(
+        buildMonitoringRoutes(
+          monitoring,
+          threshold,
+          options.clock,
+          broadcaster,
+          {
+            maxConnections: env.CURRENT_READINGS_MAX_CONNECTIONS,
+            ...options.liveLimits,
+          },
+          accessControl,
+        ),
+        { prefix: "/api/stations" },
+      );
+    });
+    app.register(async (alerts) => {
+      alerts.setErrorHandler(handleError);
+      alerts.register(
+        buildAlertRoutes(
+          options.alertConfigRepository ?? new PgAlertConfigRepository(pool),
+          options.triggeredAlertRepository ??
+            new PgTriggeredAlertRepository(pool),
+          accessControlEnabled,
+        ),
+        { prefix: "/api/alerts" },
+      );
+    });
+    app.post(
+      "/internal/rules-engine/run",
+      { config: { access: { permission: "rules-engine.run" } } },
+      async (_request, reply) => {
+        if (!options.rulesEngineWorker) {
+          return reply.status(503).send({
+            statusCode: 503,
+            code: "RULES_ENGINE_UNAVAILABLE",
+            message: "Rules engine is not attached to this instance.",
+          });
+        }
+        const result = await options.rulesEngineWorker.runOnce();
+        if (result === null) {
+          return reply.status(409).send({
+            statusCode: 409,
+            code: "RULES_ENGINE_BUSY",
+            message: "A processing cycle is already running.",
+          });
+        }
+        return result;
+      },
     );
-  });
-  app.post(
-    "/internal/rules-engine/run",
-    { config: { access: { permission: "rules-engine.run" } } },
-    async (_request, reply) => {
-      if (!options.rulesEngineWorker) {
-        return reply.status(503).send({
-          statusCode: 503,
-          code: "RULES_ENGINE_UNAVAILABLE",
-          message: "Rules engine is not attached to this instance.",
-        });
-      }
-      const result = await options.rulesEngineWorker.runOnce();
-      if (result === null) {
-        return reply.status(409).send({
-          statusCode: 409,
-          code: "RULES_ENGINE_BUSY",
-          message: "A processing cycle is already running.",
-        });
-      }
-      return result;
-    },
-  );
-  app.addHook("onClose", async () => {
-    await options.rulesEngineWorker?.stop();
+    app.addHook("onClose", async () => {
+      await options.rulesEngineWorker?.stop();
+    });
   });
   return app;
 }

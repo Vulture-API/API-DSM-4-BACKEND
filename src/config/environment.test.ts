@@ -5,6 +5,9 @@ describe("access-control environment", () => {
     vi.resetModules();
     vi.stubEnv("JWT_SECRET", undefined);
     vi.stubEnv("ACCESS_CONTROL_ENABLED", "false");
+    vi.stubEnv("RATE_LIMIT_MAX", undefined);
+    vi.stubEnv("LOGIN_RATE_LIMIT_MAX", undefined);
+    vi.stubEnv("RATE_LIMIT_WINDOW_MS", undefined);
   });
   afterEach(() => {
     vi.unstubAllEnvs();
@@ -32,5 +35,13 @@ describe("access-control environment", () => {
     expect(
       (await import("@/config/environment.js")).env.ACCESS_CONTROL_ENABLED,
     ).toBe(true);
+  });
+  it.each([
+    ["RATE_LIMIT_MAX", "0"],
+    ["LOGIN_RATE_LIMIT_MAX", "-1"],
+    ["RATE_LIMIT_WINDOW_MS", "invalid"],
+  ])("rejects invalid request-limit configuration: %s", async (key, value) => {
+    vi.stubEnv(key, value);
+    await expect(import("@/config/environment.js")).rejects.toThrow(key);
   });
 });
