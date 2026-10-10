@@ -61,6 +61,8 @@ Cada módulo mantém controllers, schemas, serviços e repositórios próprios. 
 
 CRUD, métodos, payloads, paginação e formatos de erro continuam iguais aos serviços de origem. Tipos e sensores também aceitam os aliases sem prefixo, com `/v1` e com `/api/v1`. O CORS desses recursos permanece encapsulado no módulo de parâmetros.
 
+Perfis de acesso (`roles`) oferecem listagem e criação em `/api/roles`, além de consulta, edição e exclusão em `/api/roles/:id`. O nome é obrigatório e único; a exclusão retorna 409 enquanto houver usuários vinculados, inclusive inativos. No `PUT`, descrição omitida é gravada como `null`. Veja o [contrato e as evidências da SCRUM-431](docs/perfis-acesso.md).
+
 Os healthchecks foram unificados e as portas antigas 3001, 3002 e 3005 deixaram de existir. O frontend continua chamando URLs relativas; o INFRA aponta seus quatro destinos de build para o mesmo backend, sem modificar seu código.
 
 ## Variáveis de ambiente
@@ -114,5 +116,6 @@ Publique os commits do BACKEND antes de publicar o gitlink correspondente do INF
 - [Inventário dos serviços e contratos](docs/mapa-migracao.md)
 - [Arquitetura e decisões](docs/arquitetura.md)
 - [Verificação e aceite](docs/validacao.md)
+- [Perfis de acesso — SCRUM-431](docs/perfis-acesso.md)
 
 A pasta local `confluence/` contém material para publicação e validação pelo time. Ela está ignorada pelo Git e pelo contexto Docker; sua publicação e o aceite do time são etapas externas.
