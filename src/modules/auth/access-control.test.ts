@@ -55,9 +55,12 @@ describe("route access policies", () => {
     for (const route of routes) {
       expect(PERMISSION_CODES).toContain(route.permission);
       const options = {
-        method: route.method as "GET" | "POST" | "PUT" | "DELETE" | "HEAD",
+        method: route.method as
+          "GET" | "POST" | "PUT" | "DELETE" | "HEAD" | "PATCH",
         url: route.url.replace(/:id/g, "1"),
-        ...(route.method === "POST" || route.method === "PUT"
+        ...(route.method === "POST" ||
+        route.method === "PUT" ||
+        route.method === "PATCH"
           ? { payload: {} }
           : {}),
       };

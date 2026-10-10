@@ -1,10 +1,21 @@
 import { randomUUID } from "node:crypto";
 
 import { Pool } from "pg";
-import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 
+import { buildApp } from "@/app.js";
 import { PgAuthRepository } from "@/modules/auth/repositories/auth.repository.js";
 import { LoginService } from "@/modules/auth/services/login.service.js";
+import { InMemoryMonitoringRepository } from "@/modules/monitoring/repositories/monitoring.repository.js";
+import { ReadingsBroadcaster } from "@/modules/monitoring/services/readings-broadcaster.js";
 import { PERMISSIONS } from "@/modules/permissions/permission-catalog.js";
 import { UserRepository } from "@/modules/users/repositories/user.repository.js";
 import { hashPassword } from "@/modules/users/services/password-hasher.js";
@@ -157,4 +168,247 @@ describe.skipIf(!url)("user access (Postgres real)", () => {
       await login.login("viewer@example.com", "password123"),
     ).toMatchObject({ id: 2, active: true });
   });
+  it.each([false, true])(
+    "blocks and restores access through the protected API (legacy protection=%s)",
+    async (enabled) => {
+      const app = buildApp({
+        database: pool,
+        jwtSecret: "test-secret-scrum-433-postgres-only",
+        accessControlEnabled: enabled,
+        monitoringRepository: new InMemoryMonitoringRepository(),
+      });
+      try {
+        const initial = await repository.findById(2);
+        const operatorLogin = await app.inject({
+          method: "POST",
+          url: "/api/auth/login",
+          payload: { email: "operator@example.com", password: "password123" },
+        });
+        const viewerLogin = await app.inject({
+          method: "POST",
+          url: "/api/auth/login",
+          payload: { email: "viewer@example.com", password: "password123" },
+        });
+        expect(operatorLogin.statusCode).toBe(200);
+        expect(viewerLogin.statusCode).toBe(200);
+        const operatorHeaders = {
+          authorization: `Bearer ${operatorLogin.json().access_token}`,
+        };
+        const viewerHeaders = {
+          authorization: `Bearer ${viewerLogin.json().access_token}`,
+        };
+        expect(
+          (await app.inject({ url: "/api/auth/me", headers: viewerHeaders }))
+            .statusCode,
+        ).toBe(200);
+        expect(
+          (
+            await app.inject({
+              url: "/api/stations/current",
+              headers: viewerHeaders,
+            })
+          ).statusCode,
+        ).toBe(200);
+        const patch = (active: boolean) =>
+          app.inject({
+            method: "PATCH",
+            url: "/api/users/2/access",
+            headers: operatorHeaders,
+            payload: { active },
+          });
+        expect(
+          (
+            await app.inject({
+              method: "PATCH",
+              url: "/api/users/2/access",
+              headers: viewerHeaders,
+              payload: { active: false },
+            })
+          ).statusCode,
+        ).toBe(403);
+        const blocked = await patch(false);
+        expect(blocked.statusCode).toBe(200);
+        expect(blocked.json()).toEqual({ ...initial, active: false });
+        expect((await patch(false)).statusCode).toBe(200);
+        expect(
+          (
+            await app.inject({ url: "/api/users/2", headers: operatorHeaders })
+          ).json(),
+        ).toEqual({ ...initial, active: false });
+        expect((await repository.findById(2))!.active).toBe(false);
+        expect(
+          (
+            await app.inject({
+              method: "POST",
+              url: "/api/auth/login",
+              payload: { email: "viewer@example.com", password: "password123" },
+            })
+          ).statusCode,
+        ).toBe(401);
+        for (const path of [
+          "/api/auth/me",
+          "/api/permissions",
+          "/api/roles/2/permissions",
+        ]) {
+          expect(
+            (await app.inject({ url: path, headers: viewerHeaders }))
+              .statusCode,
+          ).toBe(401);
+        }
+        if (enabled)
+          expect(
+            (
+              await app.inject({
+                url: "/api/stations/current",
+                headers: viewerHeaders,
+              })
+            ).statusCode,
+          ).toBe(401);
+        expect(
+          (
+            await app.inject({
+              method: "PATCH",
+              url: "/api/users/2/access",
+              headers: viewerHeaders,
+              payload: { active: true },
+            })
+          ).statusCode,
+        ).toBe(401);
+        const unblocked = await patch(true);
+        expect(unblocked.statusCode).toBe(200);
+        expect(unblocked.json()).toEqual(initial);
+        expect((await patch(true)).statusCode).toBe(200);
+        expect(
+          (await app.inject({ url: "/api/auth/me", headers: viewerHeaders }))
+            .statusCode,
+        ).toBe(200);
+        expect(
+          (
+            await app.inject({
+              url: "/api/stations/current",
+              headers: viewerHeaders,
+            })
+          ).statusCode,
+        ).toBe(200);
+        expect(
+          (
+            await app.inject({
+              method: "POST",
+              url: "/api/auth/login",
+              payload: { email: "viewer@example.com", password: "password123" },
+            })
+          ).statusCode,
+        ).toBe(200);
+        expect(
+          (
+            await pool.query(
+              "SELECT password_hash FROM credentials WHERE user_id = 2",
+            )
+          ).rows[0].password_hash,
+        ).toBe(hash);
+      } finally {
+        await app.close();
+      }
+    },
+  );
+
+  it("closes an existing WebSocket when blocked and allows reconnection after unblock", async () => {
+    const monitoring = new InMemoryMonitoringRepository();
+    const broadcaster = new ReadingsBroadcaster(monitoring, { intervalMs: 20 });
+    const baseline = vi.spyOn(monitoring, "lastReadingId");
+    const app = buildApp({
+      database: pool,
+      jwtSecret: "test-secret-scrum-433-websocket-only",
+      accessControlEnabled: true,
+      monitoringRepository: monitoring,
+      readingsBroadcaster: broadcaster,
+    });
+    const reading = (id: number) => ({
+      reading_id: id,
+      station_id: 1,
+      sensor_id: 1,
+      local_identifier: "temp",
+      sensor_type_id: 1,
+      sensor_type: "Temperatura",
+      unit_of_measure: "C",
+      value: 20 + id,
+      unix_time: 1790000000 + id,
+    });
+    try {
+      await app.ready();
+      const operatorHeaders = {
+        authorization: `Bearer ${app.jwt.sign({ sub: "1" })}`,
+      };
+      const viewerHeaders = {
+        authorization: `Bearer ${app.jwt.sign({ sub: "2" })}`,
+      };
+      const socket = await app.injectWS("/api/stations/current/ws", {
+        headers: viewerHeaders,
+      });
+      const messages: unknown[] = [];
+      socket.on("message", (data) => messages.push(JSON.parse(String(data))));
+      const closed = new Promise<number>((resolve) =>
+        socket.on("close", (code) => resolve(code)),
+      );
+      await vi.waitFor(() => expect(baseline).toHaveResolved(), {
+        timeout: 3000,
+      });
+      monitoring.liveReadings.push(reading(1));
+      await vi.waitFor(() => expect(messages).toHaveLength(1), {
+        timeout: 3000,
+      });
+      expect(
+        (
+          await app.inject({
+            method: "PATCH",
+            url: "/api/users/2/access",
+            headers: operatorHeaders,
+            payload: { active: false },
+          })
+        ).statusCode,
+      ).toBe(200);
+      expect(await closed).toBe(1008);
+      await vi.waitFor(() => {
+        expect(broadcaster.subscribers).toBe(0);
+        expect(broadcaster.isPolling).toBe(false);
+      });
+      monitoring.liveReadings.push(reading(2));
+      expect(messages).toEqual([{ type: "reading", ...reading(1) }]);
+      await expect(
+        app.injectWS("/api/stations/current/ws", { headers: viewerHeaders }),
+      ).rejects.toThrow("401");
+      expect(
+        (
+          await app.inject({
+            method: "PATCH",
+            url: "/api/users/2/access",
+            headers: operatorHeaders,
+            payload: { active: true },
+          })
+        ).statusCode,
+      ).toBe(200);
+      baseline.mockClear();
+      const restored = await app.injectWS("/api/stations/current/ws", {
+        headers: viewerHeaders,
+      });
+      const restoredMessages: unknown[] = [];
+      restored.on("message", (data) =>
+        restoredMessages.push(JSON.parse(String(data))),
+      );
+      await vi.waitFor(() => expect(baseline).toHaveResolved(), {
+        timeout: 3000,
+      });
+      monitoring.liveReadings.push(reading(3));
+      await vi.waitFor(
+        () =>
+          expect(restoredMessages).toEqual([
+            { type: "reading", ...reading(3) },
+          ]),
+        { timeout: 3000 },
+      );
+      restored.terminate();
+    } finally {
+      await app.close();
+    }
+  }, 15000);
 });
