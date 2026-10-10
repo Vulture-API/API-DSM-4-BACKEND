@@ -27,7 +27,9 @@ describe("role routes", () => {
     const response = await app.inject({ method: "GET", url: "/api/roles" });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual(roleRepository.roles);
+    expect(response.json()).toEqual(
+      roleRepository.roles.map((role) => ({ ...role, permissions: [] })),
+    );
   });
 
   it("creates, retrieves, updates and deletes a role over HTTP", async () => {
@@ -39,6 +41,7 @@ describe("role routes", () => {
     expect(created.statusCode).toBe(201);
     const role = created.json();
     expect(role).toEqual({
+      permissions: [],
       id: 4,
       name: "Analyst",
       description: "Reports",

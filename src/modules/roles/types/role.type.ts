@@ -4,3 +4,5 @@ export type Role = {
   description: string | null;
   created_at: string;
 };
+
+export type RoleWithPermissions = Role & { permissions: string[] };

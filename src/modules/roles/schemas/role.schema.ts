@@ -16,4 +16,5 @@ export const roleSchema = z.object({
   name: z.string().max(50),
   description: z.string().max(255).nullable(),
   created_at: z.iso.datetime(),
+  permissions: z.array(z.string()),
 });

@@ -33,40 +33,66 @@ export function buildStationRoutes(
       new DeleteStationService(stationRepository),
     );
 
-    app.post("/", { schema: { body: stationBodySchema } }, controller.create);
+    app.post(
+      "/",
+      {
+        config: { access: { permission: "stations.create" } },
+        schema: { body: stationBodySchema },
+      },
+      controller.create,
+    );
 
     app.get(
       "/",
-      { schema: { querystring: listStationsQuerySchema } },
+      {
+        config: { access: { permission: "stations.read" } },
+        schema: { querystring: listStationsQuerySchema },
+      },
       controller.list,
     );
 
-    app.get("/properties", async (_request, reply) => {
-      const properties = (await stationRepository.listProperties?.()) ?? [];
-      return reply.status(200).send(properties);
-    });
+    app.get(
+      "/properties",
+      { config: { access: { permission: "properties.read" } } },
+      async (_request, reply) => {
+        const properties = (await stationRepository.listProperties?.()) ?? [];
+        return reply.status(200).send(properties);
+      },
+    );
 
     app.get(
       "/:id/status",
-      { schema: { params: stationIdParamSchema } },
+      {
+        config: { access: { permission: "stations.read" } },
+        schema: { params: stationIdParamSchema },
+      },
       controller.getStatus,
     );
 
     app.get(
       "/:id",
-      { schema: { params: stationIdParamSchema } },
+      {
+        config: { access: { permission: "stations.read" } },
+        schema: { params: stationIdParamSchema },
+      },
       controller.getById,
     );
 
     app.put(
       "/:id",
-      { schema: { params: stationIdParamSchema, body: stationBodySchema } },
+      {
+        config: { access: { permission: "stations.update" } },
+        schema: { params: stationIdParamSchema, body: stationBodySchema },
+      },
       controller.update,
     );
 
     app.delete(
       "/:id",
-      { schema: { params: stationIdParamSchema } },
+      {
+        config: { access: { permission: "stations.delete" } },
+        schema: { params: stationIdParamSchema },
+      },
       controller.delete,
     );
   };

@@ -1,11 +1,16 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 
+import type { PermissionRepositoryPort } from "@/modules/permissions/repositories/permission.repository.js";
 import type { RoleInput } from "@/modules/roles/schemas/role.schema.js";
 import type { CreateRoleService } from "@/modules/roles/services/create-role.service.js";
 import type { DeleteRoleService } from "@/modules/roles/services/delete-role.service.js";
 import type { GetRoleService } from "@/modules/roles/services/get-role.service.js";
 import type { ListRolesService } from "@/modules/roles/services/list-roles.service.js";
 import type { UpdateRoleService } from "@/modules/roles/services/update-role.service.js";
+import type {
+  Role,
+  RoleWithPermissions,
+} from "@/modules/roles/types/role.type.js";
 
 export class RoleController {
   constructor(
@@ -14,6 +19,7 @@ export class RoleController {
     private readonly getRoleService: GetRoleService,
     private readonly updateRoleService: UpdateRoleService,
     private readonly deleteRoleService: DeleteRoleService,
+    private readonly permissions: PermissionRepositoryPort,
   ) {}
 
   create = async (
@@ -21,7 +27,7 @@ export class RoleController {
     reply: FastifyReply,
   ) => {
     const role = await this.createRoleService.create(request.body);
-    return reply.status(201).send(role);
+    return reply.status(201).send(await this.withPermissions(role));
   };
 
   get = async (
@@ -29,7 +35,7 @@ export class RoleController {
     reply: FastifyReply,
   ) => {
     const role = await this.getRoleService.get(request.params.id);
-    return reply.status(200).send(role);
+    return reply.status(200).send(await this.withPermissions(role));
   };
 
   update = async (
@@ -40,7 +46,7 @@ export class RoleController {
       request.params.id,
       request.body,
     );
-    return reply.status(200).send(role);
+    return reply.status(200).send(await this.withPermissions(role));
   };
 
   delete = async (
@@ -54,6 +60,18 @@ export class RoleController {
   list = async (_request: FastifyRequest, reply: FastifyReply) => {
     const roles = await this.listRolesService.list();
 
-    return reply.status(200).send(roles);
+    const grants = await this.permissions.findByRoleIds(
+      roles.map((role) => role.id),
+    );
+    return reply.status(200).send(
+      roles.map((role) => ({
+        ...role,
+        permissions: grants.get(role.id) ?? [],
+      })),
+    );
   };
+  private async withPermissions(role: Role): Promise<RoleWithPermissions> {
+    const grants = await this.permissions.findByRoleIds([role.id]);
+    return { ...role, permissions: grants.get(role.id) ?? [] };
+  }
 }

@@ -63,21 +63,30 @@ CRUD, métodos, payloads, paginação e formatos de erro continuam iguais aos se
 
 Perfis de acesso (`roles`) oferecem listagem e criação em `/api/roles`, além de consulta, edição e exclusão em `/api/roles/:id`. O nome é obrigatório e único; a exclusão retorna 409 enquanto houver usuários vinculados, inclusive inativos. No `PUT`, descrição omitida é gravada como `null`. Veja o [contrato e as evidências da SCRUM-431](docs/perfis-acesso.md).
 
+Os perfis retornam também `permissions`, uma lista ordenada de códigos. O catálogo está em `GET /api/permissions`, e a associação é consultada ou substituída em `/api/roles/:id/permissions`. Essas novas rotas sempre exigem JWT e a permissão correspondente. `POST /api/auth/login` utiliza as credenciais scrypt existentes; `GET /api/auth/me` retorna o usuário e suas permissões atuais. Configure `JWT_SECRET` para utilizar esses recursos. A proteção das APIs anteriores permanece desligada até `ACCESS_CONTROL_ENABLED=true`, permitindo a integração posterior do frontend. Veja o [contrato e a ativação da SCRUM-432](docs/permissoes.md).
+
+A API limita requisições antes de autenticar ou acessar o banco: por padrão, 300 por minuto por IP, compartilhadas entre rotas, métodos e aliases. O login possui um orçamento separado de 10 por minuto. O excesso recebe 429 com `Retry-After`; identificação do backend, healthchecks e preflight são isentos. Os limites permanecem ativos com `ACCESS_CONTROL_ENABLED=false`.
+
 Os healthchecks foram unificados e as portas antigas 3001, 3002 e 3005 deixaram de existir. O frontend continua chamando URLs relativas; o INFRA aponta seus quatro destinos de build para o mesmo backend, sem modificar seu código.
 
 ## Variáveis de ambiente
 
-| Variável                            | Padrão        | Uso                                |
-| ----------------------------------- | ------------- | ---------------------------------- |
-| `NODE_ENV`                          | `development` | Ambiente da aplicação              |
-| `PORT`                              | `3000`        | Porta HTTP                         |
-| `DATABASE_URL`                      | obrigatório   | Única conexão PostgreSQL           |
-| `STATION_OFFLINE_THRESHOLD_MINUTES` | `10`          | Limite para estação Offline        |
-| `RULES_ENGINE_ENABLED`              | `false`       | Ativa o agendamento do motor       |
-| `RULES_ENGINE_INTERVAL_MS`          | `15000`       | Intervalo entre ciclos             |
-| `RULES_ENGINE_BATCH_SIZE`           | `500`         | Leituras por lote, máximo 5000     |
-| `CURRENT_READINGS_POLL_MS`          | `3000`        | Intervalo do WebSocket de leituras |
-| `CURRENT_READINGS_MAX_CONNECTIONS`  | `200`         | Conexões simultâneas no WebSocket  |
+| Variável                            | Padrão        | Uso                                                                                |
+| ----------------------------------- | ------------- | ---------------------------------------------------------------------------------- |
+| `NODE_ENV`                          | `development` | Ambiente da aplicação                                                              |
+| `PORT`                              | `3000`        | Porta HTTP                                                                         |
+| `DATABASE_URL`                      | obrigatório   | Única conexão PostgreSQL                                                           |
+| `JWT_SECRET`                        | sem padrão    | Segredo de ao menos 32 caracteres para login e JWT; obrigatório com controle ativo |
+| `ACCESS_CONTROL_ENABLED`            | `false`       | Ativa autorização das rotas existentes e do WebSocket                              |
+| `RATE_LIMIT_MAX`                    | `300`         | Requisições por IP no orçamento compartilhado da API                               |
+| `LOGIN_RATE_LIMIT_MAX`              | `10`          | Requisições de login por IP, em orçamento separado                                 |
+| `RATE_LIMIT_WINDOW_MS`              | `60000`       | Janela de contagem dos limites de requisição                                       |
+| `STATION_OFFLINE_THRESHOLD_MINUTES` | `10`          | Limite para estação Offline                                                        |
+| `RULES_ENGINE_ENABLED`              | `false`       | Ativa o agendamento do motor                                                       |
+| `RULES_ENGINE_INTERVAL_MS`          | `15000`       | Intervalo entre ciclos                                                             |
+| `RULES_ENGINE_BATCH_SIZE`           | `500`         | Leituras por lote, máximo 5000                                                     |
+| `CURRENT_READINGS_POLL_MS`          | `3000`        | Intervalo do WebSocket de leituras                                                 |
+| `CURRENT_READINGS_MAX_CONNECTIONS`  | `200`         | Conexões simultâneas no WebSocket                                                  |
 
 O motor fica desligado por padrão para não avançar o checkpoint do banco compartilhado durante desenvolvimento. O Compose o habilita e usa intervalo de 5000 ms. A rota manual permanece disponível quando um motor está anexado, mesmo sem agendamento, e retorna 409 durante um ciclo concorrente.
 
@@ -117,5 +126,6 @@ Publique os commits do BACKEND antes de publicar o gitlink correspondente do INF
 - [Arquitetura e decisões](docs/arquitetura.md)
 - [Verificação e aceite](docs/validacao.md)
 - [Perfis de acesso — SCRUM-431](docs/perfis-acesso.md)
+- [Permissões e autenticação — SCRUM-432](docs/permissoes.md)
 
 A pasta local `confluence/` contém material para publicação e validação pelo time. Ela está ignorada pelo Git e pelo contexto Docker; sua publicação e o aceite do time são etapas externas.
