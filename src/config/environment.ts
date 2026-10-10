@@ -28,18 +28,22 @@ const environmentSchema = z.object({
     .positive()
     .max(5000)
     .default(500),
-  // Intervalo de consulta das leituras novas enviadas pelo WebSocket
-  CURRENT_READINGS_POLL_MS: z.coerce
+  // Previsão meteorológica (Open-Meteo)
+  FORECAST_API_URL: z
+    .url({ protocol: /^https$/ })
+    .default("https://api.open-meteo.com/v1/forecast"),
+  FORECAST_TIMEOUT_MS: z.coerce
     .number()
     .int()
     .min(500)
-    .max(60_000)
-    .default(3000),
-  CURRENT_READINGS_MAX_CONNECTIONS: z.coerce
+    .max(30_000)
+    .default(5000),
+  FORECAST_CACHE_TTL_MINUTES: z.coerce
     .number()
     .int()
-    .positive()
-    .default(200),
+    .min(0)
+    .max(24 * 60)
+    .default(30),
 });
 
 const result = environmentSchema.safeParse(process.env);

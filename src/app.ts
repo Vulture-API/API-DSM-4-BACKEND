@@ -24,6 +24,10 @@ import {
   PgTriggeredAlertRepository,
 } from "@/modules/alerts/repositories/pg-alert.repository.js";
 import { buildAlertRoutes } from "@/modules/alerts/routes/alerts.route.js";
+import { CachedForecastProvider } from "@/modules/forecast/providers/cached-forecast.provider.js";
+import type { ForecastProvider } from "@/modules/forecast/providers/forecast.provider.js";
+import { OpenMeteoProvider } from "@/modules/forecast/providers/open-meteo.provider.js";
+import { buildForecastRoutes } from "@/modules/forecast/routes/forecast.route.js";
 import type { MonitoringRepository } from "@/modules/monitoring/repositories/monitoring.repository.js";
 import { PgMonitoringRepository } from "@/modules/monitoring/repositories/pg-monitoring.repository.js";
 import {
@@ -52,6 +56,9 @@ import { sensorRoutes } from "@/modules/sensors/routes/sensors.route.js";
 import { PgStationRepository } from "@/modules/stations/repositories/pg-station.repository.js";
 import type { StationRepository } from "@/modules/stations/repositories/station.repository.js";
 import { buildStationRoutes } from "@/modules/stations/routes/stations.route.js";
+import { PgStatisticsRepository } from "@/modules/statistics/repositories/pg-statistics.repository.js";
+import type { StatisticsRepository } from "@/modules/statistics/repositories/statistics.repository.js";
+import { buildStatisticsRoutes } from "@/modules/statistics/routes/statistics.route.js";
 import {
   UserRepository,
   type UserRepositoryPort,
@@ -63,8 +70,8 @@ export type BuildAppOptions = {
   database?: Pool;
   stationRepository?: StationRepository;
   monitoringRepository?: MonitoringRepository;
-  readingsBroadcaster?: ReadingsBroadcaster;
-  liveLimits?: Partial<LiveLimits>;
+  statisticsRepository?: StatisticsRepository;
+  forecastProvider?: ForecastProvider;
   stationOfflineThresholdMinutes?: number;
   clock?: () => Date;
   alertConfigRepository?: AlertConfigRepository;
@@ -179,6 +186,36 @@ export function buildApp(options: BuildAppOptions = {}) {
         maxConnections: env.CURRENT_READINGS_MAX_CONNECTIONS,
         ...options.liveLimits,
       }),
+      { prefix: "/api/stations" },
+    );
+    stations.register(
+      buildStatisticsRoutes(
+        options.statisticsRepository ?? new PgStatisticsRepository(pool),
+        options.clock,
+      ),
+      { prefix: "/api/stations" },
+    );
+    const forecastProvider =
+      options.forecastProvider ??
+      new CachedForecastProvider(
+        new OpenMeteoProvider({
+          baseUrl: env.FORECAST_API_URL,
+          timeoutMs: env.FORECAST_TIMEOUT_MS,
+        }),
+        { ttlMs: env.FORECAST_CACHE_TTL_MINUTES * 60_000 },
+      );
+    stations.register(
+      buildForecastRoutes(
+        repository,
+        forecastProvider,
+        options.clock,
+        (error, context) =>
+          console.error(
+            "[forecast] falha no provedor de previsão:",
+            context,
+            error,
+          ),
+      ),
       { prefix: "/api/stations" },
     );
   });
