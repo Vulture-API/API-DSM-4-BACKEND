@@ -14,6 +14,14 @@ export const updateUserSchema = z.object({
   active: z.boolean(),
 });
 
+export const updateUserAccessSchema = z.strictObject({
+  active: z.boolean(),
+});
+
+export const userAccessIdSchema = z.object({
+  id: z.coerce.number().int().positive().max(2_147_483_647),
+});
+
 export const userIdSchema = z.object({
   id: z.coerce.number().int().positive(),
 });
@@ -43,4 +51,5 @@ export const paginatedUsersSchema = z.object({
 
 export type CreateUserInput = z.infer<typeof createUserSchema>;
 export type UpdateUserInput = z.infer<typeof updateUserSchema>;
+export type UpdateUserAccessInput = z.infer<typeof updateUserAccessSchema>;
 export type PaginationInput = z.infer<typeof paginationSchema>;
