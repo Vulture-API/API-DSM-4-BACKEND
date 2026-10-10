@@ -2,6 +2,8 @@
 
 Perfis de acesso correspondem aos registros de `roles`, referenciados por `users.role_id`. A implementação segue o contrato e o modelo SQL de referência em `confluence/`, sem migração. O módulo mantém schemas Zod, controller, serviços e repositório PostgreSQL, com dependências injetáveis por `buildApp`.
 
+A SCRUM-432 acrescentou `permissions` às respostas de perfis e APIs para configurar concessões, documentadas em [Permissões e autenticação](permissoes.md). O restante deste documento registra o contrato e as evidências originais da SCRUM-431.
+
 ## Contrato HTTP
 
 | Método | Rota             | Resultado                                                         |
