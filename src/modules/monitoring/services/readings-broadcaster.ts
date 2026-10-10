@@ -23,7 +23,10 @@ export type ReadingsBroadcasterOptions = {
  * consulta REST continua com o dado.
  */
 export class ReadingsBroadcaster {
-  private readonly listeners = new Set<Listener>();
+  private readonly listeners = new Set<{
+    listener: Listener;
+    authorize?: () => Promise<void>;
+  }>();
   private lastReadingId: number | null = null;
   private loop: Promise<void> | null = null;
   private sleeping: { timer: NodeJS.Timeout; resolve: () => void } | null =
@@ -47,17 +50,30 @@ export class ReadingsBroadcaster {
     return this.options.batchSize ?? 500;
   }
 
-  subscribe(listener: Listener): () => void {
-    this.listeners.add(listener);
+  subscribe(listener: Listener, authorize?: () => Promise<void>): () => void {
+    const subscriber = { listener, ...(authorize ? { authorize } : {}) };
+    this.listeners.add(subscriber);
     if (!this.loop && !this.closed) this.loop = this.run();
     return () => {
-      this.listeners.delete(listener);
+      this.listeners.delete(subscriber);
       if (this.listeners.size === 0) this.wake();
     };
   }
 
   /** Devolve quantas leituras novas foram repassadas. */
   async poll(): Promise<number> {
+    const subscribers = [...this.listeners];
+    await Promise.all(
+      subscribers.map(async (subscriber) => {
+        try {
+          await subscriber.authorize?.();
+        } catch (error) {
+          this.listeners.delete(subscriber);
+          this.report(error);
+        }
+      }),
+    );
+    if (subscribers.length > 0 && this.listeners.size === 0) return 0;
     if (this.lastReadingId === null) {
       this.lastReadingId = await this.repository.lastReadingId();
       return 0;
@@ -69,7 +85,7 @@ export class ReadingsBroadcaster {
     for (const reading of readings) {
       this.lastReadingId = reading.reading_id;
       const message = JSON.stringify({ type: "reading", ...reading });
-      for (const listener of this.listeners) {
+      for (const { listener } of this.listeners) {
         try {
           listener(reading, message);
         } catch (error) {

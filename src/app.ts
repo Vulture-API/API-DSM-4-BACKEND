@@ -123,6 +123,10 @@ export function buildApp(options: BuildAppOptions = {}) {
     accessControlEnabled,
     !!secret,
   );
+  app.addHook("onRoute", (route) => {
+    if (!route.config?.access)
+      throw new Error(`Missing access policy for ${route.method} ${route.url}`);
+  });
   app.decorateRequest("actor", null);
   app.addHook("onRequest", async (request) => accessControl.enforce(request));
   app.register(cookie);
@@ -156,8 +160,11 @@ export function buildApp(options: BuildAppOptions = {}) {
     rules_engine: options.rulesEngineWorker?.isRunning ?? false,
   });
   for (const path of ["/health", "/api/health", "/api/v1/health"])
-    app.get(path, health);
-  app.get("/", async () => ({ name: "AgriTech - Backend", status: "ok" }));
+    app.get(path, { config: { access: { public: true } } }, health);
+  app.get("/", { config: { access: { public: true } } }, async () => ({
+    name: "AgriTech - Backend",
+    status: "ok",
+  }));
 
   app.register(async (users) => {
     users.setErrorHandler(handleUsersError);
@@ -223,8 +230,16 @@ export function buildApp(options: BuildAppOptions = {}) {
       for (const resource of ["sensor-types", "sensors"]) {
         const preflight = async (_request: unknown, reply: FastifyReply) =>
           reply.status(204).send();
-        parameters.options(`${prefix}/${resource}`, preflight);
-        parameters.options(`${prefix}/${resource}/*`, preflight);
+        parameters.options(
+          `${prefix}/${resource}`,
+          { config: { access: { public: true } } },
+          preflight,
+        );
+        parameters.options(
+          `${prefix}/${resource}/*`,
+          { config: { access: { public: true } } },
+          preflight,
+        );
       }
     }
   });
@@ -239,6 +254,7 @@ export function buildApp(options: BuildAppOptions = {}) {
       env.STATION_OFFLINE_THRESHOLD_MINUTES;
     stations.get(
       "/api/properties",
+      { config: { access: { permission: "properties.read" } } },
       async () => (await repository.listProperties?.()) ?? [],
     );
     stations.register(
@@ -256,10 +272,17 @@ export function buildApp(options: BuildAppOptions = {}) {
       await broadcaster.close();
     });
     stations.register(
-      buildMonitoringRoutes(monitoring, threshold, options.clock, broadcaster, {
-        maxConnections: env.CURRENT_READINGS_MAX_CONNECTIONS,
-        ...options.liveLimits,
-      }),
+      buildMonitoringRoutes(
+        monitoring,
+        threshold,
+        options.clock,
+        broadcaster,
+        {
+          maxConnections: env.CURRENT_READINGS_MAX_CONNECTIONS,
+          ...options.liveLimits,
+        },
+        accessControl,
+      ),
       { prefix: "/api/stations" },
     );
   });
@@ -270,28 +293,33 @@ export function buildApp(options: BuildAppOptions = {}) {
         options.alertConfigRepository ?? new PgAlertConfigRepository(pool),
         options.triggeredAlertRepository ??
           new PgTriggeredAlertRepository(pool),
+        accessControlEnabled,
       ),
       { prefix: "/api/alerts" },
     );
   });
-  app.post("/internal/rules-engine/run", async (_request, reply) => {
-    if (!options.rulesEngineWorker) {
-      return reply.status(503).send({
-        statusCode: 503,
-        code: "RULES_ENGINE_UNAVAILABLE",
-        message: "Rules engine is not attached to this instance.",
-      });
-    }
-    const result = await options.rulesEngineWorker.runOnce();
-    if (result === null) {
-      return reply.status(409).send({
-        statusCode: 409,
-        code: "RULES_ENGINE_BUSY",
-        message: "A processing cycle is already running.",
-      });
-    }
-    return result;
-  });
+  app.post(
+    "/internal/rules-engine/run",
+    { config: { access: { permission: "rules-engine.run" } } },
+    async (_request, reply) => {
+      if (!options.rulesEngineWorker) {
+        return reply.status(503).send({
+          statusCode: 503,
+          code: "RULES_ENGINE_UNAVAILABLE",
+          message: "Rules engine is not attached to this instance.",
+        });
+      }
+      const result = await options.rulesEngineWorker.runOnce();
+      if (result === null) {
+        return reply.status(409).send({
+          statusCode: 409,
+          code: "RULES_ENGINE_BUSY",
+          message: "A processing cycle is already running.",
+        });
+      }
+      return result;
+    },
+  );
   app.addHook("onClose", async () => {
     await options.rulesEngineWorker?.stop();
   });

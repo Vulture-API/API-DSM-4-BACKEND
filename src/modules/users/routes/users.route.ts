@@ -44,6 +44,7 @@ export const userRoutes: FastifyPluginAsyncZod<UserRoutesOptions> = async (
   app.post(
     "/",
     {
+      config: { access: { permission: "users.create" } },
       schema: {
         body: createUserSchema,
         response: { 201: userSchema },
@@ -55,6 +56,7 @@ export const userRoutes: FastifyPluginAsyncZod<UserRoutesOptions> = async (
   app.get(
     "/",
     {
+      config: { access: { permission: "users.read" } },
       schema: {
         querystring: paginationSchema,
         response: { 200: paginatedUsersSchema },
@@ -66,6 +68,7 @@ export const userRoutes: FastifyPluginAsyncZod<UserRoutesOptions> = async (
   app.get(
     "/:id",
     {
+      config: { access: { permission: "users.read" } },
       schema: {
         params: userIdSchema,
         response: { 200: userSchema },
@@ -77,6 +80,7 @@ export const userRoutes: FastifyPluginAsyncZod<UserRoutesOptions> = async (
   app.put(
     "/:id",
     {
+      config: { access: { permission: "users.update" } },
       schema: {
         params: userIdSchema,
         body: updateUserSchema,
@@ -88,7 +92,10 @@ export const userRoutes: FastifyPluginAsyncZod<UserRoutesOptions> = async (
 
   app.delete(
     "/:id",
-    { schema: { params: userIdSchema } },
+    {
+      config: { access: { permission: "users.delete" } },
+      schema: { params: userIdSchema },
+    },
     userController.delete,
   );
 };

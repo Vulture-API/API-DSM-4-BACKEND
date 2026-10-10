@@ -138,4 +138,87 @@ describe.skipIf(!url)("permissions and authentication (Postgres real)", () => {
       permissions: ["users.read"],
     });
   });
+
+  it("logs in and applies grants, revocations, profile changes and inactivity to the same token", async () => {
+    const app = buildApp({
+      database: pool,
+      jwtSecret: secret,
+      accessControlEnabled: true,
+    });
+    try {
+      const adminLogin = await app.inject({
+        method: "POST",
+        url: "/api/auth/login",
+        payload: { email: "admin@example.com", password: "password123" },
+      });
+      expect(adminLogin.statusCode).toBe(200);
+      const adminHeaders = {
+        authorization: `Bearer ${adminLogin.json().access_token}`,
+      };
+      const clientLogin = await app.inject({
+        method: "POST",
+        url: "/api/auth/login",
+        payload: { email: "client@example.com", password: "password123" },
+      });
+      expect(clientLogin.statusCode).toBe(200);
+      const headers = {
+        authorization: `Bearer ${clientLogin.json().access_token}`,
+      };
+      expect(
+        (await app.inject({ url: "/api/users", headers })).statusCode,
+      ).toBe(403);
+      const assigned = await app.inject({
+        method: "PUT",
+        url: "/api/roles/2/permissions",
+        headers: adminHeaders,
+        payload: { permissions: ["users.read"] },
+      });
+      expect(assigned.statusCode).toBe(200);
+      expect(
+        (await app.inject({ url: "/api/users", headers })).statusCode,
+      ).toBe(200);
+      expect(
+        (
+          await app.inject({ url: "/api/roles/2", headers: adminHeaders })
+        ).json().permissions,
+      ).toEqual(["users.read"]);
+      const created = await app.inject({
+        method: "POST",
+        url: "/api/roles",
+        headers: adminHeaders,
+        payload: { name: "New profile" },
+      });
+      expect(created.statusCode).toBe(201);
+      expect(created.json().permissions).toEqual([]);
+      expect(
+        (
+          await app.inject({
+            method: "PUT",
+            url: "/api/roles/2",
+            headers: adminHeaders,
+            payload: { name: "Renamed" },
+          })
+        ).json().permissions,
+      ).toEqual(["users.read"]);
+      await app.inject({
+        method: "PUT",
+        url: "/api/roles/2/permissions",
+        headers: adminHeaders,
+        payload: { permissions: [] },
+      });
+      expect(
+        (await app.inject({ url: "/api/users", headers })).statusCode,
+      ).toBe(403);
+      await pool.query("UPDATE users SET role_id = 1 WHERE id = 2");
+      expect(
+        (await app.inject({ url: "/api/users", headers })).statusCode,
+      ).toBe(200);
+      await pool.query("UPDATE users SET active = false WHERE id = 2");
+      expect(
+        (await app.inject({ url: "/api/users", headers })).statusCode,
+      ).toBe(401);
+    } finally {
+      await app.close();
+    }
+  });
 });
