@@ -75,7 +75,9 @@ export function parseStartDateToUnix(value: string): number {
 export function parseEndDateToUnix(value: string): number {
   if (isValidDateOnlyString(value)) {
     const [year, month, day] = value.split("-").map(Number);
-    return Math.floor(Date.UTC(year!, month! - 1, day!, 23, 59, 59, 999) / 1000);
+    return Math.floor(
+      Date.UTC(year!, month! - 1, day!, 23, 59, 59, 999) / 1000,
+    );
   }
   const hasTimezone = /(Z|[+-]\d{2}(?::?\d{2})?)$/i.test(value);
   const normalized = hasTimezone ? value : `${value}Z`;

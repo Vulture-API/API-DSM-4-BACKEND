@@ -6,12 +6,9 @@ import {
 } from "@/modules/readings/utils/date-filter.js";
 import { paginationQuerySchema } from "@/shared/schemas/pagination.schema.js";
 
-const dateStringSchema = z
-  .string()
-  .trim()
-  .refine(isValidDateParameter, {
-    message: "Invalid date format. Expected YYYY-MM-DD or ISO 8601 datetime",
-  });
+const dateStringSchema = z.string().trim().refine(isValidDateParameter, {
+  message: "Invalid date format. Expected YYYY-MM-DD or ISO 8601 datetime",
+});
 
 export const listReadingsQuerySchema = paginationQuerySchema
   .extend({
