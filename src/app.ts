@@ -55,6 +55,10 @@ import {
 } from "@/modules/permissions/repositories/permission.repository.js";
 import { permissionRoutes } from "@/modules/permissions/routes/permissions.route.js";
 import { FakePermissionRepository } from "@/modules/permissions/testing/fake-permission.repository.js";
+import { InMemoryReadingRepository } from "@/modules/readings/repositories/in-memory-reading.repository.js";
+import { PgReadingRepository } from "@/modules/readings/repositories/pg-reading.repository.js";
+import type { ReadingRepository } from "@/modules/readings/repositories/reading.repository.js";
+import { buildReadingRoutes } from "@/modules/readings/routes/readings.route.js";
 import {
   RoleRepository,
   type RoleRepositoryPort,
@@ -106,6 +110,7 @@ export type BuildAppOptions = {
   passwordHasher?: PasswordHasher;
   sensorTypeRepository?: SensorTypeRepository;
   sensorRepository?: SensorRepository;
+  readingRepository?: ReadingRepository;
 };
 
 export function buildApp(options: BuildAppOptions = {}) {
@@ -393,6 +398,17 @@ export function buildApp(options: BuildAppOptions = {}) {
         return result;
       },
     );
+    app.register(async (readings) => {
+      readings.setErrorHandler(handleError);
+      const repository =
+        options.readingRepository ??
+        (process.env.NODE_ENV === "test" && !options.database
+          ? new InMemoryReadingRepository()
+          : new PgReadingRepository(pool));
+      for (const prefix of ["/api/readings", "/readings", "/api/v1/readings"]) {
+        readings.register(buildReadingRoutes(repository), { prefix });
+      }
+    });
     app.post(
       "/internal/rules-engine/run",
       { config: { access: { permission: "rules-engine.run" } } },
