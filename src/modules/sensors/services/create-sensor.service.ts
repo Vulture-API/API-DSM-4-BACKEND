@@ -1,3 +1,4 @@
+import { assertValidLimits } from "@/modules/sensors/errors/invalid-sensor-limits.error.js";
 import { SensorConflictError } from "@/modules/sensors/errors/sensor-conflict.error.js";
 import { SensorReferenceNotFoundError } from "@/modules/sensors/errors/sensor-reference-not-found.error.js";
 import type { SensorRepository } from "@/modules/sensors/repositories/sensor.repository.js";
@@ -26,6 +27,17 @@ export class CreateSensorService {
       );
     }
 
-    return this.sensorRepository.create(input);
+    const minValue = input.min_value ?? null;
+    const maxValue = input.max_value ?? null;
+    assertValidLimits(minValue, maxValue);
+
+    return this.sensorRepository.create({
+      station_id: input.station_id,
+      sensor_type_id: input.sensor_type_id,
+      local_identifier: input.local_identifier,
+      operational_status: input.operational_status,
+      min_value: minValue,
+      max_value: maxValue,
+    });
   }
 }

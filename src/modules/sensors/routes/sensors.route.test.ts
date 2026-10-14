@@ -37,6 +37,78 @@ describe("rotas de sensors (OpenAPI 1.3.0)", () => {
     });
   });
 
+  it("cadastra, mantém e remove limites do sensor (SCRUM-424)", async () => {
+    const created = await app.inject({
+      method: "POST",
+      url: "/api/sensors",
+      payload: {
+        station_id: 1,
+        sensor_type_id: 1,
+        local_identifier: "TEMP",
+        min_value: -10,
+        max_value: 50,
+      },
+    });
+    expect(created.statusCode).toBe(201);
+    expect(created.json()).toMatchObject({ min_value: -10, max_value: 50 });
+
+    const kept = await app.inject({
+      method: "PUT",
+      url: "/api/sensors/1",
+      payload: { station_id: 1, sensor_type_id: 1, local_identifier: "TEMP" },
+    });
+    expect(kept.json()).toMatchObject({ min_value: -10, max_value: 50 });
+
+    const invalid = await app.inject({
+      method: "PUT",
+      url: "/api/sensors/1",
+      payload: {
+        station_id: 1,
+        sensor_type_id: 1,
+        local_identifier: "TEMP",
+        min_value: 80,
+      },
+    });
+    expect(invalid.statusCode).toBe(400);
+
+    const cleared = await app.inject({
+      method: "PUT",
+      url: "/api/sensors/1",
+      payload: {
+        station_id: 1,
+        sensor_type_id: 1,
+        local_identifier: "TEMP",
+        min_value: null,
+      },
+    });
+    expect(cleared.json()).toMatchObject({ min_value: null, max_value: 50 });
+
+    const sensorWithoutLimits = await app.inject({
+      method: "POST",
+      url: "/api/sensors",
+      payload: { station_id: 1, sensor_type_id: 1, local_identifier: "UMID" },
+    });
+    expect(sensorWithoutLimits.json()).toMatchObject({
+      min_value: null,
+      max_value: null,
+    });
+  });
+
+  it("recusa limite mínimo maior que o máximo no cadastro", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/sensors",
+      payload: {
+        station_id: 1,
+        sensor_type_id: 1,
+        local_identifier: "X",
+        min_value: 10,
+        max_value: 5,
+      },
+    });
+    expect(response.statusCode).toBe(400);
+  });
+
   it("retorna 409 ao tentar cadastrar sensor com mesmo local_identifier na mesma estacao", async () => {
     await app.inject({
       method: "POST",

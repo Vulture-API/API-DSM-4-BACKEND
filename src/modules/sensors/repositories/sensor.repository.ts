@@ -16,10 +16,20 @@ export interface SensorUpdateData {
   sensor_type_id?: number | undefined;
   local_identifier?: string | undefined;
   operational_status?: boolean | undefined;
+  min_value?: number | null | undefined;
+  max_value?: number | null | undefined;
 }
 
+export type SensorCreateData = Omit<
+  Sensor,
+  "id" | "created_at" | "min_value" | "max_value"
+> & {
+  min_value?: number | null | undefined;
+  max_value?: number | null | undefined;
+};
+
 export interface SensorRepository {
-  create(data: Omit<Sensor, "id" | "created_at">): Promise<Sensor>;
+  create(data: SensorCreateData): Promise<Sensor>;
   findPaginated(filter?: SensorFilter): Promise<PaginatedResult<Sensor>>;
   findById(id: number): Promise<Sensor | null>;
   findByStationAndIdentifier(
@@ -55,13 +65,15 @@ export class InMemorySensorRepository implements SensorRepository {
     return this.knownSensorTypeIds?.has(sensorTypeId) ?? true;
   }
 
-  async create(data: Omit<Sensor, "id" | "created_at">): Promise<Sensor> {
+  async create(data: SensorCreateData): Promise<Sensor> {
     const sensor: Sensor = {
       id: this.nextId++,
       station_id: data.station_id,
       sensor_type_id: data.sensor_type_id,
       local_identifier: data.local_identifier,
       operational_status: data.operational_status,
+      min_value: data.min_value ?? null,
+      max_value: data.max_value ?? null,
       created_at: new Date().toISOString(),
     };
 
@@ -132,6 +144,10 @@ export class InMemorySensorRepository implements SensorRepository {
         data.operational_status !== undefined
           ? data.operational_status
           : current.operational_status,
+      min_value:
+        data.min_value !== undefined ? data.min_value : current.min_value,
+      max_value:
+        data.max_value !== undefined ? data.max_value : current.max_value,
       created_at: current.created_at,
     };
 
@@ -153,7 +169,7 @@ export class InMemorySensorRepository implements SensorRepository {
 type SensorRow = Omit<Sensor, "created_at"> & { created_at: Date | string };
 
 const SENSOR_COLUMNS =
-  "id, station_id, sensor_type_id, local_identifier, operational_status, created_at";
+  "id, station_id, sensor_type_id, local_identifier, operational_status, min_value::float8 AS min_value, max_value::float8 AS max_value, created_at";
 
 function mapSensor(row: SensorRow): Sensor {
   return {
@@ -180,17 +196,19 @@ const isForeignKeyViolation = (error: unknown) => hasPgCode(error, "23503");
 export class PgSensorRepository implements SensorRepository {
   constructor(private readonly pool: Pool = database) {}
 
-  async create(data: Omit<Sensor, "id" | "created_at">): Promise<Sensor> {
+  async create(data: SensorCreateData): Promise<Sensor> {
     try {
       const result = await this.pool.query<SensorRow>(
-        `INSERT INTO sensors (station_id, sensor_type_id, local_identifier, operational_status)
-         VALUES ($1, $2, $3, $4)
+        `INSERT INTO sensors (station_id, sensor_type_id, local_identifier, operational_status, min_value, max_value)
+         VALUES ($1, $2, $3, $4, $5, $6)
          RETURNING ${SENSOR_COLUMNS}`,
         [
           data.station_id,
           data.sensor_type_id,
           data.local_identifier,
           data.operational_status,
+          data.min_value ?? null,
+          data.max_value ?? null,
         ],
       );
       return mapSensor(result.rows[0]!);
@@ -270,7 +288,10 @@ export class PgSensorRepository implements SensorRepository {
            station_id = COALESCE($2, station_id),
            sensor_type_id = COALESCE($3, sensor_type_id),
            local_identifier = COALESCE($4, local_identifier),
-           operational_status = COALESCE($5, operational_status)
+           operational_status = COALESCE($5, operational_status),
+           -- COALESCE não serve aqui: null remove o limite.
+           min_value = CASE WHEN $6 THEN $7::decimal ELSE min_value END,
+           max_value = CASE WHEN $8 THEN $9::decimal ELSE max_value END
          WHERE id = $1
          RETURNING ${SENSOR_COLUMNS}`,
         [
@@ -279,6 +300,10 @@ export class PgSensorRepository implements SensorRepository {
           data.sensor_type_id ?? null,
           data.local_identifier ?? null,
           data.operational_status ?? null,
+          data.min_value !== undefined,
+          data.min_value ?? null,
+          data.max_value !== undefined,
+          data.max_value ?? null,
         ],
       );
       return result.rows[0] ? mapSensor(result.rows[0]) : null;
