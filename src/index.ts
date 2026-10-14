@@ -6,6 +6,10 @@ import {
   PgAlertConfigRepository,
   PgTriggeredAlertRepository,
 } from "@/modules/alerts/repositories/pg-alert.repository.js";
+import { PgOccurrenceRepository } from "@/modules/occurrences/repositories/pg-occurrence.repository.js";
+import { CheckSensorLimitsService } from "@/modules/occurrences/services/check-sensor-limits.service.js";
+import { DetectCommunicationFailuresService } from "@/modules/occurrences/services/detect-communication-failures.service.js";
+import { OccurrenceMonitorWorker } from "@/modules/occurrences/services/occurrence-monitor.worker.js";
 import {
   PgCheckpointRepository,
   PgReadingRepository,
@@ -35,10 +39,39 @@ const rulesEngineWorker = new RulesEngineWorker(
       console.error("[rules-engine] falha de processamento:", error),
   },
 );
+const occurrenceRepository = new PgOccurrenceRepository(database);
+const occurrenceMonitorWorker = new OccurrenceMonitorWorker(
+  new DetectCommunicationFailuresService(
+    occurrenceRepository,
+    env.STATION_OFFLINE_THRESHOLD_MINUTES,
+  ),
+  new CheckSensorLimitsService(occurrenceRepository, {
+    batchSize: env.OCCURRENCES_BATCH_SIZE,
+  }),
+  {
+    intervalMs: env.OCCURRENCES_INTERVAL_MS,
+    onCycle: ({ communication, limits }) => {
+      if (
+        communication.failures_opened +
+          communication.failures_resolved +
+          limits.out_of_range ===
+        0
+      )
+        return;
+      console.log(
+        `[occurrences] ${communication.failures_opened} falhas de comunicação abertas, ${communication.failures_resolved} resolvidas, ${limits.out_of_range} leituras fora do limite (checkpoint ${limits.last_reading_id})`,
+      );
+    },
+    onError: (error) =>
+      console.error("[occurrences] falha na verificação:", error),
+  },
+);
 const app = buildApp({
   alertConfigRepository,
   triggeredAlertRepository,
   rulesEngineWorker,
+  occurrenceRepository,
+  occurrenceMonitorWorker,
 });
 const shutdown = createShutdown(app, database);
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
@@ -53,6 +86,7 @@ for (const signal of ["SIGINT", "SIGTERM"] as const) {
 try {
   await app.listen({ host: "0.0.0.0", port: env.PORT });
   if (env.RULES_ENGINE_ENABLED) rulesEngineWorker.start();
+  if (env.OCCURRENCES_ENABLED) occurrenceMonitorWorker.start();
   console.log(`AgriTech backend: http://localhost:${env.PORT}`);
 } catch (error) {
   console.error("Falha ao iniciar backend:", error);

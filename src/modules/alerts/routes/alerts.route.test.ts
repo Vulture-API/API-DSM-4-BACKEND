@@ -335,7 +335,11 @@ describe("alert routes", () => {
     const response = await app.inject({ method: "GET", url: "/health" });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({ status: "ok", rules_engine: false });
+    expect(response.json()).toEqual({
+      status: "ok",
+      rules_engine: false,
+      occurrence_monitor: false,
+    });
   });
 
   it("should_return_internal_error_and_not_busy_when_a_manual_cycle_fails", async () => {

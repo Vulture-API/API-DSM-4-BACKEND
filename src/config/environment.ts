@@ -68,6 +68,19 @@ const environmentSchema = z
       .int()
       .positive()
       .default(200),
+    // Ocorrências de falhas (SCRUM-423/424). Desligado por padrão pelo mesmo
+    // motivo do motor: o checkpoint fica no banco compartilhado.
+    OCCURRENCES_ENABLED: z
+      .enum(["true", "false"])
+      .default("false")
+      .transform((value) => value === "true"),
+    OCCURRENCES_INTERVAL_MS: z.coerce.number().int().min(1000).default(60_000),
+    OCCURRENCES_BATCH_SIZE: z.coerce
+      .number()
+      .int()
+      .positive()
+      .max(5000)
+      .default(500),
   })
   .refine((value) => !value.ACCESS_CONTROL_ENABLED || !!value.JWT_SECRET, {
     message: "JWT_SECRET is required when ACCESS_CONTROL_ENABLED=true",

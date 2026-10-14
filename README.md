@@ -57,7 +57,8 @@ Cada módulo mantém controllers, schemas, serviços e repositórios próprios. 
 | Status e monitoramento  | `/api/stations/:id/status`, `/api/stations/overview`, `/api/stations/readings/series`, `/api/stations/:id/readings/series` |
 | Dados atuais            | `/api/stations/current`, `/api/stations/:id/current`, WebSocket `/api/stations/current/ws`                                 |
 | Configurações e alertas | `/api/alerts/config`, `/api/alerts/triggered`, `/api/alerts/triggered/:id/acknowledge`                                     |
-| Operação do motor       | `POST /internal/rules-engine/run`                                                                                          |
+| Ocorrências de falhas   | `/api/occurrences`, `/api/occurrences/:id`, `PATCH /api/occurrences/:id/resolve`                                           |
+| Operação do motor       | `POST /internal/rules-engine/run`, `POST /internal/occurrences/run`                                                        |
 
 CRUD, métodos, payloads, paginação e formatos de erro continuam iguais aos serviços de origem. Tipos e sensores também aceitam os aliases sem prefixo, com `/v1` e com `/api/v1`. O CORS desses recursos permanece encapsulado no módulo de parâmetros.
 
@@ -89,6 +90,9 @@ Os healthchecks foram unificados e as portas antigas 3001, 3002 e 3005 deixaram 
 | `RULES_ENGINE_BATCH_SIZE`           | `500`         | Leituras por lote, máximo 5000                                                     |
 | `CURRENT_READINGS_POLL_MS`          | `3000`        | Intervalo do WebSocket de leituras                                                 |
 | `CURRENT_READINGS_MAX_CONNECTIONS`  | `200`         | Conexões simultâneas no WebSocket                                                  |
+| `OCCURRENCES_ENABLED`               | `false`       | Ativa a verificação periódica de ocorrências                                       |
+| `OCCURRENCES_INTERVAL_MS`           | `60000`       | Intervalo entre verificações                                                       |
+| `OCCURRENCES_BATCH_SIZE`            | `500`         | Leituras validadas por ciclo, máximo 5000                                          |
 
 O motor fica desligado por padrão para não avançar o checkpoint do banco compartilhado durante desenvolvimento. O Compose o habilita e usa intervalo de 5000 ms. A rota manual permanece disponível quando um motor está anexado, mesmo sem agendamento, e retorna 409 durante um ciclo concorrente.
 
@@ -99,6 +103,17 @@ O pool preserva timestamps sem fuso como UTC, IDs bigint numéricos e o listener
 `GET /api/stations/current` devolve, por estação, a última leitura consistente de cada sensor, o status e `last_update`. Aceita `station_id` e `property_id`. Sensores sem leitura aparecem com `value` e `unix_time` nulos.
 
 O WebSocket `/api/stations/current/ws` envia `{"type":"reading", ...}` a cada leitura nova gravada pelo persistidor. Use `?station_id=` para receber só uma estação. O backend só consulta o banco enquanto houver cliente conectado e não usa o checkpoint do motor de regras. Acima de `CURRENT_READINGS_MAX_CONNECTIONS` conexões, a abertura recebe 503 `TOO_MANY_CONNECTIONS`. O servidor manda ping a cada 30 s e derruba a conexão que não responde até o ping seguinte, além de clientes com mais de 1 MiB pendente. Atrás do Nginx, a rota precisa repassar os cabeçalhos `Upgrade` e `Connection`.
+
+## Ocorrências de falhas (US09)
+
+Requer a migration `016_occurrences.sql` do API-DSM-4-BANCO. A cada `OCCURRENCES_INTERVAL_MS` (com `OCCURRENCES_ENABLED=true`) ou em `POST /internal/occurrences/run`, o backend:
+
+- **Estações sem comunicação (SCRUM-423):** abre uma ocorrência `COMMUNICATION_FAILURE` para a estação sem comunicação há mais de `STATION_OFFLINE_THRESHOLD_MINUTES` (o mesmo limite do status Offline). Estação que nunca comunicou conta a partir do cadastro. Quando ela volta a comunicar, a ocorrência é resolvida sozinha.
+- **Limites dos sensores (SCRUM-424):** sensores aceitam `min_value` e `max_value` (opcionais, inclusivos; `null` remove o limite; omitidos no `PUT` mantêm o atual; mínimo acima do máximo devolve 400). Cada leitura nova fora da faixa é marcada `data_consistent = false` — some de dados atuais, séries e estatísticas — e abre uma ocorrência `OUT_OF_RANGE` para o sensor. Sem limite configurado, a leitura é aceita. A validação usa checkpoint próprio (`occurrences_last_reading_id`), separado do motor de regras.
+
+Há no máximo uma ocorrência aberta por estação (comunicação) e por sensor (fora do limite); enquanto ela estiver aberta, novas leituras fora da faixa continuam sendo marcadas, sem nova ocorrência.
+
+**Consulta (SCRUM-425):** `GET /api/occurrences` pagina (`page`, `limit`) do mais recente para o mais antigo e filtra por `station_id`, `sensor_id`, `type` (`COMMUNICATION_FAILURE`, `OUT_OF_RANGE`), `status` (`OPEN`, `RESOLVED`), `from` e `to` (data-hora com fuso; `from` depois de `to` devolve 400 `INVALID_PERIOD`). Cada item traz estação, sensor e tipo de sensor, leitura e valor, descrição, `detected_at` e `resolved_at`. `PATCH /api/occurrences/:id/resolve` resolve manualmente (404 `OCCURRENCE_NOT_FOUND`, 409 `OCCURRENCE_ALREADY_RESOLVED`). Permissões: `occurrences.read`, `occurrences.resolve` e `occurrences.run`.
 
 ## Verificação
 

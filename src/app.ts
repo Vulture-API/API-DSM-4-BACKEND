@@ -45,6 +45,10 @@ import {
   type LiveLimits,
 } from "@/modules/monitoring/routes/monitoring.route.js";
 import { ReadingsBroadcaster } from "@/modules/monitoring/services/readings-broadcaster.js";
+import type { OccurrenceRepository } from "@/modules/occurrences/repositories/occurrence.repository.js";
+import { PgOccurrenceRepository } from "@/modules/occurrences/repositories/pg-occurrence.repository.js";
+import { buildOccurrenceRoutes } from "@/modules/occurrences/routes/occurrences.route.js";
+import type { OccurrenceMonitorWorker } from "@/modules/occurrences/services/occurrence-monitor.worker.js";
 import {
   type PermissionRepositoryPort,
   PgPermissionRepository,
@@ -95,6 +99,8 @@ export type BuildAppOptions = {
   alertConfigRepository?: AlertConfigRepository;
   triggeredAlertRepository?: TriggeredAlertRepository;
   rulesEngineWorker?: RulesEngineWorker;
+  occurrenceRepository?: OccurrenceRepository;
+  occurrenceMonitorWorker?: OccurrenceMonitorWorker;
   userRepository?: UserRepositoryPort;
   roleRepository?: RoleRepositoryPort;
   passwordHasher?: PasswordHasher;
@@ -203,6 +209,7 @@ export function buildApp(options: BuildAppOptions = {}) {
     const health = async () => ({
       status: "ok",
       rules_engine: options.rulesEngineWorker?.isRunning ?? false,
+      occurrence_monitor: options.occurrenceMonitorWorker?.isRunning ?? false,
     });
     for (const path of ["/health", "/api/health", "/api/v1/health"])
       app.get(
@@ -354,6 +361,38 @@ export function buildApp(options: BuildAppOptions = {}) {
         { prefix: "/api/alerts" },
       );
     });
+    app.register(async (occurrences) => {
+      occurrences.setErrorHandler(handleError);
+      occurrences.register(
+        buildOccurrenceRoutes(
+          options.occurrenceRepository ?? new PgOccurrenceRepository(pool),
+          options.clock,
+        ),
+        { prefix: "/api/occurrences" },
+      );
+    });
+    app.post(
+      "/internal/occurrences/run",
+      { config: { access: { permission: "occurrences.run" } } },
+      async (_request, reply) => {
+        if (!options.occurrenceMonitorWorker) {
+          return reply.status(503).send({
+            statusCode: 503,
+            code: "OCCURRENCE_MONITOR_UNAVAILABLE",
+            message: "Occurrence monitor is not attached to this instance.",
+          });
+        }
+        const result = await options.occurrenceMonitorWorker.runOnce();
+        if (result === null) {
+          return reply.status(409).send({
+            statusCode: 409,
+            code: "OCCURRENCE_MONITOR_BUSY",
+            message: "A verification cycle is already running.",
+          });
+        }
+        return result;
+      },
+    );
     app.post(
       "/internal/rules-engine/run",
       { config: { access: { permission: "rules-engine.run" } } },
@@ -377,7 +416,10 @@ export function buildApp(options: BuildAppOptions = {}) {
       },
     );
     app.addHook("onClose", async () => {
-      await options.rulesEngineWorker?.stop();
+      await Promise.all([
+        options.rulesEngineWorker?.stop(),
+        options.occurrenceMonitorWorker?.stop(),
+      ]);
     });
   });
   return app;
