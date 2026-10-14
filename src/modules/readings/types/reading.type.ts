@@ -14,4 +14,8 @@ export type ListReadingsFilters = {
   station_id?: number | undefined;
   start_unix_time?: number | undefined;
   end_unix_time?: number | undefined;
+  start_date?: string | undefined;
+  end_date?: string | undefined;
+  initial_date?: string | undefined;
+  final_date?: string | undefined;
 };

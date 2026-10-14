@@ -8,6 +8,7 @@ import type {
   ListReadingsFilters,
   Reading,
 } from "@/modules/readings/types/reading.type.js";
+import { resolveTimeRange } from "@/modules/readings/utils/date-filter.js";
 
 const READING_COLUMNS = `
   r.id,
@@ -30,6 +31,7 @@ export class PgReadingRepository implements ReadingRepository {
   constructor(private readonly database: Pool) {}
 
   async findMany(filters: ListReadingsFilters): Promise<ReadingsQueryResult> {
+    const { startUnixTime, endUnixTime } = resolveTimeRange(filters);
     const conditions: string[] = [];
     const values: unknown[] = [];
 
@@ -45,13 +47,13 @@ export class PgReadingRepository implements ReadingRepository {
       );
     }
 
-    if (filters.start_unix_time !== undefined) {
-      values.push(filters.start_unix_time);
+    if (startUnixTime !== undefined) {
+      values.push(startUnixTime);
       conditions.push(`r.unix_time >= $${values.length}`);
     }
 
-    if (filters.end_unix_time !== undefined) {
-      values.push(filters.end_unix_time);
+    if (endUnixTime !== undefined) {
+      values.push(endUnixTime);
       conditions.push(`r.unix_time <= $${values.length}`);
     }
 

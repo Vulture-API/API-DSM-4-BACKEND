@@ -174,4 +174,100 @@ describe("rotas de histórico de leituras", () => {
     });
     expect(invalidLimit.statusCode).toBe(400);
   });
+
+  it("GET /api/readings filtra por período usando start_date e end_date no formato data", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/readings?start_date=2024-10-04&end_date=2024-10-04",
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json();
+    expect(body.data).toHaveLength(3);
+    expect(body.meta.total_records).toBe(3);
+  });
+
+  it("GET /api/readings filtra por período usando ISO datetime", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/readings?start_date=2024-10-04T00:30:00.000Z&end_date=2024-10-04T01:30:00.000Z",
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json();
+    expect(body.data).toHaveLength(1);
+    expect(body.data[0].id).toBe(2);
+    expect(body.meta.total_records).toBe(1);
+  });
+
+  it("GET /api/readings filtra usando aliases initial_date e final_date", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/readings?initial_date=2024-10-04T00:30:00.000Z&final_date=2024-10-04T01:30:00.000Z",
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json();
+    expect(body.data).toHaveLength(1);
+    expect(body.data[0].id).toBe(2);
+  });
+
+  it("GET /api/readings retorna resposta válida vazia quando período não contiver leituras", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/readings?start_date=2025-01-01&end_date=2025-01-02",
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json();
+    expect(body.data).toEqual([]);
+    expect(body.meta).toEqual({
+      total_records: 0,
+      total_pages: 0,
+      current_page: 1,
+    });
+  });
+
+  it("GET /api/readings retorna 400 quando start_date for string inválida", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/readings?start_date=not-a-valid-date",
+    });
+
+    expect(response.statusCode).toBe(400);
+  });
+
+  it("GET /api/readings retorna 400 quando data tiver dia inexistente no calendário", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/readings?end_date=2024-02-31",
+    });
+
+    expect(response.statusCode).toBe(400);
+  });
+
+  it("GET /api/readings retorna 400 quando start_date for maior que end_date", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/readings?start_date=2024-10-05&end_date=2024-10-04",
+    });
+
+    expect(response.statusCode).toBe(400);
+  });
+
+  it("GET /readings e GET /api/v1/readings filtram por período identicamente", async () => {
+    const aliasResponse = await app.inject({
+      method: "GET",
+      url: "/readings?start_date=2024-10-04T00:30:00.000Z&end_date=2024-10-04T01:30:00.000Z",
+    });
+    expect(aliasResponse.statusCode).toBe(200);
+    expect(aliasResponse.json().data).toHaveLength(1);
+
+    const v1Response = await app.inject({
+      method: "GET",
+      url: "/api/v1/readings?start_date=2024-10-04T00:30:00.000Z&end_date=2024-10-04T01:30:00.000Z",
+    });
+    expect(v1Response.statusCode).toBe(200);
+    expect(v1Response.json().data).toHaveLength(1);
+  });
 });

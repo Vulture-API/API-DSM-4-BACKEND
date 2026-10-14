@@ -128,4 +128,128 @@ describe("GetReadingsHistoryService", () => {
 
     await expect(act).rejects.toThrow(ApplicationError);
   });
+
+  it("should_filter_readings_by_start_date_and_end_date_calendar_day", async () => {
+    const result = await service.execute({
+      page: 1,
+      limit: 10,
+      start_date: "2024-10-04",
+      end_date: "2024-10-04",
+    });
+
+    expect(result.data).toHaveLength(3);
+    expect(result.meta.total_records).toBe(3);
+  });
+
+  it("should_filter_readings_by_iso_datetime_range", async () => {
+    const result = await service.execute({
+      page: 1,
+      limit: 10,
+      start_date: "2024-10-04T00:30:00.000Z",
+      end_date: "2024-10-04T01:30:00.000Z",
+    });
+
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0]?.id).toBe(2);
+    expect(result.meta.total_records).toBe(1);
+  });
+
+  it("should_filter_readings_when_only_start_date_is_provided", async () => {
+    const result = await service.execute({
+      page: 1,
+      limit: 10,
+      start_date: "2024-10-04T01:30:00.000Z",
+    });
+
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0]?.id).toBe(3);
+    expect(result.meta.total_records).toBe(1);
+  });
+
+  it("should_filter_readings_when_only_end_date_is_provided", async () => {
+    const result = await service.execute({
+      page: 1,
+      limit: 10,
+      end_date: "2024-10-04T00:30:00.000Z",
+    });
+
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0]?.id).toBe(1);
+    expect(result.meta.total_records).toBe(1);
+  });
+
+  it("should_filter_readings_using_initial_date_and_final_date_aliases", async () => {
+    const result = await service.execute({
+      page: 1,
+      limit: 10,
+      initial_date: "2024-10-04T00:30:00.000Z",
+      final_date: "2024-10-04T01:30:00.000Z",
+    });
+
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0]?.id).toBe(2);
+    expect(result.meta.total_records).toBe(1);
+  });
+
+  it("should_return_empty_results_when_date_range_has_no_readings", async () => {
+    const result = await service.execute({
+      page: 1,
+      limit: 10,
+      start_date: "2025-01-01",
+      end_date: "2025-01-02",
+    });
+
+    expect(result.data).toEqual([]);
+    expect(result.meta).toEqual({
+      total_records: 0,
+      total_pages: 0,
+      current_page: 1,
+    });
+  });
+
+  it("should_throw_error_when_start_date_is_invalid", async () => {
+    const act = () =>
+      service.execute({
+        page: 1,
+        limit: 10,
+        start_date: "invalid-date",
+      });
+
+    await expect(act).rejects.toThrow(ApplicationError);
+  });
+
+  it("should_throw_error_when_end_date_is_invalid", async () => {
+    const act = () =>
+      service.execute({
+        page: 1,
+        limit: 10,
+        end_date: "2024-02-31",
+      });
+
+    await expect(act).rejects.toThrow(ApplicationError);
+  });
+
+  it("should_throw_error_when_start_date_exceeds_end_date", async () => {
+    const act = () =>
+      service.execute({
+        page: 1,
+        limit: 10,
+        start_date: "2024-10-05",
+        end_date: "2024-10-04",
+      });
+
+    await expect(act).rejects.toThrow(ApplicationError);
+  });
+
+  it("should_throw_error_when_initial_date_exceeds_final_date", async () => {
+    const act = () =>
+      service.execute({
+        page: 1,
+        limit: 10,
+        initial_date: "2024-10-05",
+        final_date: "2024-10-04",
+      });
+
+    await expect(act).rejects.toThrow(ApplicationError);
+  });
 });
