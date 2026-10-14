@@ -80,4 +80,12 @@ export class FakeUserRepository implements UserRepositoryPort {
     this.users.splice(index, 1);
     return true;
   }
+
+  async updateAccess(id: number, active: boolean): Promise<User | null> {
+    const index = this.users.findIndex((user) => user.id === id);
+    if (index === -1) return null;
+    const updated = { ...this.users[index]!, active };
+    this.users[index] = updated;
+    return updated;
+  }
 }

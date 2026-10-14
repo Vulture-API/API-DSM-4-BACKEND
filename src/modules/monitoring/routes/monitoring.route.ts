@@ -1,6 +1,7 @@
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 
 import { ApplicationError } from "@/errors/application.error.js";
+import type { AccessControl } from "@/modules/auth/access-control.js";
 import type { MonitoringRepository } from "@/modules/monitoring/repositories/monitoring.repository.js";
 import {
   currentQuerySchema,
@@ -53,6 +54,7 @@ export function buildMonitoringRoutes(
   clock?: () => Date,
   broadcaster?: ReadingsBroadcaster,
   liveLimits?: Partial<LiveLimits>,
+  accessControl?: AccessControl,
 ): FastifyPluginAsyncZod {
   return async (app) => {
     const overview = new GetOverviewService(
@@ -69,19 +71,28 @@ export function buildMonitoringRoutes(
 
     app.get(
       "/overview",
-      { schema: { querystring: overviewQuerySchema } },
+      {
+        config: { access: { permission: "monitoring.read" } },
+        schema: { querystring: overviewQuerySchema },
+      },
       async (request) => overview.execute(request.query),
     );
 
     app.get(
       "/current",
-      { schema: { querystring: currentQuerySchema } },
+      {
+        config: { access: { permission: "monitoring.read" } },
+        schema: { querystring: currentQuerySchema },
+      },
       async (request) => current.execute(request.query),
     );
 
     app.get(
       "/:id/current",
-      { schema: { params: stationIdParamSchema } },
+      {
+        config: { access: { permission: "monitoring.read" } },
+        schema: { params: stationIdParamSchema },
+      },
       async (request) => current.execute({ station_id: request.params.id }),
     );
 
@@ -92,6 +103,9 @@ export function buildMonitoringRoutes(
       app.get(
         "/current/ws",
         {
+          config: {
+            access: { permission: "monitoring.read", websocket: true },
+          },
           websocket: true,
           schema: { querystring: liveReadingsQuerySchema },
           preHandler: async (request) => {
@@ -132,18 +146,30 @@ export function buildMonitoringRoutes(
             socket.ping();
           }, limits.heartbeatMs);
 
-          const unsubscribe = broadcaster.subscribe((reading, message) => {
-            if (station_id !== undefined && reading.station_id !== station_id)
-              return;
-            if (socket.readyState !== socket.OPEN) return;
-            // Cliente que não consome as mensagens não pode crescer a
-            // memória do servidor sem limite.
-            if (socket.bufferedAmount > limits.maxBufferedBytes) {
-              socket.terminate();
-              return;
-            }
-            socket.send(message);
-          });
+          const unsubscribe = broadcaster.subscribe(
+            (reading, message) => {
+              if (station_id !== undefined && reading.station_id !== station_id)
+                return;
+              if (socket.readyState !== socket.OPEN) return;
+              // Cliente que não consome as mensagens não pode crescer a
+              // memória do servidor sem limite.
+              if (socket.bufferedAmount > limits.maxBufferedBytes) {
+                socket.terminate();
+                return;
+              }
+              socket.send(message);
+            },
+            accessControl?.enabled
+              ? async () => {
+                  try {
+                    await accessControl.enforce(request);
+                  } catch (error) {
+                    socket.close(1008, "Access revoked");
+                    throw error;
+                  }
+                }
+              : undefined,
+          );
 
           socket.on("close", () => {
             connections--;
@@ -156,13 +182,17 @@ export function buildMonitoringRoutes(
 
     app.get(
       "/readings/series",
-      { schema: { querystring: seriesQuerySchema } },
+      {
+        config: { access: { permission: "monitoring.read" } },
+        schema: { querystring: seriesQuerySchema },
+      },
       async (request) => series.execute(request.query),
     );
 
     app.get(
       "/:id/readings/series",
       {
+        config: { access: { permission: "monitoring.read" } },
         schema: {
           params: stationIdParamSchema,
           querystring: stationSeriesQuerySchema,

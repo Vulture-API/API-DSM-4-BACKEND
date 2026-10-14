@@ -23,13 +23,17 @@ export function buildStatisticsRoutes(
 
     app.get(
       "/statistics",
-      { schema: { querystring: statisticsQuerySchema } },
+      {
+        config: { access: { permission: "monitoring.read" } },
+        schema: { querystring: statisticsQuerySchema },
+      },
       async (request) => statistics.execute(request.query),
     );
 
     app.get(
       "/:id/statistics",
       {
+        config: { access: { permission: "monitoring.read" } },
         schema: {
           params: statisticsStationParamSchema,
           querystring: stationStatisticsQuerySchema,

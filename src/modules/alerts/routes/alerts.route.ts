@@ -1,4 +1,5 @@
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
+import z from "zod";
 
 import { AlertController } from "@/modules/alerts/controllers/alert.controller.js";
 import type {
@@ -23,6 +24,7 @@ import { UpdateAlertConfigService } from "@/modules/alerts/services/update-alert
 export function buildAlertRoutes(
   alertConfigRepository: AlertConfigRepository,
   triggeredAlertRepository: TriggeredAlertRepository,
+  accessControlEnabled = false,
 ): FastifyPluginAsyncZod {
   return async (app) => {
     const controller = new AlertController(
@@ -37,43 +39,69 @@ export function buildAlertRoutes(
 
     app.post(
       "/config",
-      { schema: { body: alertConfigBodySchema } },
+      {
+        config: { access: { permission: "alert-configs.create" } },
+        schema: { body: alertConfigBodySchema },
+      },
       controller.createConfig,
     );
 
     app.get(
       "/config",
-      { schema: { querystring: listAlertConfigsQuerySchema } },
+      {
+        config: { access: { permission: "alert-configs.read" } },
+        schema: { querystring: listAlertConfigsQuerySchema },
+      },
       controller.listConfigs,
     );
 
     app.get(
       "/config/:id",
-      { schema: { params: idParamSchema } },
+      {
+        config: { access: { permission: "alert-configs.read" } },
+        schema: { params: idParamSchema },
+      },
       controller.getConfig,
     );
 
     app.put(
       "/config/:id",
-      { schema: { params: idParamSchema, body: alertConfigBodySchema } },
+      {
+        config: { access: { permission: "alert-configs.update" } },
+        schema: { params: idParamSchema, body: alertConfigBodySchema },
+      },
       controller.updateConfig,
     );
 
     app.delete(
       "/config/:id",
-      { schema: { params: idParamSchema } },
+      {
+        config: { access: { permission: "alert-configs.delete" } },
+        schema: { params: idParamSchema },
+      },
       controller.deleteConfig,
     );
 
     app.get(
       "/triggered",
-      { schema: { querystring: listTriggeredAlertsQuerySchema } },
+      {
+        config: { access: { permission: "triggered-alerts.read" } },
+        schema: { querystring: listTriggeredAlertsQuerySchema },
+      },
       controller.listTriggered,
     );
 
     app.put(
       "/triggered/:id/acknowledge",
-      { schema: { params: idParamSchema, body: acknowledgeBodySchema } },
+      {
+        config: { access: { permission: "triggered-alerts.acknowledge" } },
+        schema: {
+          params: idParamSchema,
+          body: accessControlEnabled
+            ? z.object({}).default({})
+            : acknowledgeBodySchema,
+        },
+      },
       controller.acknowledge,
     );
   };

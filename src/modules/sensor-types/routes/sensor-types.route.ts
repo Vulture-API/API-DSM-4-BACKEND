@@ -43,6 +43,7 @@ export const sensorTypeRoutes: FastifyPluginAsyncZod<
   app.post(
     "/",
     {
+      config: { access: { permission: "sensor-types.create" } },
       schema: {
         body: sensorTypeInputSchema,
       },
@@ -50,11 +51,16 @@ export const sensorTypeRoutes: FastifyPluginAsyncZod<
     controller.create,
   );
 
-  app.get("/", controller.list);
+  app.get(
+    "/",
+    { config: { access: { permission: "sensor-types.read" } } },
+    controller.list,
+  );
 
   app.get(
     "/:id",
     {
+      config: { access: { permission: "sensor-types.read" } },
       schema: {
         params: idPathSchema,
       },
@@ -65,6 +71,7 @@ export const sensorTypeRoutes: FastifyPluginAsyncZod<
   app.put(
     "/:id",
     {
+      config: { access: { permission: "sensor-types.update" } },
       schema: {
         params: idPathSchema,
         body: sensorTypeInputSchema,
@@ -76,6 +83,7 @@ export const sensorTypeRoutes: FastifyPluginAsyncZod<
   app.delete(
     "/:id",
     {
+      config: { access: { permission: "sensor-types.delete" } },
       schema: {
         params: idPathSchema,
       },

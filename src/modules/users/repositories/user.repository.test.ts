@@ -4,6 +4,30 @@ import { describe, expect, it, vi } from "vitest";
 import { UserRepository } from "@/modules/users/repositories/user.repository.js";
 
 describe("UserRepository", () => {
+  it("updates only access using one parameterized statement", async () => {
+    const user = {
+      id: 2,
+      role_id: 1,
+      name: "Test",
+      email: "test@example.com",
+      active: false,
+      created_at: new Date("2026-10-10T00:00:00.000Z"),
+    };
+    const query = vi.fn().mockResolvedValue({ rows: [user] });
+    const repository = new UserRepository({ query } as unknown as Pool);
+    expect(await repository.updateAccess(2, false)).toEqual({
+      ...user,
+      created_at: "2026-10-10T00:00:00.000Z",
+    });
+    expect(query).toHaveBeenCalledExactlyOnceWith(
+      expect.stringContaining("SET active = $2"),
+      [2, false],
+    );
+    expect(query.mock.calls[0]?.[0]).toContain("c.user_id = u.id");
+    query.mockResolvedValueOnce({ rows: [] });
+    expect(await repository.updateAccess(999, true)).toBeNull();
+  });
+
   it("creates the user and credential in one transaction", async () => {
     const query = vi
       .fn()

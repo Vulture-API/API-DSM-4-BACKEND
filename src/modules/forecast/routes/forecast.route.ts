@@ -29,6 +29,7 @@ export function buildForecastRoutes(
     app.get(
       "/:id/forecast",
       {
+        config: { access: { permission: "monitoring.read" } },
         schema: {
           params: forecastParamSchema,
           querystring: forecastQuerySchema,

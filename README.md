@@ -55,38 +55,62 @@ Cada módulo mantém controllers, schemas, serviços e repositórios próprios. 
 | Tipos e sensores        | `/api/sensor-types`, `/api/sensors`                                                                                        |
 | Estações e propriedades | `/api/stations`, `/api/stations/properties`, `/api/properties`                                                             |
 | Status e monitoramento  | `/api/stations/:id/status`, `/api/stations/overview`, `/api/stations/readings/series`, `/api/stations/:id/readings/series` |
+| Dados atuais            | `/api/stations/current`, `/api/stations/:id/current`, WebSocket `/api/stations/current/ws`                                 |
 | Estatísticas e previsão | `/api/stations/statistics`, `/api/stations/:id/statistics`, `/api/stations/:id/forecast`                                   |
 | Configurações e alertas | `/api/alerts/config`, `/api/alerts/triggered`, `/api/alerts/triggered/:id/acknowledge`                                     |
 | Operação do motor       | `POST /internal/rules-engine/run`                                                                                          |
 
 CRUD, métodos, payloads, paginação e formatos de erro continuam iguais aos serviços de origem. Tipos e sensores também aceitam os aliases sem prefixo, com `/v1` e com `/api/v1`. O CORS desses recursos permanece encapsulado no módulo de parâmetros.
 
+Perfis de acesso (`roles`) oferecem listagem e criação em `/api/roles`, além de consulta, edição e exclusão em `/api/roles/:id`. O nome é obrigatório e único; a exclusão retorna 409 enquanto houver usuários vinculados, inclusive inativos. No `PUT`, descrição omitida é gravada como `null`. Veja o [contrato e as evidências da SCRUM-431](docs/perfis-acesso.md).
+
+Os perfis retornam também `permissions`, uma lista ordenada de códigos. O catálogo está em `GET /api/permissions`, e a associação é consultada ou substituída em `/api/roles/:id/permissions`. Essas novas rotas sempre exigem JWT e a permissão correspondente. `POST /api/auth/login` utiliza as credenciais scrypt existentes; `GET /api/auth/me` retorna o usuário e suas permissões atuais. Configure `JWT_SECRET` para utilizar esses recursos. A proteção das APIs anteriores permanece desligada até `ACCESS_CONTROL_ENABLED=true`, permitindo a integração posterior do frontend. Veja o [contrato e a ativação da SCRUM-432](docs/permissoes.md).
+
+`PATCH /api/users/:id/access` altera apenas o acesso do usuário: `{ "active": false }` bloqueia e `{ "active": true }` desbloqueia. A rota sempre exige JWT e `users.update`. O estado usa o campo existente `users.active`, preservando cadastro, credenciais e permissões; usuários bloqueados recebem 401 no login e nas rotas protegidas, e seus WebSockets protegidos são encerrados no próximo ciclo de autorização. Veja o [contrato e as evidências da SCRUM-433](docs/bloqueio-usuarios.md).
+
+A API limita requisições antes de autenticar ou acessar o banco: por padrão, 300 por minuto por IP, compartilhadas entre rotas, métodos e aliases. O login possui um orçamento separado de 10 por minuto. O excesso recebe 429 com `Retry-After`; identificação do backend, healthchecks e preflight são isentos. Os limites permanecem ativos com `ACCESS_CONTROL_ENABLED=false`.
+
 Os healthchecks foram unificados e as portas antigas 3001, 3002 e 3005 deixaram de existir. O frontend continua chamando URLs relativas; o INFRA aponta seus quatro destinos de build para o mesmo backend, sem modificar seu código.
 
 ## Variáveis de ambiente
 
-| Variável                            | Padrão        | Uso                             |
-| ----------------------------------- | ------------- | ------------------------------- |
-| `NODE_ENV`                          | `development` | Ambiente da aplicação           |
-| `PORT`                              | `3000`        | Porta HTTP                      |
-| `DATABASE_URL`                      | obrigatório   | Única conexão PostgreSQL        |
-| `STATION_OFFLINE_THRESHOLD_MINUTES` | `10`          | Limite para estação Offline     |
-| `RULES_ENGINE_ENABLED`              | `false`       | Ativa o agendamento do motor    |
-| `RULES_ENGINE_INTERVAL_MS`          | `15000`       | Intervalo entre ciclos          |
-| `RULES_ENGINE_BATCH_SIZE`           | `500`         | Leituras por lote, máximo 5000  |
-| `FORECAST_API_URL`                  | Open-Meteo    | Endpoint de previsão            |
-| `FORECAST_TIMEOUT_MS`               | `5000`        | Tempo máximo da chamada externa |
-| `FORECAST_CACHE_TTL_MINUTES`        | `30`          | Cache da previsão por posição   |
+| Variável                            | Padrão        | Uso                                                                                |
+| ----------------------------------- | ------------- | ---------------------------------------------------------------------------------- |
+| `NODE_ENV`                          | `development` | Ambiente da aplicação                                                              |
+| `PORT`                              | `3000`        | Porta HTTP                                                                         |
+| `DATABASE_URL`                      | obrigatório   | Única conexão PostgreSQL                                                           |
+| `JWT_SECRET`                        | sem padrão    | Segredo de ao menos 32 caracteres para login e JWT; obrigatório com controle ativo |
+| `ACCESS_CONTROL_ENABLED`            | `false`       | Ativa autorização das rotas existentes e do WebSocket                              |
+| `RATE_LIMIT_MAX`                    | `300`         | Requisições por IP no orçamento compartilhado da API                               |
+| `LOGIN_RATE_LIMIT_MAX`              | `10`          | Requisições de login por IP, em orçamento separado                                 |
+| `RATE_LIMIT_WINDOW_MS`              | `60000`       | Janela de contagem dos limites de requisição                                       |
+| `STATION_OFFLINE_THRESHOLD_MINUTES` | `10`          | Limite para estação Offline                                                        |
+| `RULES_ENGINE_ENABLED`              | `false`       | Ativa o agendamento do motor                                                       |
+| `RULES_ENGINE_INTERVAL_MS`          | `15000`       | Intervalo entre ciclos                                                             |
+| `RULES_ENGINE_BATCH_SIZE`           | `500`         | Leituras por lote, máximo 5000                                                     |
+| `CURRENT_READINGS_POLL_MS`          | `3000`        | Intervalo do WebSocket de leituras                                                 |
+| `CURRENT_READINGS_MAX_CONNECTIONS`  | `200`         | Conexões simultâneas no WebSocket                                                  |
+| `FORECAST_API_URL`                  | Open-Meteo    | Endpoint de previsão                                                               |
+| `FORECAST_TIMEOUT_MS`               | `5000`        | Tempo máximo da chamada externa                                                    |
+| `FORECAST_CACHE_TTL_MINUTES`        | `30`          | Cache da previsão por posição                                                      |
 
 O motor fica desligado por padrão para não avançar o checkpoint do banco compartilhado durante desenvolvimento. O Compose o habilita e usa intervalo de 5000 ms. A rota manual permanece disponível quando um motor está anexado, mesmo sem agendamento, e retorna 409 durante um ciclo concorrente.
 
 O pool preserva timestamps sem fuso como UTC, IDs bigint numéricos e o listener de falhas de conexões ociosas. Transações, checkpoint e índices de prevenção de duplicidade continuam seguindo o modelo existente. Redis e MQTT são utilizados pelos processos Python; o backend lê o PostgreSQL e não cria clientes adicionais para esses serviços.
+
+## Dados atuais em tempo real
+
+`GET /api/stations/current` devolve, por estação, a última leitura consistente de cada sensor, o status e `last_update`. Aceita `station_id` e `property_id`. Sensores sem leitura aparecem com `value` e `unix_time` nulos.
+
+O WebSocket `/api/stations/current/ws` envia `{"type":"reading", ...}` a cada leitura nova gravada pelo persistidor. Use `?station_id=` para receber só uma estação. O backend só consulta o banco enquanto houver cliente conectado e não usa o checkpoint do motor de regras. Acima de `CURRENT_READINGS_MAX_CONNECTIONS` conexões, a abertura recebe 503 `TOO_MANY_CONNECTIONS`. O servidor manda ping a cada 30 s e derruba a conexão que não responde até o ping seguinte, além de clientes com mais de 1 MiB pendente. Atrás do Nginx, a rota precisa repassar os cabeçalhos `Upgrade` e `Connection`.
 
 ## Estatísticas e previsão
 
 `GET /api/stations/statistics` calcula, por tipo de sensor, contagem, média, mínimo, máximo e desvio padrão das leituras consistentes do período. `from` e `to` aceitam data (`2026-09-01`, em UTC) ou data-hora com fuso (`2026-09-01T00:00:00-03:00`); data-hora sem fuso é recusada. Na URL, o `+` de um fuso positivo vai como `%2B`. Uma data pura em `to` inclui o dia inteiro. Sem período, vale os últimos 7 dias. Filtra por `property_id`, ou por estação em `/api/stations/:id/statistics`. O período vai até 366 dias com estação ou propriedade e até 31 dias para todas as estações; fora disso, ou com `from` depois de `to`, a resposta é 400 `INVALID_PERIOD`. Com menos de duas leituras, `stddev` vem nulo.
 
 `GET /api/stations/:id/forecast?days=1..7` devolve a previsão diária (temperatura máxima e mínima, chuva, probabilidade de chuva, vento e código WMO) para a latitude e longitude da estação. A fonte é o [Open-Meteo](https://open-meteo.com), que é gratuito e não exige chave. A previsão de 7 dias fica em cache por 30 minutos por posição (até 500 posições), e chamadas simultâneas para a mesma posição compartilham uma consulta. Estação sem coordenadas devolve 422 `STATION_WITHOUT_COORDINATES`. Falha, timeout ou resposta fora do formato do provedor devolve 503 `FORECAST_UNAVAILABLE`.
+
+As três rotas exigem `monitoring.read` quando `ACCESS_CONTROL_ENABLED=true`.
 
 ## Verificação
 
@@ -115,5 +139,8 @@ Publique os commits do BACKEND antes de publicar o gitlink correspondente do INF
 - [Inventário dos serviços e contratos](docs/mapa-migracao.md)
 - [Arquitetura e decisões](docs/arquitetura.md)
 - [Verificação e aceite](docs/validacao.md)
+- [Perfis de acesso — SCRUM-431](docs/perfis-acesso.md)
+- [Permissões e autenticação — SCRUM-432](docs/permissoes.md)
+- [Bloqueio e desbloqueio de usuários — SCRUM-433](docs/bloqueio-usuarios.md)
 
 A pasta local `confluence/` contém material para publicação e validação pelo time. Ela está ignorada pelo Git e pelo contexto Docker; sua publicação e o aceite do time são etapas externas.

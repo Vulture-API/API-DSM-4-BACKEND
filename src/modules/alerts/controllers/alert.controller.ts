@@ -89,7 +89,7 @@ export class AlertController {
   ) => {
     const alert = await this.acknowledgeAlertService.execute(
       request.params.id,
-      request.body.acknowledged_by,
+      request.actor?.id ?? request.body.acknowledged_by,
     );
 
     return reply.status(200).send(alert);

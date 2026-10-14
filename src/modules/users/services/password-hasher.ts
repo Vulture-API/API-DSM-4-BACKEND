@@ -1,4 +1,4 @@
-import { randomBytes, scrypt } from "node:crypto";
+import { randomBytes, scrypt, timingSafeEqual } from "node:crypto";
 const cost = 16384;
 const blockSize = 8;
 const parallelization = 1;
@@ -36,4 +36,26 @@ function deriveKey(password: string, salt: Buffer): Promise<Buffer> {
       },
     );
   });
+}
+
+export async function verifyPassword(
+  password: string,
+  hash: string,
+): Promise<boolean> {
+  const parts = hash.split("$");
+  const [algorithm, n, r, p, salt, key] = parts;
+  if (
+    parts.length !== 6 ||
+    algorithm !== "scrypt" ||
+    n !== String(cost) ||
+    r !== String(blockSize) ||
+    p !== String(parallelization) ||
+    !salt ||
+    !/^(?:[a-f0-9]{2}){1,64}$/i.test(salt) ||
+    !key ||
+    !/^[a-f0-9]{128}$/i.test(key)
+  )
+    return false;
+  const derived = await deriveKey(password, Buffer.from(salt, "hex"));
+  return timingSafeEqual(derived, Buffer.from(key, "hex"));
 }

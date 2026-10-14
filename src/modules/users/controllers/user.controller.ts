@@ -3,6 +3,7 @@ import type { FastifyReply, FastifyRequest } from "fastify";
 import type {
   CreateUserInput,
   PaginationInput,
+  UpdateUserAccessInput,
   UpdateUserInput,
 } from "@/modules/users/schemas/user.schema.js";
 import type { CreateUserService } from "@/modules/users/services/create-user.service.js";
@@ -10,6 +11,7 @@ import type { DeleteUserService } from "@/modules/users/services/delete-user.ser
 import type { GetUserService } from "@/modules/users/services/get-user.service.js";
 import type { ListUsersService } from "@/modules/users/services/list-users.service.js";
 import type { UpdateUserService } from "@/modules/users/services/update-user.service.js";
+import type { UpdateUserAccessService } from "@/modules/users/services/update-user-access.service.js";
 
 export class UserController {
   constructor(
@@ -18,6 +20,7 @@ export class UserController {
     private readonly getUserService: GetUserService,
     private readonly updateUserService: UpdateUserService,
     private readonly deleteUserService: DeleteUserService,
+    private readonly updateUserAccessService: UpdateUserAccessService,
   ) {}
 
   create = async (
@@ -69,5 +72,19 @@ export class UserController {
     await this.deleteUserService.delete(request.params.id);
 
     return reply.status(204).send();
+  };
+
+  updateAccess = async (
+    request: FastifyRequest<{
+      Params: { id: number };
+      Body: UpdateUserAccessInput;
+    }>,
+    reply: FastifyReply,
+  ) => {
+    const user = await this.updateUserAccessService.update(
+      request.params.id,
+      request.body,
+    );
+    return reply.status(200).send(user);
   };
 }

@@ -7,7 +7,9 @@ import {
   createUserSchema,
   paginatedUsersSchema,
   paginationSchema,
+  updateUserAccessSchema,
   updateUserSchema,
+  userAccessIdSchema,
   userIdSchema,
   userSchema,
 } from "@/modules/users/schemas/user.schema.js";
@@ -17,6 +19,7 @@ import { GetUserService } from "@/modules/users/services/get-user.service.js";
 import { ListUsersService } from "@/modules/users/services/list-users.service.js";
 import type { PasswordHasher } from "@/modules/users/services/password-hasher.js";
 import { UpdateUserService } from "@/modules/users/services/update-user.service.js";
+import { UpdateUserAccessService } from "@/modules/users/services/update-user-access.service.js";
 
 export type UserRoutesOptions = {
   userRepository: UserRepositoryPort;
@@ -39,11 +42,13 @@ export const userRoutes: FastifyPluginAsyncZod<UserRoutesOptions> = async (
     new GetUserService(options.userRepository),
     new UpdateUserService(options.userRepository, options.roleRepository),
     new DeleteUserService(options.userRepository),
+    new UpdateUserAccessService(options.userRepository),
   );
 
   app.post(
     "/",
     {
+      config: { access: { permission: "users.create" } },
       schema: {
         body: createUserSchema,
         response: { 201: userSchema },
@@ -55,6 +60,7 @@ export const userRoutes: FastifyPluginAsyncZod<UserRoutesOptions> = async (
   app.get(
     "/",
     {
+      config: { access: { permission: "users.read" } },
       schema: {
         querystring: paginationSchema,
         response: { 200: paginatedUsersSchema },
@@ -66,6 +72,7 @@ export const userRoutes: FastifyPluginAsyncZod<UserRoutesOptions> = async (
   app.get(
     "/:id",
     {
+      config: { access: { permission: "users.read" } },
       schema: {
         params: userIdSchema,
         response: { 200: userSchema },
@@ -77,6 +84,7 @@ export const userRoutes: FastifyPluginAsyncZod<UserRoutesOptions> = async (
   app.put(
     "/:id",
     {
+      config: { access: { permission: "users.update" } },
       schema: {
         params: userIdSchema,
         body: updateUserSchema,
@@ -88,7 +96,23 @@ export const userRoutes: FastifyPluginAsyncZod<UserRoutesOptions> = async (
 
   app.delete(
     "/:id",
-    { schema: { params: userIdSchema } },
+    {
+      config: { access: { permission: "users.delete" } },
+      schema: { params: userIdSchema },
+    },
     userController.delete,
+  );
+
+  app.patch(
+    "/:id/access",
+    {
+      config: { access: { always: true, permission: "users.update" } },
+      schema: {
+        params: userAccessIdSchema,
+        body: updateUserAccessSchema,
+        response: { 200: userSchema },
+      },
+    },
+    userController.updateAccess,
   );
 };

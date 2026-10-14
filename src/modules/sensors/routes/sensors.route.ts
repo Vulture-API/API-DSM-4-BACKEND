@@ -40,6 +40,7 @@ export const sensorRoutes: FastifyPluginAsyncZod<SensorRouteOptions> = async (
   app.post(
     "/",
     {
+      config: { access: { permission: "sensors.create" } },
       schema: {
         body: sensorInputSchema,
       },
@@ -50,6 +51,7 @@ export const sensorRoutes: FastifyPluginAsyncZod<SensorRouteOptions> = async (
   app.get(
     "/",
     {
+      config: { access: { permission: "sensors.read" } },
       schema: {
         querystring: listSensorsQuerySchema,
       },
@@ -60,6 +62,7 @@ export const sensorRoutes: FastifyPluginAsyncZod<SensorRouteOptions> = async (
   app.get(
     "/:id",
     {
+      config: { access: { permission: "sensors.read" } },
       schema: {
         params: idPathSchema,
       },
@@ -70,6 +73,7 @@ export const sensorRoutes: FastifyPluginAsyncZod<SensorRouteOptions> = async (
   app.put(
     "/:id",
     {
+      config: { access: { permission: "sensors.update" } },
       schema: {
         params: idPathSchema,
         body: sensorInputSchema,
@@ -81,6 +85,7 @@ export const sensorRoutes: FastifyPluginAsyncZod<SensorRouteOptions> = async (
   app.delete(
     "/:id",
     {
+      config: { access: { permission: "sensors.delete" } },
       schema: {
         params: idPathSchema,
       },
