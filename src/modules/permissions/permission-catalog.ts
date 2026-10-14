@@ -20,6 +20,18 @@ export const PERMISSIONS = [
     description: "Consultar monitoramento e leituras",
   },
   {
+    code: "occurrences.read",
+    description: "Consultar ocorrências de falhas",
+  },
+  {
+    code: "occurrences.resolve",
+    description: "Resolver ocorrências de falhas",
+  },
+  {
+    code: "occurrences.run",
+    description: "Executar manualmente a verificação de ocorrências",
+  },
+  {
     code: "permissions.read",
     description: "Consultar catálogo de permissões",
   },
