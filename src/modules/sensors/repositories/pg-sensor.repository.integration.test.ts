@@ -38,6 +38,8 @@ describe.skipIf(!TEST_DATABASE_URL)(
         sensor_type_id integer NOT NULL REFERENCES ${SCHEMA}.sensor_types (id),
         local_identifier varchar(50) NOT NULL,
         operational_status boolean NOT NULL DEFAULT true,
+        min_value decimal(10,2) NULL,
+        max_value decimal(10,2) NULL,
         created_at timestamp NOT NULL DEFAULT current_timestamp,
         CONSTRAINT sensors_station_identifier_unique UNIQUE (station_id, local_identifier)
       );
@@ -88,6 +90,28 @@ describe.skipIf(!TEST_DATABASE_URL)(
       expect(await repository.delete(1)).toBe(true);
       expect(await repository.delete(1)).toBe(false);
       expect(await repository.findById(1)).toBeNull();
+    });
+
+    it("grava, mantém e remove os limites (SCRUM-424)", async () => {
+      const created = await repository.create({
+        ...sensor("LIM"),
+        min_value: -10.5,
+        max_value: 50,
+      });
+      expect(created).toMatchObject({ min_value: -10.5, max_value: 50 });
+
+      const kept = await repository.update(created.id, {
+        local_identifier: "LIM2",
+      });
+      expect(kept).toMatchObject({ min_value: -10.5, max_value: 50 });
+
+      const cleared = await repository.update(created.id, {
+        min_value: null,
+        max_value: 60,
+      });
+      expect(cleared).toMatchObject({ min_value: null, max_value: 60 });
+      expect(await repository.findById(created.id)).toEqual(cleared);
+      await repository.delete(created.id);
     });
 
     it("pagina e filtra por estação", async () => {

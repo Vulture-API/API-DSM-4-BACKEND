@@ -50,6 +50,7 @@ Quando o controle das rotas existentes está ativo:
 - Monitoramento e WebSocket usam `monitoring.read`; consultas de propriedades usam `properties.read`.
 - O reconhecimento de alertas usa `triggered-alerts.acknowledge` e registra o usuário autenticado, ignorando identificação enviada pelo cliente. O corpo pode ser `{}`.
 - A execução manual do motor exige `rules-engine.run`; sua execução automática permanece interna.
+- Ocorrências usam `occurrences.read` (consulta), `occurrences.resolve` (resolução) e `occurrences.run` (verificação manual). Criadas pela migration 016 do BANCO e concedidas ao Administrador na primeira aplicação.
 - Login, identificação do backend, healthchecks e preflight permanecem públicos. A aplicação recusa registro de rota sem política explícita.
 
 ## Configuração e sequência de ativação

@@ -280,7 +280,11 @@ describe("station routes", () => {
     const response = await app.inject({ method: "GET", url: "/health" });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({ status: "ok", rules_engine: false });
+    expect(response.json()).toEqual({
+      status: "ok",
+      rules_engine: false,
+      occurrence_monitor: false,
+    });
   });
 
   it("should_not_expose_routes_without_api_prefix", async () => {

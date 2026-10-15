@@ -1,3 +1,4 @@
+import { assertValidLimits } from "@/modules/sensors/errors/invalid-sensor-limits.error.js";
 import { SensorConflictError } from "@/modules/sensors/errors/sensor-conflict.error.js";
 import { SensorNotFoundError } from "@/modules/sensors/errors/sensor-not-found.error.js";
 import { SensorReferenceNotFoundError } from "@/modules/sensors/errors/sensor-reference-not-found.error.js";
@@ -41,6 +42,12 @@ export class UpdateSensorService {
         "Sensor with this local identifier already exists on the specified station.",
       );
     }
+
+    // Um lado omitido mantém o atual: a faixa resultante precisa continuar válida.
+    assertValidLimits(
+      input.min_value !== undefined ? input.min_value : existing.min_value,
+      input.max_value !== undefined ? input.max_value : existing.max_value,
+    );
 
     const updated = await this.sensorRepository.update(id, input);
     if (!updated) {
