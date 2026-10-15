@@ -30,6 +30,14 @@ function stripTotal<T extends object>(rows: WithTotal<T>[]): T[] {
 export class PgReadingRepository implements ReadingRepository {
   constructor(private readonly database: Pool) {}
 
+  async stationExists(stationId: number): Promise<boolean> {
+    const result = await this.database.query(
+      "SELECT 1 FROM stations WHERE id = $1",
+      [stationId],
+    );
+    return (result.rowCount ?? 0) > 0;
+  }
+
   async findMany(filters: ListReadingsFilters): Promise<ReadingsQueryResult> {
     const { startUnixTime, endUnixTime } = resolveTimeRange(filters);
     const conditions: string[] = [];

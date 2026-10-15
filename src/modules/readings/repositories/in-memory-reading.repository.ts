@@ -10,6 +10,14 @@ import { resolveTimeRange } from "@/modules/readings/utils/date-filter.js";
 
 export class InMemoryReadingRepository implements ReadingRepository {
   public readings: (Reading & { station_id?: number })[] = [];
+  public knownStationIds?: Set<number>;
+
+  async stationExists(stationId: number): Promise<boolean> {
+    if (this.knownStationIds !== undefined) {
+      return this.knownStationIds.has(stationId);
+    }
+    return this.readings.some((r) => r.station_id === stationId);
+  }
 
   async findMany(filters: ListReadingsFilters): Promise<ReadingsQueryResult> {
     const { startUnixTime, endUnixTime } = resolveTimeRange(filters);

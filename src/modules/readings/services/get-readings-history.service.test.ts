@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import { ApplicationError } from "@/errors/application.error.js";
 import { InMemoryReadingRepository } from "@/modules/readings/repositories/in-memory-reading.repository.js";
 import { GetReadingsHistoryService } from "@/modules/readings/services/get-readings-history.service.js";
+import { StationNotFoundError } from "@/modules/stations/errors/station-not-found.error.js";
 
 describe("GetReadingsHistoryService", () => {
   let repository: InMemoryReadingRepository;
@@ -74,6 +75,62 @@ describe("GetReadingsHistoryService", () => {
 
     expect(result.data).toHaveLength(1);
     expect(result.data[0]?.id).toBe(3);
+    expect(result.meta.total_records).toBe(1);
+  });
+
+  it("should_throw_station_not_found_when_station_does_not_exist", async () => {
+    const act = () =>
+      service.execute({
+        page: 1,
+        limit: 10,
+        station_id: 999,
+      });
+
+    await expect(act).rejects.toThrow(StationNotFoundError);
+  });
+
+  it("should_return_empty_paginated_result_when_station_exists_without_readings", async () => {
+    repository.knownStationIds = new Set([1, 2, 3]);
+
+    const result = await service.execute({
+      page: 1,
+      limit: 10,
+      station_id: 3,
+    });
+
+    expect(result.data).toEqual([]);
+    expect(result.meta).toEqual({
+      total_records: 0,
+      total_pages: 0,
+      current_page: 1,
+    });
+  });
+
+  it("should_filter_readings_by_station_id_and_time_range_jointly", async () => {
+    const result = await service.execute({
+      page: 1,
+      limit: 10,
+      station_id: 1,
+      start_unix_time: 1728001000,
+      end_unix_time: 1728005000,
+    });
+
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0]?.id).toBe(2);
+    expect(result.meta.total_records).toBe(1);
+  });
+
+  it("should_filter_readings_by_station_id_and_date_range_jointly", async () => {
+    const result = await service.execute({
+      page: 1,
+      limit: 10,
+      station_id: 1,
+      start_date: "2024-10-04T00:30:00.000Z",
+      end_date: "2024-10-04T01:30:00.000Z",
+    });
+
+    expect(result.data).toHaveLength(1);
+    expect(result.data[0]?.id).toBe(2);
     expect(result.meta.total_records).toBe(1);
   });
 
