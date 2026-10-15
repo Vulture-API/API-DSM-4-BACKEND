@@ -10,4 +10,5 @@ export type ReadingsQueryResult = {
 
 export interface ReadingRepository {
   findMany(filters: ListReadingsFilters): Promise<ReadingsQueryResult>;
+  stationExists(stationId: number): Promise<boolean>;
 }

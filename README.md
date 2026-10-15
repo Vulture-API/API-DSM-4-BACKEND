@@ -56,6 +56,7 @@ Cada módulo mantém controllers, schemas, serviços e repositórios próprios. 
 | Estações e propriedades | `/api/stations`, `/api/stations/properties`, `/api/properties`                                                             |
 | Status e monitoramento  | `/api/stations/:id/status`, `/api/stations/overview`, `/api/stations/readings/series`, `/api/stations/:id/readings/series` |
 | Dados atuais            | `/api/stations/current`, `/api/stations/:id/current`, WebSocket `/api/stations/current/ws`                                 |
+| Estatísticas e previsão | `/api/stations/statistics`, `/api/stations/:id/statistics`, `/api/stations/:id/forecast`                                   |
 | Configurações e alertas | `/api/alerts/config`, `/api/alerts/triggered`, `/api/alerts/triggered/:id/acknowledge`                                     |
 | Ocorrências de falhas   | `/api/occurrences`, `/api/occurrences/:id`, `PATCH /api/occurrences/:id/resolve`                                           |
 | Operação do motor       | `POST /internal/rules-engine/run`, `POST /internal/occurrences/run`                                                        |
@@ -93,6 +94,9 @@ Os healthchecks foram unificados e as portas antigas 3001, 3002 e 3005 deixaram 
 | `OCCURRENCES_ENABLED`               | `false`       | Ativa a verificação periódica de ocorrências                                       |
 | `OCCURRENCES_INTERVAL_MS`           | `60000`       | Intervalo entre verificações                                                       |
 | `OCCURRENCES_BATCH_SIZE`            | `500`         | Leituras validadas por ciclo, máximo 5000                                          |
+| `FORECAST_API_URL`                  | Open-Meteo    | Endpoint de previsão                                                               |
+| `FORECAST_TIMEOUT_MS`               | `5000`        | Tempo máximo da chamada externa                                                    |
+| `FORECAST_CACHE_TTL_MINUTES`        | `30`          | Cache da previsão por posição                                                      |
 
 O motor fica desligado por padrão para não avançar o checkpoint do banco compartilhado durante desenvolvimento. O Compose o habilita e usa intervalo de 5000 ms. A rota manual permanece disponível quando um motor está anexado, mesmo sem agendamento, e retorna 409 durante um ciclo concorrente.
 
@@ -114,6 +118,13 @@ Requer a migration `016_occurrences.sql` do API-DSM-4-BANCO. A cada `OCCURRENCES
 Há no máximo uma ocorrência aberta por estação (comunicação) e por sensor (fora do limite); enquanto ela estiver aberta, novas leituras fora da faixa continuam sendo marcadas, sem nova ocorrência.
 
 **Consulta (SCRUM-425):** `GET /api/occurrences` pagina (`page`, `limit`) do mais recente para o mais antigo e filtra por `station_id`, `sensor_id`, `type` (`COMMUNICATION_FAILURE`, `OUT_OF_RANGE`), `status` (`OPEN`, `RESOLVED`), `from` e `to` (data-hora com fuso; `from` depois de `to` devolve 400 `INVALID_PERIOD`). Cada item traz estação, sensor e tipo de sensor, leitura e valor, descrição, `detected_at` e `resolved_at`. `PATCH /api/occurrences/:id/resolve` resolve manualmente (404 `OCCURRENCE_NOT_FOUND`, 409 `OCCURRENCE_ALREADY_RESOLVED`). Permissões: `occurrences.read`, `occurrences.resolve` e `occurrences.run`.
+## Estatísticas e previsão
+
+`GET /api/stations/statistics` calcula, por tipo de sensor, contagem, média, mínimo, máximo e desvio padrão das leituras consistentes do período. `from` e `to` aceitam data (`2026-09-01`, em UTC) ou data-hora com fuso (`2026-09-01T00:00:00-03:00`); data-hora sem fuso é recusada. Na URL, o `+` de um fuso positivo vai como `%2B`. Uma data pura em `to` inclui o dia inteiro. Sem período, vale os últimos 7 dias. Filtra por `property_id`, ou por estação em `/api/stations/:id/statistics`. O período vai até 366 dias com estação ou propriedade e até 31 dias para todas as estações; fora disso, ou com `from` depois de `to`, a resposta é 400 `INVALID_PERIOD`. Com menos de duas leituras, `stddev` vem nulo.
+
+`GET /api/stations/:id/forecast?days=1..7` devolve a previsão diária (temperatura máxima e mínima, chuva, probabilidade de chuva, vento e código WMO) para a latitude e longitude da estação. A fonte é o [Open-Meteo](https://open-meteo.com), que é gratuito e não exige chave. A previsão de 7 dias fica em cache por 30 minutos por posição (até 500 posições), e chamadas simultâneas para a mesma posição compartilham uma consulta. Estação sem coordenadas devolve 422 `STATION_WITHOUT_COORDINATES`. Falha, timeout ou resposta fora do formato do provedor devolve 503 `FORECAST_UNAVAILABLE`.
+
+As três rotas exigem `monitoring.read` quando `ACCESS_CONTROL_ENABLED=true`.
 
 ## Verificação
 
