@@ -68,6 +68,22 @@ const environmentSchema = z
       .int()
       .positive()
       .default(200),
+    // Previsão meteorológica (Open-Meteo)
+    FORECAST_API_URL: z
+      .url({ protocol: /^https$/ })
+      .default("https://api.open-meteo.com/v1/forecast"),
+    FORECAST_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(500)
+      .max(30_000)
+      .default(5000),
+    FORECAST_CACHE_TTL_MINUTES: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .max(24 * 60)
+      .default(30),
   })
   .refine((value) => !value.ACCESS_CONTROL_ENABLED || !!value.JWT_SECRET, {
     message: "JWT_SECRET is required when ACCESS_CONTROL_ENABLED=true",
