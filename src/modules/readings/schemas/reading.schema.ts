@@ -70,7 +70,8 @@ export const stationReadingItemSchema = z
     data_consistent: z.boolean().optional(),
   })
   .refine(
-    (item) => item.sensor_id !== undefined || item.local_identifier !== undefined,
+    (item) =>
+      item.sensor_id !== undefined || item.local_identifier !== undefined,
     {
       message: "Each reading must provide either sensor_id or local_identifier",
       path: ["sensor_id"],

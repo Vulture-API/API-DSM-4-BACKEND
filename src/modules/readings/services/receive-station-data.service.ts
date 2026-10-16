@@ -24,7 +24,9 @@ export class ReceiveStationDataService {
     if (input.station_id !== undefined) {
       station = await this.stationRepository.findById(input.station_id);
     } else if (input.mac_address) {
-      station = await this.stationRepository.findByMacAddress(input.mac_address);
+      station = await this.stationRepository.findByMacAddress(
+        input.mac_address,
+      );
     }
 
     if (!station) {

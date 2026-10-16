@@ -441,9 +441,7 @@ describe("rotas de histórico de leituras", () => {
       payload: {
         station_id: 1,
         unix_time: 1728010000,
-        readings: [
-          { sensor_id: 10, value: 24.5 },
-        ],
+        readings: [{ sensor_id: 10, value: 24.5 }],
       },
     });
 
@@ -458,9 +456,7 @@ describe("rotas de histórico de leituras", () => {
       url: "/api/readings/stations/1/data",
       payload: {
         unix_time: 1728010000,
-        readings: [
-          { sensor_id: 10, value: 22.0 },
-        ],
+        readings: [{ sensor_id: 10, value: 22.0 }],
       },
     });
 
@@ -475,9 +471,7 @@ describe("rotas de histórico de leituras", () => {
       url: "/api/readings/stations/999/data",
       payload: {
         unix_time: 1728010000,
-        readings: [
-          { sensor_id: 10, value: 22.0 },
-        ],
+        readings: [{ sensor_id: 10, value: 22.0 }],
       },
     });
 
