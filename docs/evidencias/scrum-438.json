@@ -1,0 +1,131 @@
+{
+  "issue": "SCRUM-438",
+  "issue_url": "https://vultureapi.atlassian.net/browse/SCRUM-438",
+  "executed_at": "2026-10-16T13:48:17.859Z",
+  "environment": {
+    "node": "v24.19.0",
+    "postgresql": "18.6",
+    "access_control_enabled": true,
+    "transport": "Fastify app.inject",
+    "database": "isolated disposable PostgreSQL; temporary schemas"
+  },
+  "regression": {
+    "files": 68,
+    "tests": 549,
+    "passed": 549,
+    "failed": 0,
+    "skipped": 0
+  },
+  "coverage": {
+    "lines": {
+      "total": 1772,
+      "covered": 1713,
+      "skipped": 0,
+      "pct": 96.67
+    },
+    "statements": {
+      "total": 1885,
+      "covered": 1806,
+      "skipped": 0,
+      "pct": 95.8
+    },
+    "functions": {
+      "total": 572,
+      "covered": 542,
+      "skipped": 0,
+      "pct": 94.75
+    },
+    "branches": {
+      "total": 1042,
+      "covered": 925,
+      "skipped": 0,
+      "pct": 88.77
+    }
+  },
+  "acceptance": {
+    "file": "src/modules/auth/access-management.integration.test.ts",
+    "status": "passed",
+    "tests": [
+      {
+        "name": "QA-01 creates and edits a profile with persisted grants and stable identity",
+        "status": "passed",
+        "duration_ms": 1162
+      },
+      {
+        "name": "QA-02 grants, replaces and clears permissions for every user of a profile using existing sessions",
+        "status": "passed",
+        "duration_ms": 1025
+      },
+      {
+        "name": "QA-03 moves a user between profiles through HTTP and immediately applies the new grants",
+        "status": "passed",
+        "duration_ms": 653
+      },
+      {
+        "name": "QA-04 blocks and unblocks login and existing sessions without changing credentials, profile or peer access",
+        "status": "passed",
+        "duration_ms": 1149
+      },
+      {
+        "name": "QA-05 POST /api/roles requires exactly roles.create and denies unauthorized changes",
+        "status": "passed",
+        "duration_ms": 572
+      },
+      {
+        "name": "QA-05 PUT /api/roles/:role requires exactly roles.update and denies unauthorized changes",
+        "status": "passed",
+        "duration_ms": 554
+      },
+      {
+        "name": "QA-05 GET /api/roles/:role requires exactly roles.read and denies unauthorized changes",
+        "status": "passed",
+        "duration_ms": 407
+      },
+      {
+        "name": "QA-05 GET /api/roles/:role/permissions requires exactly roles.read and denies unauthorized changes",
+        "status": "passed",
+        "duration_ms": 443
+      },
+      {
+        "name": "QA-05 GET /api/permissions requires exactly permissions.read and denies unauthorized changes",
+        "status": "passed",
+        "duration_ms": 443
+      },
+      {
+        "name": "QA-05 PUT /api/roles/:role/permissions requires exactly roles.permissions.update and denies unauthorized changes",
+        "status": "passed",
+        "duration_ms": 330
+      },
+      {
+        "name": "QA-05 PATCH /api/users/:user/access requires exactly users.update and denies unauthorized changes",
+        "status": "passed",
+        "duration_ms": 190
+      },
+      {
+        "name": "QA-06 rejects privilege escalation and self-unblocking by a blocked user without side effects",
+        "status": "passed",
+        "duration_ms": 176
+      },
+      {
+        "name": "QA-07 rejects invalid grants atomically and keeps existing sessions authorized: {\"permissions\":[\"users.read\",\"unknown.permission\"]}",
+        "status": "passed",
+        "duration_ms": 163
+      },
+      {
+        "name": "QA-07 rejects invalid grants atomically and keeps existing sessions authorized: {\"permissions\":[\"users.read\",\"users.read\"]}",
+        "status": "passed",
+        "duration_ms": 156
+      },
+      {
+        "name": "QA-07 rejects invalid grants atomically and keeps existing sessions authorized: {\"permissions\":null}",
+        "status": "passed",
+        "duration_ms": 156
+      },
+      {
+        "name": "QA-08 rejects duplicate profile names on creation and editing without losing grants",
+        "status": "passed",
+        "duration_ms": 192
+      }
+    ]
+  }
+}
