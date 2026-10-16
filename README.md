@@ -145,6 +145,8 @@ TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5433/agritech_test np
 
 No CI, PostgreSQL 16 é criado para essa finalidade. O gate exige no mínimo 80% de linhas, incluindo os repositórios PostgreSQL. O pipeline também audita vulnerabilidades críticas e compila a imagem Docker, sem push ou deploy.
 
+Os cenários de aceite de perfis, permissões, bloqueio/desbloqueio e autorização, com instruções de reprodução e evidências, estão em [QA — SCRUM-438](docs/qa-scrum-438.md).
+
 ## Docker e implantação
 
 A implantação completa e o teste MQTT estão no [API-DSM-4-INFRA](https://github.com/Vulture-API/API-DSM-4-INFRA). O Dockerfile deste repositório compila o backend e instala somente dependências de produção na imagem final, executando como usuário `node`.
