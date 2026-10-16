@@ -81,6 +81,7 @@ import {
   type SensorRepository,
 } from "@/modules/sensors/repositories/sensor.repository.js";
 import { sensorRoutes } from "@/modules/sensors/routes/sensors.route.js";
+import { InMemoryStationRepository } from "@/modules/stations/repositories/in-memory-station.repository.js";
 import { PgStationRepository } from "@/modules/stations/repositories/pg-station.repository.js";
 import type { StationRepository } from "@/modules/stations/repositories/station.repository.js";
 import { buildStationRoutes } from "@/modules/stations/routes/stations.route.js";
@@ -444,8 +445,26 @@ export function buildApp(options: BuildAppOptions = {}) {
         (process.env.NODE_ENV === "test" && !options.database
           ? new InMemoryReadingRepository()
           : new PgReadingRepository(pool));
+      const sensorRepo =
+        options.sensorRepository ??
+        (process.env.NODE_ENV === "test" && !options.database
+          ? new InMemorySensorRepository()
+          : new PgSensorRepository(pool));
+      const stationRepo =
+        options.stationRepository ??
+        (process.env.NODE_ENV === "test" && !options.database
+          ? new InMemoryStationRepository()
+          : new PgStationRepository(pool));
       for (const prefix of ["/api/readings", "/readings", "/api/v1/readings"]) {
-        readings.register(buildReadingRoutes(repository), { prefix });
+        readings.register(
+          buildReadingRoutes(
+            repository,
+            sensorRepo,
+            stationRepo,
+            options.clock,
+          ),
+          { prefix },
+        );
       }
     });
     app.post(

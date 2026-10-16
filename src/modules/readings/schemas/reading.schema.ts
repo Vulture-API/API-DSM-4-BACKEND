@@ -51,3 +51,37 @@ export const listReadingsQuerySchema = paginationQuerySchema
   );
 
 export type ListReadingsQuery = z.infer<typeof listReadingsQuerySchema>;
+
+export const createReadingSchema = z.object({
+  sensor_id: z.coerce.number().int().positive(),
+  value: z.coerce.number().finite(),
+  unix_time: z.coerce.number().int().nonnegative(),
+  data_consistent: z.boolean().optional(),
+});
+
+export type CreateReadingBody = z.infer<typeof createReadingSchema>;
+
+export const stationReadingItemSchema = z
+  .object({
+    sensor_id: z.coerce.number().int().positive().optional(),
+    local_identifier: z.string().trim().min(1).max(50).optional(),
+    value: z.coerce.number().finite(),
+    unix_time: z.coerce.number().int().nonnegative().optional(),
+    data_consistent: z.boolean().optional(),
+  })
+  .refine(
+    (item) => item.sensor_id !== undefined || item.local_identifier !== undefined,
+    {
+      message: "Each reading must provide either sensor_id or local_identifier",
+      path: ["sensor_id"],
+    },
+  );
+
+export const ingestStationDataSchema = z.object({
+  station_id: z.coerce.number().int().positive().optional(),
+  mac_address: z.string().trim().optional(),
+  unix_time: z.coerce.number().int().nonnegative().optional(),
+  readings: z.array(stationReadingItemSchema).min(1),
+});
+
+export type IngestStationDataBody = z.infer<typeof ingestStationDataSchema>;

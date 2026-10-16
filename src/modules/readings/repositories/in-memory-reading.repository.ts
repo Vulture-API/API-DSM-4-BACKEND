@@ -3,6 +3,7 @@ import type {
   ReadingsQueryResult,
 } from "@/modules/readings/repositories/reading.repository.js";
 import type {
+  CreateReadingInput,
   ListReadingsFilters,
   Reading,
 } from "@/modules/readings/types/reading.type.js";
@@ -11,6 +12,28 @@ import { resolveTimeRange } from "@/modules/readings/utils/date-filter.js";
 export class InMemoryReadingRepository implements ReadingRepository {
   public readings: (Reading & { station_id?: number })[] = [];
   public knownStationIds?: Set<number>;
+  private nextId = 1;
+
+  async create(data: CreateReadingInput): Promise<Reading> {
+    const reading: Reading = {
+      id: this.nextId++,
+      sensor_id: data.sensor_id,
+      value: data.value,
+      unix_time: data.unix_time,
+      data_consistent: data.data_consistent ?? true,
+      created_at: new Date(),
+    };
+    this.readings.push(reading);
+    return reading;
+  }
+
+  async createMany(data: CreateReadingInput[]): Promise<Reading[]> {
+    const created: Reading[] = [];
+    for (const item of data) {
+      created.push(await this.create(item));
+    }
+    return created;
+  }
 
   async stationExists(stationId: number): Promise<boolean> {
     if (this.knownStationIds !== undefined) {

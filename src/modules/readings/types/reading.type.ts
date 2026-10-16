@@ -7,6 +7,28 @@ export type Reading = {
   created_at: Date;
 };
 
+export type CreateReadingInput = {
+  sensor_id: number;
+  value: number;
+  unix_time: number;
+  data_consistent?: boolean | undefined;
+};
+
+export type StationReadingItem = {
+  sensor_id?: number | undefined;
+  local_identifier?: string | undefined;
+  value: number;
+  unix_time?: number | undefined;
+  data_consistent?: boolean | undefined;
+};
+
+export type IngestStationDataInput = {
+  station_id?: number | undefined;
+  mac_address?: string | undefined;
+  unix_time?: number | undefined;
+  readings: StationReadingItem[];
+};
+
 export type ListReadingsFilters = {
   page: number;
   limit: number;

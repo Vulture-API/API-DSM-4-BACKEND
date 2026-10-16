@@ -85,6 +85,16 @@ export class InMemoryStationRepository implements StationRepository {
     return this.propertyIds.has(propertyId);
   }
 
+  async updateLastCommunication(
+    id: number,
+    lastCommunicationAt: Date,
+  ): Promise<void> {
+    const station = this.stations.find((item) => item.id === id);
+    if (station) {
+      station.last_communication_at = lastCommunicationAt;
+    }
+  }
+
   async listProperties(): Promise<
     Array<{ id: number; name: string; location: string | null }>
   > {

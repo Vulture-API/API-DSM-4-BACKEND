@@ -153,6 +153,16 @@ export class PgStationRepository implements StationRepository {
     return (result.rowCount ?? 0) > 0;
   }
 
+  async updateLastCommunication(
+    id: number,
+    lastCommunicationAt: Date,
+  ): Promise<void> {
+    await this.database.query(
+      `UPDATE stations SET last_communication_at = $2 WHERE id = $1`,
+      [id, lastCommunicationAt.toISOString()],
+    );
+  }
+
   async listProperties(): Promise<
     Array<{ id: number; name: string; location: string | null }>
   > {

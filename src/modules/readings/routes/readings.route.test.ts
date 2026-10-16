@@ -3,6 +3,8 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { buildApp } from "@/app.js";
 import { InMemoryReadingRepository } from "@/modules/readings/repositories/in-memory-reading.repository.js";
+import { InMemorySensorRepository } from "@/modules/sensors/repositories/sensor.repository.js";
+import { InMemoryStationRepository } from "@/modules/stations/repositories/in-memory-station.repository.js";
 
 describe("rotas de histórico de leituras", () => {
   let app: FastifyInstance;
@@ -40,8 +42,47 @@ describe("rotas de histórico de leituras", () => {
       },
     ];
 
+    const sensorRepo = new InMemorySensorRepository();
+    await sensorRepo.create({
+      station_id: 1,
+      sensor_type_id: 1,
+      local_identifier: "S10",
+      operational_status: true,
+      min_value: -10,
+      max_value: 50,
+    });
+    sensorRepo["sensors"][0]!.id = 10;
+
+    await sensorRepo.create({
+      station_id: 2,
+      sensor_type_id: 2,
+      local_identifier: "S20",
+      operational_status: true,
+      min_value: 0,
+      max_value: 100,
+    });
+    sensorRepo["sensors"][1]!.id = 20;
+
+    const stationRepo = new InMemoryStationRepository();
+    await stationRepo.create({
+      property_id: 1,
+      mac_address: "AA:BB:CC:DD:EE:01",
+      name: "Estação 1",
+      latitude: -23.5,
+      longitude: -46.6,
+    });
+    await stationRepo.create({
+      property_id: 1,
+      mac_address: "AA:BB:CC:DD:EE:02",
+      name: "Estação 2",
+      latitude: -23.5,
+      longitude: -46.6,
+    });
+
     app = buildApp({
       readingRepository: repository,
+      sensorRepository: sensorRepo,
+      stationRepository: stationRepo,
       accessControlEnabled: false,
     });
     await app.ready();
@@ -328,5 +369,118 @@ describe("rotas de histórico de leituras", () => {
     });
     expect(v1Response.statusCode).toBe(200);
     expect(v1Response.json().data).toHaveLength(1);
+  });
+
+  it("POST /readings registra uma nova leitura com sucesso", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/readings",
+      payload: {
+        sensor_id: 10,
+        value: 26.8,
+        unix_time: 1728010000,
+      },
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.json()).toMatchObject({
+      id: expect.any(Number),
+      sensor_id: 10,
+      value: 26.8,
+      unix_time: 1728010000,
+      data_consistent: true,
+    });
+  });
+
+  it("POST /api/readings registra nova leitura com formato alias", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/readings",
+      payload: {
+        sensor_id: 10,
+        value: 28.1,
+        unix_time: 1728011000,
+      },
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.json().value).toBe(28.1);
+  });
+
+  it("POST /readings retorna 400 quando payload for invalido", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/readings",
+      payload: {
+        sensor_id: "invalid",
+        value: "not-a-number",
+      },
+    });
+
+    expect(response.statusCode).toBe(400);
+  });
+
+  it("POST /readings retorna 404 quando sensor_id nao existir", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/readings",
+      payload: {
+        sensor_id: 9999,
+        value: 20.0,
+        unix_time: 1728010000,
+      },
+    });
+
+    expect(response.statusCode).toBe(404);
+  });
+
+  it("POST /api/readings/station-data ingere telemetria enviada pela estacao", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/readings/station-data",
+      payload: {
+        station_id: 1,
+        unix_time: 1728010000,
+        readings: [
+          { sensor_id: 10, value: 24.5 },
+        ],
+      },
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.json()).toHaveLength(1);
+    expect(response.json()[0].value).toBe(24.5);
+  });
+
+  it("POST /api/readings/stations/:id/data ingere telemetria parametrizada por id da estacao", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/readings/stations/1/data",
+      payload: {
+        unix_time: 1728010000,
+        readings: [
+          { sensor_id: 10, value: 22.0 },
+        ],
+      },
+    });
+
+    expect(response.statusCode).toBe(201);
+    expect(response.json()).toHaveLength(1);
+    expect(response.json()[0].sensor_id).toBe(10);
+  });
+
+  it("POST /api/readings/stations/:id/data retorna 404 quando estacao nao existir", async () => {
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/readings/stations/999/data",
+      payload: {
+        unix_time: 1728010000,
+        readings: [
+          { sensor_id: 10, value: 22.0 },
+        ],
+      },
+    });
+
+    expect(response.statusCode).toBe(404);
   });
 });

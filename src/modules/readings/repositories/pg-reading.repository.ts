@@ -5,6 +5,7 @@ import type {
   ReadingsQueryResult,
 } from "@/modules/readings/repositories/reading.repository.js";
 import type {
+  CreateReadingInput,
   ListReadingsFilters,
   Reading,
 } from "@/modules/readings/types/reading.type.js";
@@ -29,6 +30,49 @@ function stripTotal<T extends object>(rows: WithTotal<T>[]): T[] {
 
 export class PgReadingRepository implements ReadingRepository {
   constructor(private readonly database: Pool) {}
+
+  async create(data: CreateReadingInput): Promise<Reading> {
+    const result = await this.database.query<Reading>(
+      `INSERT INTO readings (sensor_id, value, unix_time, data_consistent)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id, sensor_id, value::float8 AS value, unix_time, data_consistent, created_at`,
+      [
+        data.sensor_id,
+        data.value,
+        data.unix_time,
+        data.data_consistent ?? true,
+      ],
+    );
+    return result.rows[0]!;
+  }
+
+  async createMany(data: CreateReadingInput[]): Promise<Reading[]> {
+    if (data.length === 0) return [];
+
+    const values: unknown[] = [];
+    const valueClauses: string[] = [];
+
+    data.forEach((item, index) => {
+      const offset = index * 4;
+      valueClauses.push(
+        `($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4})`,
+      );
+      values.push(
+        item.sensor_id,
+        item.value,
+        item.unix_time,
+        item.data_consistent ?? true,
+      );
+    });
+
+    const result = await this.database.query<Reading>(
+      `INSERT INTO readings (sensor_id, value, unix_time, data_consistent)
+       VALUES ${valueClauses.join(", ")}
+       RETURNING id, sensor_id, value::float8 AS value, unix_time, data_consistent, created_at`,
+      values,
+    );
+    return result.rows;
+  }
 
   async stationExists(stationId: number): Promise<boolean> {
     const result = await this.database.query(

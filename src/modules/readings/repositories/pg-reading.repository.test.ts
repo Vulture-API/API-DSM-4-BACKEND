@@ -91,4 +91,75 @@ describe("PgReadingRepository", () => {
     expect(sql).toContain("r.unix_time <= $3");
     expect(values).toEqual([1, 1000, 2000, 10, 0]);
   });
+
+  it("should_insert_and_return_reading_on_create", async () => {
+    const createdAt = new Date("2026-10-16T12:00:00.000Z");
+    query.mockResolvedValueOnce({
+      rows: [
+        {
+          id: 1,
+          sensor_id: 10,
+          value: 23.5,
+          unix_time: 1728000000,
+          data_consistent: true,
+          created_at: createdAt,
+        },
+      ],
+    });
+
+    const result = await repository.create({
+      sensor_id: 10,
+      value: 23.5,
+      unix_time: 1728000000,
+      data_consistent: true,
+    });
+
+    expect(result.id).toBe(1);
+    expect(result.value).toBe(23.5);
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining("INSERT INTO readings"),
+      [10, 23.5, 1728000000, true],
+    );
+  });
+
+  it("should_insert_multiple_readings_on_create_many", async () => {
+    const createdAt = new Date("2026-10-16T12:00:00.000Z");
+    query.mockResolvedValueOnce({
+      rows: [
+        {
+          id: 1,
+          sensor_id: 10,
+          value: 23.5,
+          unix_time: 1728000000,
+          data_consistent: true,
+          created_at: createdAt,
+        },
+        {
+          id: 2,
+          sensor_id: 20,
+          value: 70.0,
+          unix_time: 1728000000,
+          data_consistent: true,
+          created_at: createdAt,
+        },
+      ],
+    });
+
+    const result = await repository.createMany([
+      { sensor_id: 10, value: 23.5, unix_time: 1728000000 },
+      { sensor_id: 20, value: 70.0, unix_time: 1728000000 },
+    ]);
+
+    expect(result).toHaveLength(2);
+    expect(query).toHaveBeenCalledWith(
+      expect.stringContaining("INSERT INTO readings"),
+      [10, 23.5, 1728000000, true, 20, 70.0, 1728000000, true],
+    );
+  });
+
+  it("should_return_empty_array_when_create_many_is_empty", async () => {
+    const result = await repository.createMany([]);
+    expect(result).toEqual([]);
+    expect(query).not.toHaveBeenCalled();
+  });
 });
