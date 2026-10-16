@@ -1,3 +1,6 @@
+// Usa os parsers do bootstrap real, inclusive timestamp sem fuso como UTC.
+import "@/config/database.js";
+
 import { Pool, types } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
