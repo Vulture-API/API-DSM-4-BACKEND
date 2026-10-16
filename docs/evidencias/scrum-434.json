@@ -1,0 +1,355 @@
+{
+  "issue": "SCRUM-434",
+  "issue_url": "https://vultureapi.atlassian.net/browse/SCRUM-434",
+  "executed_at": "2026-10-16T14:13:18.740Z",
+  "environment": {
+    "node": "v24.19.0",
+    "postgresql": "18.6",
+    "database": "isolated disposable PostgreSQL; temporary schemas",
+    "access_control_modes_tested": [false, true]
+  },
+  "regression": {
+    "files": 71,
+    "tests": 589,
+    "passed": 589,
+    "failed": 0,
+    "skipped": 0
+  },
+  "coverage": {
+    "lines": {
+      "total": 1792,
+      "covered": 1737,
+      "skipped": 0,
+      "pct": 96.93
+    },
+    "statements": {
+      "total": 1910,
+      "covered": 1839,
+      "skipped": 0,
+      "pct": 96.28
+    },
+    "functions": {
+      "total": 575,
+      "covered": 553,
+      "skipped": 0,
+      "pct": 96.17
+    },
+    "branches": {
+      "total": 1074,
+      "covered": 963,
+      "skipped": 0,
+      "pct": 89.66
+    }
+  },
+  "route_matrix": {
+    "method_path_pairs": 157,
+    "registration_entries": 172,
+    "protected_method_path_pairs": 132
+  },
+  "related_suites": [
+    {
+      "file": "src/modules/auth/access-control.test.ts",
+      "status": "passed",
+      "tests": [
+        {
+          "group": "route access policies",
+          "name": "matches every registered route, HEAD and alias to an independent permission matrix",
+          "status": "passed",
+          "duration_ms": 517
+        },
+        {
+          "group": "route access policies",
+          "name": "denies every protected route before validation or business work with identical 401/403 bodies",
+          "status": "passed",
+          "duration_ms": 1488
+        },
+        {
+          "group": "route access policies",
+          "name": "maps CRUD actions explicitly and keeps public endpoints reachable",
+          "status": "passed",
+          "duration_ms": 255
+        },
+        {
+          "group": "route access policies",
+          "name": "uses live grants rather than role names or permissions in JWT claims",
+          "status": "passed",
+          "duration_ms": 187
+        }
+      ]
+    },
+    {
+      "file": "src/modules/auth/access-policy.test.ts",
+      "status": "passed",
+      "tests": [
+        {
+          "group": "access policy registration",
+          "name": "rejects missing, empty, conflicting or invalid policies in either flag mode: undefined",
+          "status": "passed",
+          "duration_ms": 639
+        },
+        {
+          "group": "access policy registration",
+          "name": "rejects missing, empty, conflicting or invalid policies in either flag mode: null",
+          "status": "passed",
+          "duration_ms": 290
+        },
+        {
+          "group": "access policy registration",
+          "name": "rejects missing, empty, conflicting or invalid policies in either flag mode: {}",
+          "status": "passed",
+          "duration_ms": 297
+        },
+        {
+          "group": "access policy registration",
+          "name": "rejects missing, empty, conflicting or invalid policies in either flag mode: []",
+          "status": "passed",
+          "duration_ms": 245
+        },
+        {
+          "group": "access policy registration",
+          "name": "rejects missing, empty, conflicting or invalid policies in either flag mode: true",
+          "status": "passed",
+          "duration_ms": 217
+        },
+        {
+          "group": "access policy registration",
+          "name": "rejects missing, empty, conflicting or invalid policies in either flag mode: 'public'",
+          "status": "passed",
+          "duration_ms": 155
+        },
+        {
+          "group": "access policy registration",
+          "name": "rejects missing, empty, conflicting or invalid policies in either flag mode: { public: false }",
+          "status": "passed",
+          "duration_ms": 184
+        },
+        {
+          "group": "access policy registration",
+          "name": "rejects missing, empty, conflicting or invalid policies in either flag mode: { always: false }",
+          "status": "passed",
+          "duration_ms": 203
+        },
+        {
+          "group": "access policy registration",
+          "name": "rejects missing, empty, conflicting or invalid policies in either flag mode: { websocket: true }",
+          "status": "passed",
+          "duration_ms": 177
+        },
+        {
+          "group": "access policy registration",
+          "name": "rejects missing, empty, conflicting or invalid policies in either flag mode: { public: true, permission: 'users.read…",
+          "status": "passed",
+          "duration_ms": 232
+        },
+        {
+          "group": "access policy registration",
+          "name": "rejects missing, empty, conflicting or invalid policies in either flag mode: { public: true, always: true }",
+          "status": "passed",
+          "duration_ms": 190
+        },
+        {
+          "group": "access policy registration",
+          "name": "rejects missing, empty, conflicting or invalid policies in either flag mode: { public: true, websocket: true }",
+          "status": "passed",
+          "duration_ms": 201
+        },
+        {
+          "group": "access policy registration",
+          "name": "rejects missing, empty, conflicting or invalid policies in either flag mode: { permission: 'unknown.permission' }",
+          "status": "passed",
+          "duration_ms": 200
+        },
+        {
+          "group": "access policy registration",
+          "name": "rejects missing, empty, conflicting or invalid policies in either flag mode: { permission: '' }",
+          "status": "passed",
+          "duration_ms": 179
+        },
+        {
+          "group": "access policy registration",
+          "name": "rejects missing, empty, conflicting or invalid policies in either flag mode: { permission: null }",
+          "status": "passed",
+          "duration_ms": 193
+        },
+        {
+          "group": "access policy registration",
+          "name": "rejects missing, empty, conflicting or invalid policies in either flag mode: { permission: undefined, always: true }",
+          "status": "passed",
+          "duration_ms": 184
+        },
+        {
+          "group": "access policy registration",
+          "name": "rejects missing, empty, conflicting or invalid policies in either flag mode: { permission: 'users.read', always: 'tr…",
+          "status": "passed",
+          "duration_ms": 178
+        },
+        {
+          "group": "access policy registration",
+          "name": "rejects missing, empty, conflicting or invalid policies in either flag mode: { permission: 'users.read', websocket: …",
+          "status": "passed",
+          "duration_ms": 183
+        },
+        {
+          "group": "access policy registration",
+          "name": "rejects missing, empty, conflicting or invalid policies in either flag mode: { permission: 'users.read', typo: true }",
+          "status": "passed",
+          "duration_ms": 286
+        },
+        {
+          "group": "access policy registration",
+          "name": "accepts explicit public, authenticated and permission policies: {\"public\":true}",
+          "status": "passed",
+          "duration_ms": 104
+        },
+        {
+          "group": "access policy registration",
+          "name": "accepts explicit public, authenticated and permission policies: {\"always\":true}",
+          "status": "passed",
+          "duration_ms": 82
+        },
+        {
+          "group": "access policy registration",
+          "name": "accepts explicit public, authenticated and permission policies: {\"always\":true,\"websocket\":true}",
+          "status": "passed",
+          "duration_ms": 92
+        },
+        {
+          "group": "access policy registration",
+          "name": "accepts explicit public, authenticated and permission policies: {\"permission\":\"users.read\"}",
+          "status": "passed",
+          "duration_ms": 132
+        },
+        {
+          "group": "access policy registration",
+          "name": "accepts explicit public, authenticated and permission policies: {\"permission\":\"users.read\",\"always\":true}",
+          "status": "passed",
+          "duration_ms": 86
+        },
+        {
+          "group": "access policy registration",
+          "name": "accepts explicit public, authenticated and permission policies: {\"permission\":\"users.read\",\"always\":false,\"websocket\":false}",
+          "status": "passed",
+          "duration_ms": 93
+        },
+        {
+          "group": "access policy registration",
+          "name": "accepts explicit public, authenticated and permission policies: {\"permission\":\"monitoring.read\",\"websocket\":true}",
+          "status": "passed",
+          "duration_ms": 115
+        }
+      ]
+    },
+    {
+      "file": "src/modules/auth/authorization.routes.test.ts",
+      "status": "passed",
+      "tests": [
+        {
+          "group": "authorization compatibility (ACCESS_CONTROL_ENABLED=false)",
+          "name": "allows real reads with the corresponding grant across modules and preserves legacy anonymous access",
+          "status": "passed",
+          "duration_ms": 775
+        },
+        {
+          "group": "authorization compatibility (ACCESS_CONTROL_ENABLED=false)",
+          "name": "always protects identity, permissions and access changes, independent of the legacy flag",
+          "status": "passed",
+          "duration_ms": 249
+        },
+        {
+          "group": "authorization compatibility (ACCESS_CONTROL_ENABLED=true)",
+          "name": "allows real reads with the corresponding grant across modules and preserves legacy anonymous access",
+          "status": "passed",
+          "duration_ms": 352
+        },
+        {
+          "group": "authorization compatibility (ACCESS_CONTROL_ENABLED=true)",
+          "name": "always protects identity, permissions and access changes, independent of the legacy flag",
+          "status": "passed",
+          "duration_ms": 160
+        }
+      ]
+    },
+    {
+      "file": "src/errors/handlers/authorization.test.ts",
+      "status": "passed",
+      "tests": [
+        {
+          "group": "authorization error contract: common",
+          "name": "returns only the common denial body for 401 UnauthorizedError even in development",
+          "status": "passed",
+          "duration_ms": 10
+        },
+        {
+          "group": "authorization error contract: common",
+          "name": "returns only the common denial body for 403 ForbiddenError even in development",
+          "status": "passed",
+          "duration_ms": 2
+        },
+        {
+          "group": "authorization error contract: common",
+          "name": "preserves unrelated application errors and their domain contract",
+          "status": "passed",
+          "duration_ms": 2
+        },
+        {
+          "group": "authorization error contract: parameters",
+          "name": "returns only the common denial body for 401 UnauthorizedError even in development",
+          "status": "passed",
+          "duration_ms": 1
+        },
+        {
+          "group": "authorization error contract: parameters",
+          "name": "returns only the common denial body for 403 ForbiddenError even in development",
+          "status": "passed",
+          "duration_ms": 1
+        },
+        {
+          "group": "authorization error contract: parameters",
+          "name": "preserves unrelated application errors and their domain contract",
+          "status": "passed",
+          "duration_ms": 2
+        },
+        {
+          "group": "authorization error contract: users",
+          "name": "returns only the common denial body for 401 UnauthorizedError even in development",
+          "status": "passed",
+          "duration_ms": 6
+        },
+        {
+          "group": "authorization error contract: users",
+          "name": "returns only the common denial body for 403 ForbiddenError even in development",
+          "status": "passed",
+          "duration_ms": 1
+        },
+        {
+          "group": "authorization error contract: users",
+          "name": "preserves unrelated application errors and their domain contract",
+          "status": "passed",
+          "duration_ms": 1
+        }
+      ]
+    }
+  ],
+  "reused_regression": [
+    {
+      "file": "src/modules/auth/access-management.integration.test.ts",
+      "status": "passed",
+      "tests": 16
+    },
+    {
+      "file": "src/modules/auth/websocket-access.test.ts",
+      "status": "passed",
+      "tests": 8
+    },
+    {
+      "file": "src/modules/permissions/repositories/permission.repository.integration.test.ts",
+      "status": "passed",
+      "tests": 6
+    },
+    {
+      "file": "src/modules/users/repositories/user-access.repository.integration.test.ts",
+      "status": "passed",
+      "tests": 7
+    }
+  ]
+}
