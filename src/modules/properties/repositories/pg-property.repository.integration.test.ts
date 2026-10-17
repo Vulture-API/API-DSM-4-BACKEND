@@ -101,8 +101,8 @@ describe.skipIf(!TEST_DATABASE_URL)(
 
       const list = await repository.listProperties();
       expect(list).toHaveLength(2);
-      expect(list[0].name).toBe("Fazenda A");
-      expect(list[1].name).toBe("Fazenda Z");
+      expect(list[0]?.name).toBe("Fazenda A");
+      expect(list[1]?.name).toBe("Fazenda Z");
     });
   },
 );
