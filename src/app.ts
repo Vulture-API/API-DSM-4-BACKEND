@@ -59,6 +59,10 @@ import {
 } from "@/modules/permissions/repositories/permission.repository.js";
 import { permissionRoutes } from "@/modules/permissions/routes/permissions.route.js";
 import { FakePermissionRepository } from "@/modules/permissions/testing/fake-permission.repository.js";
+import { InMemoryPropertyRepository } from "@/modules/properties/repositories/in-memory-property.repository.js";
+import { PgPropertyRepository } from "@/modules/properties/repositories/pg-property.repository.js";
+import type { PropertyRepository } from "@/modules/properties/repositories/property.repository.js";
+import { buildPropertyRoutes } from "@/modules/properties/routes/properties.route.js";
 import { InMemoryReadingRepository } from "@/modules/readings/repositories/in-memory-reading.repository.js";
 import { PgReadingRepository } from "@/modules/readings/repositories/pg-reading.repository.js";
 import type { ReadingRepository } from "@/modules/readings/repositories/reading.repository.js";
@@ -102,6 +106,7 @@ export type BuildAppOptions = {
   accessControlEnabled?: boolean;
   rateLimits?: { max?: number; loginMax?: number; timeWindowMs?: number };
   stationRepository?: StationRepository;
+  propertyRepository?: PropertyRepository;
   monitoringRepository?: MonitoringRepository;
   readingsBroadcaster?: ReadingsBroadcaster;
   liveLimits?: Partial<LiveLimits>;
@@ -317,6 +322,42 @@ export function buildApp(options: BuildAppOptions = {}) {
         }
       }
     });
+    app.register(async (properties) => {
+      properties.setErrorHandler(handleError);
+      properties.addHook("onRequest", async (_request, reply) => {
+        reply.header("Access-Control-Allow-Origin", "*");
+        reply.header(
+          "Access-Control-Allow-Methods",
+          "GET, POST, PUT, DELETE, OPTIONS",
+        );
+        reply.header(
+          "Access-Control-Allow-Headers",
+          "Content-Type, Authorization",
+        );
+      });
+      const propertyRepository =
+        options.propertyRepository ??
+        (process.env.NODE_ENV === "test" && !options.database
+          ? new InMemoryPropertyRepository()
+          : new PgPropertyRepository(pool));
+      for (const prefix of ["/api", ""]) {
+        properties.register(buildPropertyRoutes(propertyRepository), {
+          prefix: `${prefix}/properties`,
+        });
+        const preflight = async (_request: unknown, reply: FastifyReply) =>
+          reply.status(204).send();
+        properties.options(
+          `${prefix}/properties`,
+          { config: { access: { public: true }, rateLimit: false } },
+          preflight,
+        );
+        properties.options(
+          `${prefix}/properties/*`,
+          { config: { access: { public: true }, rateLimit: false } },
+          preflight,
+        );
+      }
+    });
     app.register(async (stations) => {
       stations.setErrorHandler(handleError);
       const repository =
@@ -326,11 +367,6 @@ export function buildApp(options: BuildAppOptions = {}) {
       const threshold =
         options.stationOfflineThresholdMinutes ??
         env.STATION_OFFLINE_THRESHOLD_MINUTES;
-      stations.get(
-        "/api/properties",
-        { config: { access: { permission: "properties.read" } } },
-        async () => (await repository.listProperties?.()) ?? [],
-      );
       stations.register(
         buildStationRoutes(repository, threshold, options.clock),
         { prefix: "/api/stations" },
