@@ -30,6 +30,7 @@ describe("route access policies", () => {
       authRepository: auth,
       userRepository: new FakeUserRepository(),
       roleRepository: new FakeRoleRepository(),
+      rateLimits: { max: 1000 },
     });
     app.addHook("onRoute", (route) => {
       for (const method of Array.isArray(route.method)
