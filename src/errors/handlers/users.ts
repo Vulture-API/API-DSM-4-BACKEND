@@ -6,6 +6,7 @@ import {
 
 import { env } from "@/config/environment.js";
 import { ApplicationError } from "@/errors/application.error.js";
+import { authorizationErrorBody } from "@/errors/handlers/authorization.js";
 
 export function handleUsersError(
   error: FastifyError,
@@ -13,6 +14,9 @@ export function handleUsersError(
   reply: FastifyReply,
 ) {
   request.log.error(error);
+
+  const denial = authorizationErrorBody(error);
+  if (denial) return reply.status(denial.code).send(denial);
 
   if (error.validation) {
     return reply.status(400).send({

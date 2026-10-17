@@ -4,7 +4,7 @@ O backend associa permissões a `roles` e usa o perfil atual de cada usuário pa
 
 ## Catálogo e persistência
 
-O catálogo versionado contém 31 códigos, no formato `recurso.ação`:
+O catálogo versionado contém 34 códigos, incluindo os três de ocorrências da migration 016, no formato `recurso.ação`:
 
 | Recursos                                                                 | Ações                                |
 | ------------------------------------------------------------------------ | ------------------------------------ |
@@ -13,6 +13,7 @@ O catálogo versionado contém 31 códigos, no formato `recurso.ação`:
 | `triggered-alerts`                                                       | `read`, `acknowledge`                |
 | `roles.permissions`                                                      | `update`                             |
 | `rules-engine`                                                           | `run`                                |
+| `occurrences`                                                            | `read`, `resolve`, `run`             |
 
 `permissions` armazena código e descrição; `role_permissions` usa chave composta por perfil/código. A FK de perfil remove suas associações em cascata, mas a FK existente dos usuários continua bloqueando a exclusão do perfil enquanto houver vínculos. Não há API para criar permissões arbitrárias.
 
@@ -32,7 +33,7 @@ O `PUT` substitui todo o conjunto em transação, bloqueando o perfil para seria
 
 Todas as respostas de criação, listagem, consulta e edição de perfis incluem `permissions: string[]`, em ordem por código. A listagem busca concessões em lote, sem uma consulta adicional por perfil.
 
-As APIs novas usam o envelope `{ code, message, details }`: 401 para credenciais/token inválidos, usuário inexistente/inativo ou autenticação ausente; 403 para falta da permissão; 503 quando JWT não está configurado; 500 para falhas inesperadas. Os demais módulos preservam seus envelopes atuais.
+As APIs novas usam o envelope `{ code, message, details }`: 401 para credenciais/token inválidos, usuário inexistente/inativo ou autenticação ausente; 403 para falta da permissão; 503 quando JWT não está configurado; 500 para falhas inesperadas. A [SCRUM-434](autorizacao.md) padroniza também as recusas 401/403 dos demais módulos nesse mesmo envelope, com código numérico e `details: []`. Os demais erros mantêm os contratos de cada domínio.
 
 ## Autenticação e autorização
 

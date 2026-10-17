@@ -5,12 +5,16 @@ import {
 } from "fastify";
 
 import { ApplicationError } from "@/errors/application.error.js";
+import { authorizationErrorBody } from "@/errors/handlers/authorization.js";
 
 export function handleParametersError(
   error: FastifyError,
   request: FastifyRequest,
   reply: FastifyReply,
 ) {
+  const denial = authorizationErrorBody(error);
+  if (denial) return reply.status(denial.code).send(denial);
+
   if (error.validation) {
     const details = error.validation.map(
       (v) => `${v.instancePath || "field"}: ${v.message}`,
