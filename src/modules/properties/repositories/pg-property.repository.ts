@@ -99,7 +99,10 @@ export class PgPropertyRepository implements PropertyRepository {
     return result.rows;
   }
 
-  async update(id: number, data: UpdatePropertyInput): Promise<Property | null> {
+  async update(
+    id: number,
+    data: UpdatePropertyInput,
+  ): Promise<Property | null> {
     const fields: string[] = [];
     const values: unknown[] = [id];
     let index = 2;

@@ -39,4 +39,3 @@ export const updatePropertyBodySchema = z
 
 export type PropertyIdParam = z.infer<typeof propertyIdParamSchema>;
 export type UpdatePropertyBodyInput = z.infer<typeof updatePropertyBodySchema>;
-

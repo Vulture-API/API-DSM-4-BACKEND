@@ -39,7 +39,10 @@ export class InMemoryPropertyRepository implements PropertyRepository {
       .sort((a, b) => a.name.localeCompare(b.name));
   }
 
-  async update(id: number, data: UpdatePropertyInput): Promise<Property | null> {
+  async update(
+    id: number,
+    data: UpdatePropertyInput,
+  ): Promise<Property | null> {
     const index = this.properties.findIndex((p) => p.id === id);
     if (index === -1) {
       return null;
@@ -54,7 +57,9 @@ export class InMemoryPropertyRepository implements PropertyRepository {
           ? data.owner_user_id
           : current.owner_user_id,
       location:
-        data.location !== undefined ? (data.location ?? null) : current.location,
+        data.location !== undefined
+          ? (data.location ?? null)
+          : current.location,
     };
 
     this.properties[index] = updated;
