@@ -57,8 +57,14 @@ export function expectedAccessPolicies() {
       add("OPTIONS", `${path}/*`, { public: true });
     }
   }
-  for (const path of ["/api/properties", "/api/stations/properties"])
+  for (const prefix of ["", "/api"]) {
+    const path = `${prefix}/properties`;
     add("GET", path, { permission: "properties.read" });
+    add("POST", path, { permission: "properties.create" });
+    add("OPTIONS", path, { public: true });
+    add("OPTIONS", `${path}/*`, { public: true });
+  }
+  add("GET", "/api/stations/properties", { permission: "properties.read" });
   add("GET", "/api/stations/:id/status", { permission: "stations.read" });
   for (const path of [
     "/api/stations/overview",
