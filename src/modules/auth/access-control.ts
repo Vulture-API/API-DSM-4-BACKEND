@@ -7,14 +7,49 @@ import {
 } from "@/modules/auth/auth.errors.js";
 import type { AuthRepositoryPort } from "@/modules/auth/repositories/auth.repository.js";
 import type { AuthUser } from "@/modules/auth/types.js";
-import type { PermissionCode } from "@/modules/permissions/permission-catalog.js";
+import {
+  PERMISSION_CODES,
+  type PermissionCode,
+} from "@/modules/permissions/permission-catalog.js";
 
-export type AccessPolicy = {
-  public?: boolean;
-  permission?: PermissionCode;
-  always?: boolean;
-  websocket?: boolean;
-};
+export type AccessPolicy =
+  | { public: true; permission?: never; always?: never; websocket?: never }
+  | {
+      public?: never;
+      permission: PermissionCode;
+      always?: boolean;
+      websocket?: boolean;
+    }
+  | { public?: never; permission?: never; always: true; websocket?: boolean };
+
+const permissionCodes = new Set<string>(PERMISSION_CODES);
+
+/** Validate at registration, including policies supplied by untyped plugins. */
+export function assertAccessPolicy(
+  policy: unknown,
+  route: string,
+): asserts policy is AccessPolicy {
+  if (policy === undefined)
+    throw new Error(`Missing access policy for ${route}`);
+  if (typeof policy === "object" && policy !== null && !Array.isArray(policy)) {
+    const value = policy as Record<string, unknown>;
+    const keys = Object.keys(value);
+    if (value.public === true && keys.length === 1) return;
+    if (
+      keys.every((key) =>
+        ["permission", "always", "websocket"].includes(key),
+      ) &&
+      (!("always" in value) || typeof value.always === "boolean") &&
+      (!("websocket" in value) || typeof value.websocket === "boolean") &&
+      ("permission" in value
+        ? typeof value.permission === "string" &&
+          permissionCodes.has(value.permission)
+        : value.always === true)
+    )
+      return;
+  }
+  throw new Error(`Invalid access policy for ${route}`);
+}
 export const WS_COOKIE = "agritech_ws_token";
 export const JWT_ISSUER = "agritech-backend";
 export const JWT_AUDIENCE = "agritech-api";
@@ -68,7 +103,8 @@ export class AccessControl {
 
   async enforce(request: FastifyRequest): Promise<void> {
     const policy = request.routeOptions.config.access;
-    if (!policy || policy.public || (!this.enabled && !policy.always)) return;
+    if (!policy) throw new Error("Missing access policy during authorization.");
+    if (policy.public || (!this.enabled && !policy.always)) return;
     const user = await this.authenticate(request);
     if (policy.permission && !user.permissions.includes(policy.permission))
       throw new ForbiddenError();
