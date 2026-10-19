@@ -12,6 +12,12 @@ export type CreatePropertyInput = {
   location?: string | null;
 };
 
+export type UpdatePropertyInput = {
+  name?: string | undefined;
+  owner_user_id?: number | undefined;
+  location?: string | null | undefined;
+};
+
 export type PropertyRow = {
   id: number;
   name: string;

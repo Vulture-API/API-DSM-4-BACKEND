@@ -2,6 +2,7 @@ import type { PropertyRepository } from "@/modules/properties/repositories/prope
 import type {
   CreatePropertyInput,
   Property,
+  UpdatePropertyInput,
 } from "@/modules/properties/types/property.type.js";
 
 export class InMemoryPropertyRepository implements PropertyRepository {
@@ -36,5 +37,27 @@ export class InMemoryPropertyRepository implements PropertyRepository {
     return this.properties
       .map(({ id, name, location }) => ({ id, name, location }))
       .sort((a, b) => a.name.localeCompare(b.name));
+  }
+
+  async update(id: number, data: UpdatePropertyInput): Promise<Property | null> {
+    const index = this.properties.findIndex((p) => p.id === id);
+    if (index === -1) {
+      return null;
+    }
+
+    const current = this.properties[index]!;
+    const updated: Property = {
+      ...current,
+      name: data.name !== undefined ? data.name : current.name,
+      owner_user_id:
+        data.owner_user_id !== undefined
+          ? data.owner_user_id
+          : current.owner_user_id,
+      location:
+        data.location !== undefined ? (data.location ?? null) : current.location,
+    };
+
+    this.properties[index] = updated;
+    return updated;
   }
 }

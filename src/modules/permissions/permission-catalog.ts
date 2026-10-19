@@ -44,6 +44,10 @@ export const PERMISSIONS = [
     description: "Consultar propriedades",
   },
   {
+    code: "properties.update",
+    description: "Editar propriedades",
+  },
+  {
     code: "roles.create",
     description: "Criar perfis",
   },

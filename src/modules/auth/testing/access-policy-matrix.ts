@@ -61,6 +61,7 @@ export function expectedAccessPolicies() {
     const path = `${prefix}/properties`;
     add("GET", path, { permission: "properties.read" });
     add("POST", path, { permission: "properties.create" });
+    add("PUT", `${path}/:id`, { permission: "properties.update" });
     add("OPTIONS", path, { public: true });
     add("OPTIONS", `${path}/*`, { public: true });
   }

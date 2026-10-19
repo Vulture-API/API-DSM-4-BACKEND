@@ -1,6 +1,7 @@
 import type {
   CreatePropertyInput,
   Property,
+  UpdatePropertyInput,
 } from "@/modules/properties/types/property.type.js";
 
 export interface PropertyRepository {
@@ -10,4 +11,5 @@ export interface PropertyRepository {
   listProperties(): Promise<
     Array<{ id: number; name: string; location: string | null }>
   >;
+  update(id: number, data: UpdatePropertyInput): Promise<Property | null>;
 }
