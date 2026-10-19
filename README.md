@@ -61,13 +61,15 @@ Cada módulo mantém controllers, schemas, serviços e repositórios próprios. 
 | Ocorrências de falhas   | `/api/occurrences`, `/api/occurrences/:id`, `PATCH /api/occurrences/:id/resolve`                                           |
 | Operação do motor       | `POST /internal/rules-engine/run`, `POST /internal/occurrences/run`                                                        |
 
-CRUD, métodos, payloads, paginação e formatos de erro continuam iguais aos serviços de origem. Tipos e sensores também aceitam os aliases sem prefixo, com `/v1` e com `/api/v1`. O CORS desses recursos permanece encapsulado no módulo de parâmetros.
+CRUD, métodos, payloads, paginação e erros de negócio continuam iguais aos serviços de origem. As recusas de autenticação/autorização (401/403) usam o contrato comum descrito abaixo. Tipos e sensores também aceitam os aliases sem prefixo, com `/v1` e com `/api/v1`. O CORS desses recursos permanece encapsulado no módulo de parâmetros.
 
 Perfis de acesso (`roles`) oferecem listagem e criação em `/api/roles`, além de consulta, edição e exclusão em `/api/roles/:id`. O nome é obrigatório e único; a exclusão retorna 409 enquanto houver usuários vinculados, inclusive inativos. No `PUT`, descrição omitida é gravada como `null`. Veja o [contrato e as evidências da SCRUM-431](docs/perfis-acesso.md).
 
 Os perfis retornam também `permissions`, uma lista ordenada de códigos. O catálogo está em `GET /api/permissions`, e a associação é consultada ou substituída em `/api/roles/:id/permissions`. Essas novas rotas sempre exigem JWT e a permissão correspondente. `POST /api/auth/login` utiliza as credenciais scrypt existentes; `GET /api/auth/me` retorna o usuário e suas permissões atuais. Configure `JWT_SECRET` para utilizar esses recursos. A proteção das APIs anteriores permanece desligada até `ACCESS_CONTROL_ENABLED=true`, permitindo a integração posterior do frontend. Veja o [contrato e a ativação da SCRUM-432](docs/permissoes.md).
 
 `PATCH /api/users/:id/access` altera apenas o acesso do usuário: `{ "active": false }` bloqueia e `{ "active": true }` desbloqueia. A rota sempre exige JWT e `users.update`. O estado usa o campo existente `users.active`, preservando cadastro, credenciais e permissões; usuários bloqueados recebem 401 no login e nas rotas protegidas, e seus WebSockets protegidos são encerrados no próximo ciclo de autorização. Veja o [contrato e as evidências da SCRUM-433](docs/bloqueio-usuarios.md).
+
+As respostas 401/403 são padronizadas em todos os módulos como `{ code: 401 | 403, message, details: [] }`, sem detalhes internos. O registro rejeita rotas sem política válida, incluindo políticas vazias, contraditórias ou com permissões desconhecidas. A flag de ativação e as permissões existentes permanecem preservadas. Veja a [matriz, o contrato e as evidências da SCRUM-434](docs/autorizacao.md).
 
 A API limita requisições antes de autenticar ou acessar o banco: por padrão, 300 por minuto por IP, compartilhadas entre rotas, métodos e aliases. O login possui um orçamento separado de 10 por minuto. O excesso recebe 429 com `Retry-After`; identificação do backend, healthchecks e preflight são isentos. Os limites permanecem ativos com `ACCESS_CONTROL_ENABLED=false`.
 
@@ -159,5 +161,6 @@ Publique os commits do BACKEND antes de publicar o gitlink correspondente do INF
 - [Perfis de acesso — SCRUM-431](docs/perfis-acesso.md)
 - [Permissões e autenticação — SCRUM-432](docs/permissoes.md)
 - [Bloqueio e desbloqueio de usuários — SCRUM-433](docs/bloqueio-usuarios.md)
+- [Autorização das funcionalidades — SCRUM-434](docs/autorizacao.md)
 
 A pasta local `confluence/` contém material para publicação e validação pelo time. Ela está ignorada pelo Git e pelo contexto Docker; sua publicação e o aceite do time são etapas externas.

@@ -29,6 +29,7 @@ import {
 import { buildAlertRoutes } from "@/modules/alerts/routes/alerts.route.js";
 import {
   AccessControl,
+  assertAccessPolicy,
   JWT_AUDIENCE,
   JWT_ISSUER,
   JWT_TTL_SECONDS,
@@ -152,8 +153,7 @@ export function buildApp(options: BuildAppOptions = {}) {
     !!secret,
   );
   app.addHook("onRoute", (route) => {
-    if (!route.config?.access)
-      throw new Error(`Missing access policy for ${route.method} ${route.url}`);
+    assertAccessPolicy(route.config?.access, `${route.method} ${route.url}`);
   });
   app.decorateRequest("actor", null);
   const limits = {
