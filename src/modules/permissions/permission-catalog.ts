@@ -36,8 +36,16 @@ export const PERMISSIONS = [
     description: "Consultar catálogo de permissões",
   },
   {
+    code: "properties.create",
+    description: "Criar propriedades",
+  },
+  {
     code: "properties.read",
     description: "Consultar propriedades",
+  },
+  {
+    code: "properties.update",
+    description: "Editar propriedades",
   },
   {
     code: "roles.create",
