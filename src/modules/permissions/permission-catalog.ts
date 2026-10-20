@@ -40,6 +40,10 @@ export const PERMISSIONS = [
     description: "Criar propriedades",
   },
   {
+    code: "properties.delete",
+    description: "Excluir propriedades",
+  },
+  {
     code: "properties.read",
     description: "Consultar propriedades",
   },

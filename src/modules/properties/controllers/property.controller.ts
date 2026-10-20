@@ -6,6 +6,7 @@ import type {
   UpdatePropertyBodyInput,
 } from "@/modules/properties/schemas/property.schema.js";
 import type { CreatePropertyService } from "@/modules/properties/services/create-property.service.js";
+import type { DeletePropertyService } from "@/modules/properties/services/delete-property.service.js";
 import type { ListPropertiesService } from "@/modules/properties/services/list-properties.service.js";
 import type { UpdatePropertyService } from "@/modules/properties/services/update-property.service.js";
 
@@ -14,6 +15,7 @@ export class PropertyController {
     private readonly createPropertyService: CreatePropertyService,
     private readonly listPropertiesService: ListPropertiesService,
     private readonly updatePropertyService: UpdatePropertyService,
+    private readonly deletePropertyService: DeletePropertyService,
   ) {}
 
   create = async (
@@ -44,5 +46,16 @@ export class PropertyController {
     );
 
     return reply.status(200).send(property);
+  };
+
+  delete = async (
+    request: FastifyRequest<{
+      Params: PropertyIdParam;
+    }>,
+    reply: FastifyReply,
+  ) => {
+    await this.deletePropertyService.execute(request.params.id);
+
+    return reply.status(204).send();
   };
 }

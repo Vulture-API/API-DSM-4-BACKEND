@@ -331,20 +331,98 @@ describe("property routes", () => {
     });
   });
 
-  it("should_support_all_route_aliases_and_options", async () => {
+  async function deleteProperty(id: number | string, url?: string) {
+    return app.inject({
+      method: "DELETE",
+      url: url ?? `/api/properties/${id}`,
+    });
+  }
+
+  it("should_delete_property_when_id_is_valid_and_no_stations_exist", async () => {
     await createProperty();
 
+    const response = await deleteProperty(1);
+
+    expect(response.statusCode).toBe(204);
+    expect(response.body).toBe("");
+    expect(repository.properties).toHaveLength(0);
+  });
+
+  it("should_reject_with_400_when_id_is_not_positive_integer_on_delete", async () => {
+    const invalidString = await deleteProperty("invalid-id");
+    expect(invalidString.statusCode).toBe(400);
+    expect(invalidString.json()).toMatchObject({
+      statusCode: 400,
+      code: "VALIDATION_ERROR",
+    });
+
+    const negative = await deleteProperty(-1);
+    expect(negative.statusCode).toBe(400);
+    expect(negative.json()).toMatchObject({
+      statusCode: 400,
+      code: "VALIDATION_ERROR",
+    });
+
+    const zero = await deleteProperty(0);
+    expect(zero.statusCode).toBe(400);
+    expect(zero.json()).toMatchObject({
+      statusCode: 400,
+      code: "VALIDATION_ERROR",
+    });
+  });
+
+  it("should_reject_with_404_when_property_does_not_exist_on_delete", async () => {
+    const response = await deleteProperty(999);
+
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toMatchObject({
+      statusCode: 404,
+      code: "PROPERTY_NOT_FOUND",
+      message: "Property not found.",
+    });
+  });
+
+  it("should_reject_with_409_when_property_has_associated_stations_on_delete", async () => {
+    await createProperty();
+
+    repository.stations.push({
+      id: 1,
+      property_id: 1,
+    });
+
+    const response = await deleteProperty(1);
+
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toMatchObject({
+      statusCode: 409,
+      code: "PROPERTY_HAS_STATIONS",
+      message: "Cannot delete property because it has associated stations.",
+    });
+
+    expect(repository.properties).toHaveLength(1);
+  });
+
+  it("should_support_all_route_aliases_and_options", async () => {
     for (const prefix of ["/api", ""]) {
       const url = `${prefix}/properties`;
+      const created = await createProperty(validPayload, url);
+      const propertyId = created.json().id;
+
       const getResponse = await app.inject({ method: "GET", url });
       expect(getResponse.statusCode).toBe(200);
 
       const updateResponse = await app.inject({
         method: "PUT",
-        url: `${url}/1`,
+        url: `${url}/${propertyId}`,
         payload: { name: `Atualizada ${prefix}` },
       });
       expect(updateResponse.statusCode).toBe(200);
+
+      const deleteResponse = await app.inject({
+        method: "DELETE",
+        url: `${url}/${propertyId}`,
+      });
+      expect(deleteResponse.statusCode).toBe(204);
 
       const optionsResponse = await app.inject({ method: "OPTIONS", url });
       expect(optionsResponse.statusCode).toBe(204);
@@ -352,7 +430,7 @@ describe("property routes", () => {
 
       const optionsItemResponse = await app.inject({
         method: "OPTIONS",
-        url: `${url}/1`,
+        url: `${url}/${propertyId}`,
       });
       expect(optionsItemResponse.statusCode).toBe(204);
       expect(optionsItemResponse.headers["access-control-allow-origin"]).toBe(
