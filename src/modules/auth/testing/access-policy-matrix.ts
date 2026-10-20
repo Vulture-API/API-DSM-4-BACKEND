@@ -1,6 +1,5 @@
 import type { AccessPolicy } from "@/modules/auth/access-control.js";
 
-/** Acceptance contract, independent of the policies read from registered routes. */
 export function expectedAccessPolicies() {
   const policies = new Map<string, AccessPolicy>();
   const add = (method: string, path: string, policy: AccessPolicy) => {
@@ -68,6 +67,7 @@ export function expectedAccessPolicies() {
     add("PUT", `${path}/:id/stations/:stationId`, {
       permission: "properties.update",
     });
+    add("DELETE", `${path}/:id`, { permission: "properties.delete" });
     add("OPTIONS", path, { public: true });
     add("OPTIONS", `${path}/*`, { public: true });
   }

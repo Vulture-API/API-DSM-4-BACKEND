@@ -1,6 +1,9 @@
 import type { DatabaseError, Pool } from "pg";
 
-import { UserReferenceNotFoundError } from "@/modules/properties/errors/property.errors.js";
+import {
+  PropertyDeletionConflictError,
+  UserReferenceNotFoundError,
+} from "@/modules/properties/errors/property.errors.js";
 import type { PropertyRepository } from "@/modules/properties/repositories/property.repository.js";
 import type {
   CreatePropertyInput,
@@ -154,5 +157,36 @@ export class PgPropertyRepository implements PropertyRepository {
           ? row.created_at.toISOString()
           : new Date(row.created_at).toISOString(),
     };
+  }
+
+  async hasStations(propertyId: number): Promise<boolean> {
+    const result = await this.pool.query(
+      `
+      SELECT 1 FROM stations WHERE property_id = $1 LIMIT 1
+    `,
+      [propertyId],
+    );
+
+    return (result.rowCount ?? 0) > 0;
+  }
+
+  async delete(id: number): Promise<boolean> {
+    try {
+      const result = await this.pool.query(
+        `
+        DELETE FROM properties WHERE id = $1
+      `,
+        [id],
+      );
+
+      return (result.rowCount ?? 0) > 0;
+    } catch (error) {
+      const pgError = error as Partial<DatabaseError>;
+      if (pgError.code === "23503" || pgError.code === "23001") {
+        throw new PropertyDeletionConflictError();
+      }
+
+      throw error;
+    }
   }
 }
