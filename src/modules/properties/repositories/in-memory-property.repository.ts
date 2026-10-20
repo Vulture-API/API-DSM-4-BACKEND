@@ -8,6 +8,7 @@ import type {
 export class InMemoryPropertyRepository implements PropertyRepository {
   public properties: Property[] = [];
   public users: Array<{ id: number }> = [{ id: 1 }];
+  public stations: Array<{ id: number; property_id: number }> = [];
   private nextId = 1;
 
   async create(data: CreatePropertyInput): Promise<Property> {
@@ -64,5 +65,19 @@ export class InMemoryPropertyRepository implements PropertyRepository {
 
     this.properties[index] = updated;
     return updated;
+  }
+
+  async hasStations(propertyId: number): Promise<boolean> {
+    return this.stations.some((s) => s.property_id === propertyId);
+  }
+
+  async delete(id: number): Promise<boolean> {
+    const index = this.properties.findIndex((p) => p.id === id);
+    if (index === -1) {
+      return false;
+    }
+
+    this.properties.splice(index, 1);
+    return true;
   }
 }

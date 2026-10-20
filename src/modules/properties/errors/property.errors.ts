@@ -11,3 +11,11 @@ export class PropertyNotFoundError extends ApplicationError {
     super(404, "PROPERTY_NOT_FOUND", "Property not found.");
   }
 }
+
+export class PropertyDeletionConflictError extends ApplicationError {
+  constructor(
+    message = "Cannot delete property because it has associated stations.",
+  ) {
+    super(409, "PROPERTY_HAS_STATIONS", message);
+  }
+}

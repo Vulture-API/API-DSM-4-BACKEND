@@ -8,6 +8,7 @@ import {
   updatePropertyBodySchema,
 } from "@/modules/properties/schemas/property.schema.js";
 import { CreatePropertyService } from "@/modules/properties/services/create-property.service.js";
+import { DeletePropertyService } from "@/modules/properties/services/delete-property.service.js";
 import { ListPropertiesService } from "@/modules/properties/services/list-properties.service.js";
 import { UpdatePropertyService } from "@/modules/properties/services/update-property.service.js";
 
@@ -19,6 +20,7 @@ export function buildPropertyRoutes(
       new CreatePropertyService(propertyRepository),
       new ListPropertiesService(propertyRepository),
       new UpdatePropertyService(propertyRepository),
+      new DeletePropertyService(propertyRepository),
     );
 
     app.post(
@@ -48,6 +50,17 @@ export function buildPropertyRoutes(
         },
       },
       controller.update,
+    );
+
+    app.delete(
+      "/:id",
+      {
+        config: { access: { permission: "properties.delete" } },
+        schema: {
+          params: propertyIdParamSchema,
+        },
+      },
+      controller.delete,
     );
   };
 }

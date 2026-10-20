@@ -12,4 +12,6 @@ export interface PropertyRepository {
     Array<{ id: number; name: string; location: string | null }>
   >;
   update(id: number, data: UpdatePropertyInput): Promise<Property | null>;
+  hasStations(propertyId: number): Promise<boolean>;
+  delete(id: number): Promise<boolean>;
 }
