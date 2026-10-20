@@ -153,6 +153,32 @@ export class PgStationRepository implements StationRepository {
     return (result.rowCount ?? 0) > 0;
   }
 
+  async findByPropertyId(propertyId: number): Promise<Station[]> {
+    const result = await this.database.query<Station>(
+      `SELECT ${STATION_COLUMNS} FROM stations WHERE property_id = $1 ORDER BY id ASC`,
+      [propertyId],
+    );
+
+    return result.rows;
+  }
+
+  async updatePropertyId(
+    stationId: number,
+    propertyId: number,
+  ): Promise<Station | null> {
+    const result = await this.database.query<Station>(
+      `
+      UPDATE stations
+      SET property_id = $2
+      WHERE id = $1
+      RETURNING ${STATION_COLUMNS}
+      `,
+      [stationId, propertyId],
+    );
+
+    return result.rows[0] ?? null;
+  }
+
   async listProperties(): Promise<
     Array<{ id: number; name: string; location: string | null }>
   > {

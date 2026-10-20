@@ -62,6 +62,12 @@ export function expectedAccessPolicies() {
     add("GET", path, { permission: "properties.read" });
     add("POST", path, { permission: "properties.create" });
     add("PUT", `${path}/:id`, { permission: "properties.update" });
+    add("GET", `${path}/:id/stations`, { permission: "properties.read" });
+    add("POST", `${path}/:id/stations`, { permission: "properties.update" });
+    add("PUT", `${path}/:id/stations`, { permission: "properties.update" });
+    add("PUT", `${path}/:id/stations/:stationId`, {
+      permission: "properties.update",
+    });
     add("OPTIONS", path, { public: true });
     add("OPTIONS", `${path}/*`, { public: true });
   }
