@@ -1,6 +1,4 @@
 #!/usr/bin/env node
-import fs from "node:fs";
-import path from "node:path";
 
 export type ResourceReport = {
   timestamp: string;
@@ -193,10 +191,6 @@ async function main() {
   const apiUrl =
     process.env.API_URL || process.env.PROD_API_URL || "http://localhost:3000";
 
-  const outputIndex = args.indexOf("--output");
-  const outputPath =
-    outputIndex !== -1 ? args[outputIndex + 1] : process.env.REPORT_OUTPUT;
-
   const intervalArg = args.find((a) => a.startsWith("--interval="));
   const intervalSeconds = intervalArg
     ? Number.parseInt(intervalArg.split("=")[1] ?? "5", 10)
@@ -206,15 +200,6 @@ async function main() {
     try {
       const report = await fetchResources(apiUrl);
       displayResourceDashboard(report, apiUrl);
-
-      if (outputPath) {
-        const resolved = path.resolve(outputPath);
-        fs.mkdirSync(path.dirname(resolved), { recursive: true });
-        fs.writeFileSync(resolved, JSON.stringify(report, null, 2), "utf8");
-        console.log(
-          `[DevOps CLI] Relatório exportado com sucesso para: ${resolved}`,
-        );
-      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error(
