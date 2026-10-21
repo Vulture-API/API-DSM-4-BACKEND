@@ -13,7 +13,9 @@
     "format": "prettier --check .",
     "format:fix": "prettier --write .",
     "test": "vitest run",
-    "test:coverage": "vitest run --coverage"
+    "test:coverage": "vitest run --coverage",
+    "devops:simulate": "tsx scripts/devops/simulate-load-and-degradation.ts",
+    "devops:monitor": "tsx scripts/devops/monitor-services.ts"
   },
   "repository": {
     "type": "git",

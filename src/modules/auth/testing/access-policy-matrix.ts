@@ -24,7 +24,16 @@ export function expectedAccessPolicies() {
     add("DELETE", `${path}/:id`, { permission: `${resource}.delete` });
   };
 
-  for (const path of ["/", "/health", "/api/health", "/api/v1/health"])
+  for (const path of [
+    "/",
+    "/health",
+    "/api/health",
+    "/api/v1/health",
+    "/metrics",
+    "/health/detailed",
+    "/api/devops/metrics",
+    "/api/devops/ping",
+  ])
     add("GET", path, { public: true });
   add("POST", "/api/auth/login", { public: true });
   add("GET", "/api/auth/me", { always: true });
