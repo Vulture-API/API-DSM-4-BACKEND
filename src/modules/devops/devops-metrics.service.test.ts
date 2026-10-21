@@ -143,5 +143,108 @@ describe("DevOpsMetricsService", () => {
     );
     expect(prometheusText).toContain("vulture_database_status 1");
     expect(prometheusText).toContain("vulture_database_ping_latency_ms 3.2");
+    expect(prometheusText).toContain("vulture_process_memory_heap_used_bytes");
+    expect(prometheusText).toContain("vulture_process_cpu_usage_percent");
+    expect(prometheusText).toContain("vulture_event_loop_lag_ms");
+    expect(prometheusText).toContain("vulture_database_pool_total_connections");
+    expect(prometheusText).toContain("vulture_bottlenecks_detected_total");
+  });
+
+  it("collects application and system resource metrics properly", () => {
+    const service = new DevOpsMetricsService();
+    const mockPool = {
+      totalCount: 15,
+      idleCount: 10,
+      waitingCount: 2,
+    };
+
+    const resources = service.collectResourceMetrics(mockPool as any);
+
+    expect(resources.memory.heapUsedBytes).toBeGreaterThan(0);
+    expect(resources.memory.heapTotalBytes).toBeGreaterThan(0);
+    expect(resources.memory.heapUsagePercent).toBeGreaterThanOrEqual(0);
+    expect(resources.memory.heapUsagePercent).toBeLessThanOrEqual(100);
+
+    expect(resources.cpu.cpuPercent).toBeGreaterThanOrEqual(0);
+    expect(resources.cpu.cpuPercent).toBeLessThanOrEqual(100);
+
+    expect(resources.eventLoop.lagMs).toBeGreaterThanOrEqual(0);
+    expect(["NORMAL", "WARNING", "CRITICAL"]).toContain(resources.eventLoop.status);
+
+    expect(resources.databasePool.totalConnections).toBe(15);
+    expect(resources.databasePool.idleConnections).toBe(10);
+    expect(resources.databasePool.activeConnections).toBe(5);
+    expect(resources.databasePool.waitingClients).toBe(2);
+
+    expect(resources.system.totalMemoryBytes).toBeGreaterThan(0);
+    expect(resources.system.cpuCores).toBeGreaterThan(0);
+  });
+
+  it("detects high memory usage bottleneck", () => {
+    const service = new DevOpsMetricsService();
+    const summary = service.getSummary(
+      { status: "UP" },
+      {
+        memory: {
+          heapUsedBytes: 950 * 1024 * 1024,
+          heapTotalBytes: 1000 * 1024 * 1024,
+          rssBytes: 1100 * 1024 * 1024,
+          externalBytes: 10 * 1024 * 1024,
+          heapUsedMb: 950,
+          heapTotalMb: 1000,
+          rssMb: 1100,
+          heapUsagePercent: 95.0,
+        },
+      },
+    );
+
+    expect(summary.status).toBe("UNHEALTHY");
+    const memBottleneck = summary.bottlenecks.find((b) => b.type === "HIGH_MEMORY");
+    expect(memBottleneck).toBeDefined();
+    expect(memBottleneck?.severity).toBe("CRITICAL");
+    expect(memBottleneck?.mitigation).toContain("memória");
+  });
+
+  it("detects CPU saturation and event loop lag bottlenecks", () => {
+    const service = new DevOpsMetricsService();
+    const summary = service.getSummary(
+      { status: "UP" },
+      {
+        cpu: {
+          userMicroseconds: 500000,
+          systemMicroseconds: 400000,
+          cpuPercent: 88.5,
+        },
+        eventLoop: {
+          lagMs: 75.2,
+          status: "WARNING",
+        },
+      },
+    );
+
+    expect(summary.status).toBe("DEGRADED");
+    expect(summary.bottlenecks.some((b) => b.type === "CPU_SATURATION")).toBe(true);
+    expect(summary.bottlenecks.some((b) => b.type === "EVENT_LOOP_BLOCKED")).toBe(true);
+  });
+
+  it("detects PostgreSQL connection pool saturation bottleneck", () => {
+    const service = new DevOpsMetricsService();
+    const summary = service.getSummary(
+      { status: "UP" },
+      {
+        databasePool: {
+          totalConnections: 20,
+          idleConnections: 0,
+          activeConnections: 20,
+          waitingClients: 8,
+        },
+      },
+    );
+
+    expect(summary.status).toBe("DEGRADED");
+    const poolBottleneck = summary.bottlenecks.find((b) => b.type === "DB_POOL_SATURATION");
+    expect(poolBottleneck).toBeDefined();
+    expect(poolBottleneck?.severity).toBe("CRITICAL");
+    expect(poolBottleneck?.currentValue).toContain("8 em espera");
   });
 });

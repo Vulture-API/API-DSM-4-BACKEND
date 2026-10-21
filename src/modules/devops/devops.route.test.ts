@@ -90,4 +90,26 @@ describe("DevOps Routes Integration", () => {
     expect(body.status).toBe("pong");
     expect(body).toHaveProperty("timestamp");
   });
+
+  it("GET /api/devops/resources returns application resources and bottleneck diagnoses", async () => {
+    const response = await app.inject({
+      method: "GET",
+      url: "/api/devops/resources",
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json();
+    expect(body).toHaveProperty("resources");
+    expect(body.resources).toHaveProperty("memory");
+    expect(body.resources.memory).toHaveProperty("heapUsedMb");
+    expect(body.resources.memory).toHaveProperty("rssMb");
+    expect(body.resources).toHaveProperty("cpu");
+    expect(body.resources.cpu).toHaveProperty("cpuPercent");
+    expect(body.resources).toHaveProperty("eventLoop");
+    expect(body.resources.eventLoop).toHaveProperty("lagMs");
+    expect(body.resources).toHaveProperty("databasePool");
+    expect(body.resources).toHaveProperty("system");
+    expect(body).toHaveProperty("bottlenecks");
+    expect(Array.isArray(body.bottlenecks)).toBe(true);
+  });
 });

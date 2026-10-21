@@ -19,6 +19,10 @@ export const devopsRoutes: FastifyPluginAsync<DevOpsRoutesOptions> = async (
     options.metricsService ?? DevOpsMetricsService.getInstance();
   const pool = options.database;
 
+  if (pool) {
+    metricsService.setDatabasePool(pool);
+  }
+
   const checkDatabaseHealth = async (): Promise<DatabaseHealth> => {
     if (!pool) {
       return { status: "UP" };
@@ -51,7 +55,7 @@ export const devopsRoutes: FastifyPluginAsync<DevOpsRoutesOptions> = async (
     },
     async (_request, reply) => {
       const dbHealth = await checkDatabaseHealth();
-      const output = metricsService.toPrometheusMetrics(dbHealth);
+      const output = metricsService.toPrometheusMetrics(dbHealth, pool);
       return reply
         .header("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
         .send(output);
@@ -61,7 +65,7 @@ export const devopsRoutes: FastifyPluginAsync<DevOpsRoutesOptions> = async (
   // Endpoint detalhado em JSON para observabilidade e análise do time
   const handleDetailedMetrics = async () => {
     const dbHealth = await checkDatabaseHealth();
-    return metricsService.getSummary(dbHealth);
+    return metricsService.getSummary(dbHealth, pool);
   };
 
   fastify.get(
@@ -84,6 +88,28 @@ export const devopsRoutes: FastifyPluginAsync<DevOpsRoutesOptions> = async (
       },
     },
     handleDetailedMetrics,
+  );
+
+  // Endpoint específico para análise rápida de recursos e gargalos pelo time
+  fastify.get(
+    "/api/devops/resources",
+    {
+      config: {
+        access: { public: true },
+        rateLimit: false,
+      },
+    },
+    async () => {
+      const dbHealth = await checkDatabaseHealth();
+      const summary = metricsService.getSummary(dbHealth, pool);
+      return {
+        status: summary.status,
+        timestamp: new Date().toISOString(),
+        uptimeSeconds: summary.uptimeSeconds,
+        resources: summary.resources,
+        bottlenecks: summary.bottlenecks,
+      };
+    },
   );
 
   // Verificação rápida de liveness

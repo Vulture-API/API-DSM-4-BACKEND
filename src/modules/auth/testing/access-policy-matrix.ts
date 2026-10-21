@@ -32,6 +32,7 @@ export function expectedAccessPolicies() {
     "/metrics",
     "/health/detailed",
     "/api/devops/metrics",
+    "/api/devops/resources",
     "/api/devops/ping",
   ])
     add("GET", path, { public: true });
