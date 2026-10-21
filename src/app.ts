@@ -41,6 +41,8 @@ import {
 import { authRoutes } from "@/modules/auth/routes/auth.route.js";
 import { devopsRoutes } from "@/modules/devops/devops.route.js";
 import { DevOpsMetricsService } from "@/modules/devops/devops-metrics.service.js";
+import type { DevOpsOutageService } from "@/modules/devops/devops-outage.service.js";
+import type { SystemOutageRepository } from "@/modules/devops/system-outage.repository.js";
 import { CachedForecastProvider } from "@/modules/forecast/providers/cached-forecast.provider.js";
 import type { ForecastProvider } from "@/modules/forecast/providers/forecast.provider.js";
 import { OpenMeteoProvider } from "@/modules/forecast/providers/open-meteo.provider.js";
@@ -129,6 +131,8 @@ export type BuildAppOptions = {
   sensorRepository?: SensorRepository;
   readingRepository?: ReadingRepository;
   devopsMetricsService?: DevOpsMetricsService;
+  outageRepository?: SystemOutageRepository | undefined;
+  outageService?: DevOpsOutageService | undefined;
 };
 
 export function buildApp(options: BuildAppOptions = {}) {
@@ -272,6 +276,8 @@ export function buildApp(options: BuildAppOptions = {}) {
     app.register(devopsRoutes, {
       database: pool,
       metricsService: devopsMetricsService,
+      outageRepository: options.outageRepository,
+      outageService: options.outageService,
     });
 
     app.register(async (users) => {

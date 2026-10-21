@@ -158,7 +158,9 @@ describe("DevOpsMetricsService", () => {
       waitingCount: 2,
     };
 
-    const resources = service.collectResourceMetrics(mockPool as any);
+    const resources = service.collectResourceMetrics(
+      mockPool as unknown as Pool,
+    );
 
     expect(resources.memory.heapUsedBytes).toBeGreaterThan(0);
     expect(resources.memory.heapTotalBytes).toBeGreaterThan(0);
@@ -169,7 +171,9 @@ describe("DevOpsMetricsService", () => {
     expect(resources.cpu.cpuPercent).toBeLessThanOrEqual(100);
 
     expect(resources.eventLoop.lagMs).toBeGreaterThanOrEqual(0);
-    expect(["NORMAL", "WARNING", "CRITICAL"]).toContain(resources.eventLoop.status);
+    expect(["NORMAL", "WARNING", "CRITICAL"]).toContain(
+      resources.eventLoop.status,
+    );
 
     expect(resources.databasePool.totalConnections).toBe(15);
     expect(resources.databasePool.idleConnections).toBe(10);
@@ -199,7 +203,9 @@ describe("DevOpsMetricsService", () => {
     );
 
     expect(summary.status).toBe("UNHEALTHY");
-    const memBottleneck = summary.bottlenecks.find((b) => b.type === "HIGH_MEMORY");
+    const memBottleneck = summary.bottlenecks.find(
+      (b) => b.type === "HIGH_MEMORY",
+    );
     expect(memBottleneck).toBeDefined();
     expect(memBottleneck?.severity).toBe("CRITICAL");
     expect(memBottleneck?.mitigation).toContain("memória");
@@ -223,8 +229,12 @@ describe("DevOpsMetricsService", () => {
     );
 
     expect(summary.status).toBe("DEGRADED");
-    expect(summary.bottlenecks.some((b) => b.type === "CPU_SATURATION")).toBe(true);
-    expect(summary.bottlenecks.some((b) => b.type === "EVENT_LOOP_BLOCKED")).toBe(true);
+    expect(summary.bottlenecks.some((b) => b.type === "CPU_SATURATION")).toBe(
+      true,
+    );
+    expect(
+      summary.bottlenecks.some((b) => b.type === "EVENT_LOOP_BLOCKED"),
+    ).toBe(true);
   });
 
   it("detects PostgreSQL connection pool saturation bottleneck", () => {
@@ -242,7 +252,9 @@ describe("DevOpsMetricsService", () => {
     );
 
     expect(summary.status).toBe("DEGRADED");
-    const poolBottleneck = summary.bottlenecks.find((b) => b.type === "DB_POOL_SATURATION");
+    const poolBottleneck = summary.bottlenecks.find(
+      (b) => b.type === "DB_POOL_SATURATION",
+    );
     expect(poolBottleneck).toBeDefined();
     expect(poolBottleneck?.severity).toBe("CRITICAL");
     expect(poolBottleneck?.currentValue).toContain("8 em espera");

@@ -34,9 +34,14 @@ export function expectedAccessPolicies() {
     "/api/devops/metrics",
     "/api/devops/resources",
     "/api/devops/ping",
+    "/api/devops/outages",
+    "/api/devops/outages/:id",
+    "/api/devops/sla",
   ])
     add("GET", path, { public: true });
   add("POST", "/api/auth/login", { public: true });
+  add("POST", "/api/devops/outages", { public: true });
+  add("PATCH", "/api/devops/outages/:id/resolve", { public: true });
   add("GET", "/api/auth/me", { always: true });
   crud("/api/users", "users");
   crud("/api/roles", "roles");

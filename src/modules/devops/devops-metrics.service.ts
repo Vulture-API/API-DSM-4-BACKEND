@@ -1,5 +1,6 @@
 import os from "node:os";
 import { monitorEventLoopDelay } from "node:perf_hooks";
+
 import type { Pool } from "pg";
 
 declare module "fastify" {
@@ -37,7 +38,11 @@ export type RouteMetricSummary = {
 
 export type DegradationAlert = {
   severity: "WARNING" | "CRITICAL";
-  type: "HIGH_LATENCY" | "HIGH_ERROR_RATE" | "DATABASE_DOWN" | "RESOURCE_EXHAUSTION";
+  type:
+    | "HIGH_LATENCY"
+    | "HIGH_ERROR_RATE"
+    | "DATABASE_DOWN"
+    | "RESOURCE_EXHAUSTION";
   message: string;
   target?: string;
   currentValue?: number | string;
@@ -118,6 +123,13 @@ export type BottleneckDiagnosis = {
   threshold: number | string;
   mitigation: string;
   timestamp: string;
+};
+
+export type OutageMetricsSnapshot = {
+  totalOutages: number;
+  activeOutages: number;
+  totalDowntimeSeconds: number;
+  slaAvailabilityPercentage: number;
 };
 
 export type DevOpsMetricsSummary = {
@@ -263,7 +275,9 @@ export class DevOpsMetricsService {
   /**
    * Coleta métricas de consumo de recursos do processo e do sistema.
    */
-  public collectResourceMetrics(pool?: Pool | Partial<DatabasePoolMetrics>): ApplicationResourceMetrics {
+  public collectResourceMetrics(
+    pool?: Pool | Partial<DatabasePoolMetrics>,
+  ): ApplicationResourceMetrics {
     // 1. Memória do Processo
     const mem = process.memoryUsage();
     const bytesToMb = (b: number) => Number((b / (1024 * 1024)).toFixed(2));
@@ -295,9 +309,7 @@ export class DevOpsMetricsService {
       const totalCpuMicros = deltaUser + deltaSystem;
       const maxPossibleMicros = deltaTimeMs * 1000;
       const rawCpuPercent = (totalCpuMicros / maxPossibleMicros) * 100;
-      cpuPercent = Number(
-        Math.min(100, Math.max(0, rawCpuPercent)).toFixed(2),
-      );
+      cpuPercent = Number(Math.min(100, Math.max(0, rawCpuPercent)).toFixed(2));
       this.prevCpuUsage = currentCpu;
       this.prevCpuTimestamp = currentTimestamp;
     }
@@ -560,14 +572,24 @@ export class DevOpsMetricsService {
       const defaultRes = this.collectResourceMetrics();
       const custom = poolOrResources as Partial<ApplicationResourceMetrics>;
       resources = {
-        memory: custom.memory ? { ...defaultRes.memory, ...custom.memory } : defaultRes.memory,
+        memory: custom.memory
+          ? { ...defaultRes.memory, ...custom.memory }
+          : defaultRes.memory,
         cpu: custom.cpu ? { ...defaultRes.cpu, ...custom.cpu } : defaultRes.cpu,
-        eventLoop: custom.eventLoop ? { ...defaultRes.eventLoop, ...custom.eventLoop } : defaultRes.eventLoop,
-        databasePool: custom.databasePool ? { ...defaultRes.databasePool, ...custom.databasePool } : defaultRes.databasePool,
-        system: custom.system ? { ...defaultRes.system, ...custom.system } : defaultRes.system,
+        eventLoop: custom.eventLoop
+          ? { ...defaultRes.eventLoop, ...custom.eventLoop }
+          : defaultRes.eventLoop,
+        databasePool: custom.databasePool
+          ? { ...defaultRes.databasePool, ...custom.databasePool }
+          : defaultRes.databasePool,
+        system: custom.system
+          ? { ...defaultRes.system, ...custom.system }
+          : defaultRes.system,
       };
     } else {
-      resources = this.collectResourceMetrics(poolOrResources as Pool | undefined);
+      resources = this.collectResourceMetrics(
+        poolOrResources as Pool | undefined,
+      );
     }
 
     // Detecção de Gargalos
@@ -728,6 +750,7 @@ export class DevOpsMetricsService {
   public toPrometheusMetrics(
     databaseHealth: DatabaseHealth = { status: "UP" },
     poolOrResources?: Pool | Partial<ApplicationResourceMetrics>,
+    outageMetrics?: OutageMetricsSnapshot,
   ): string {
     const summary = this.getSummary(databaseHealth, poolOrResources);
     const dbValue =
@@ -860,6 +883,27 @@ export class DevOpsMetricsService {
       `vulture_bottlenecks_detected_total ${summary.bottlenecks.length}`,
       "",
     );
+
+    if (outageMetrics) {
+      lines.push(
+        "# HELP vulture_outages_total Total de ocorrencias de indisponibilidade registradas no historico.",
+        "# TYPE vulture_outages_total counter",
+        `vulture_outages_total ${outageMetrics.totalOutages}`,
+        "",
+        "# HELP vulture_outages_active Quantidade de indisponibilidades ativas no momento (1 se houver indisponibilidade aberta, 0 caso contrario).",
+        "# TYPE vulture_outages_active gauge",
+        `vulture_outages_active ${outageMetrics.activeOutages}`,
+        "",
+        "# HELP vulture_outage_downtime_seconds_total Tempo total acumulado de indisponibilidade em segundos.",
+        "# TYPE vulture_outage_downtime_seconds_total counter",
+        `vulture_outage_downtime_seconds_total ${outageMetrics.totalDowntimeSeconds}`,
+        "",
+        "# HELP vulture_sla_availability_ratio_percentage Percentual de disponibilidade calculado para validacao do SLA com base em indisponibilidades.",
+        "# TYPE vulture_sla_availability_ratio_percentage gauge",
+        `vulture_sla_availability_ratio_percentage ${outageMetrics.slaAvailabilityPercentage}`,
+        "",
+      );
+    }
 
     return lines.join("\n");
   }
