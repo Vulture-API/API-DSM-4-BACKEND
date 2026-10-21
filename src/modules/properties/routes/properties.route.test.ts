@@ -660,17 +660,17 @@ describe("property routes", () => {
       });
       expect(updateResponse.statusCode).toBe(200);
 
-      const deleteResponse = await app.inject({
-        method: "DELETE",
-        url: `${url}/${propertyId}`,
-      });
-      expect(deleteResponse.statusCode).toBe(204);
-
       const getStationsResponse = await app.inject({
         method: "GET",
         url: `${url}/${propertyId}/stations`,
       });
       expect(getStationsResponse.statusCode).toBe(200);
+
+      const deleteResponse = await app.inject({
+        method: "DELETE",
+        url: `${url}/${propertyId}`,
+      });
+      expect(deleteResponse.statusCode).toBe(204);
 
       const optionsResponse = await app.inject({ method: "OPTIONS", url });
       expect(optionsResponse.statusCode).toBe(204);
