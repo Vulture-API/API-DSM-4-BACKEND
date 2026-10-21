@@ -13,7 +13,7 @@ export type ProbeSample = {
   statusCode: number;
   durationMs: number;
   success: boolean;
-  error?: string;
+  error?: string | undefined;
 };
 
 export type ServiceMonitoringResult = {
@@ -31,7 +31,7 @@ export type ServiceMonitoringResult = {
     p95: number;
   };
   status: "HEALTHY" | "DEGRADED" | "DOWN";
-  degradationReason?: string;
+  degradationReason?: string | undefined;
   samples: ProbeSample[];
 };
 

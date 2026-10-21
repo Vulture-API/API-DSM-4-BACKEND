@@ -7,6 +7,7 @@ import type { Pool } from "pg";
 import { buildApp } from "@/app.js";
 import { DevOpsMetricsService } from "@/modules/devops/devops-metrics.service.js";
 import { FakePermissionRepository } from "@/modules/permissions/testing/fake-permission.repository.js";
+import { FakeRoleRepository } from "@/modules/roles/testing/fake-role.repository.js";
 
 async function runSimulation() {
   console.log(
@@ -30,7 +31,9 @@ async function runSimulation() {
   const app = buildApp({
     database: mockPool,
     accessControlEnabled: false,
-    permissionRepository: new FakePermissionRepository(),
+    permissionRepository: new FakePermissionRepository(
+      new FakeRoleRepository(),
+    ),
     devopsMetricsService: metricsService,
   });
 

@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { buildApp } from "@/app.js";
 import { FakePermissionRepository } from "@/modules/permissions/testing/fake-permission.repository.js";
+import { FakeRoleRepository } from "@/modules/roles/testing/fake-role.repository.js";
 
 import { DevOpsMetricsService } from "./devops-metrics.service.js";
 
@@ -19,7 +20,9 @@ describe("DevOps Routes Integration", () => {
     app = buildApp({
       database: mockPool,
       accessControlEnabled: false,
-      permissionRepository: new FakePermissionRepository(),
+      permissionRepository: new FakePermissionRepository(
+        new FakeRoleRepository(),
+      ),
       devopsMetricsService: metricsService,
     });
   });
