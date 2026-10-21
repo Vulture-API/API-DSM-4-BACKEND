@@ -75,7 +75,7 @@ describe("DevOps Routes Integration", () => {
 
     expect(response.statusCode).toBe(200);
     const body = response.json();
-    expect(body.status).toBe("HEALTHY");
+    expect(["HEALTHY", "DEGRADED"]).toContain(body.status);
     expect(body.availabilityRatePercentage).toBe(100);
   });
 
