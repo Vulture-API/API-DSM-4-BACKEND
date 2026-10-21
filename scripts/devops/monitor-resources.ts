@@ -96,7 +96,11 @@ export async function fetchResources(apiUrl: string): Promise<ResourceReport> {
   }
 }
 
-export function displayResourceDashboard(report: ResourceReport, apiUrl: string): void {
+export function displayResourceDashboard(
+  report: ResourceReport,
+  apiUrl: string,
+): void {
+  // eslint-disable-next-line no-console
   console.clear?.();
   console.log("=".repeat(78));
   console.log(
@@ -127,7 +131,9 @@ export function displayResourceDashboard(report: ResourceReport, apiUrl: string)
   );
   console.log("");
 
-  console.log(`${BOLD}2. POOL DE CONEXÕES COM O BANCO DE DADOS (POSTGRESQL):${RESET}`);
+  console.log(
+    `${BOLD}2. POOL DE CONEXÕES COM O BANCO DE DADOS (POSTGRESQL):${RESET}`,
+  );
   const pool = report.resources.databasePool;
   console.log(
     `  • Conexões Totais: ${pool.totalConnections} | Ativas: ${pool.activeConnections} | Ociosas: ${pool.idleConnections}`,
@@ -150,23 +156,33 @@ export function displayResourceDashboard(report: ResourceReport, apiUrl: string)
   );
   console.log("");
 
-  console.log(`${BOLD}4. DIAGNÓSTICO E DETECÇÃO DE GARGALOS OPERACIONAIS:${RESET}`);
+  console.log(
+    `${BOLD}4. DIAGNÓSTICO E DETECÇÃO DE GARGALOS OPERACIONAIS:${RESET}`,
+  );
   if (!report.bottlenecks || report.bottlenecks.length === 0) {
-    console.log(`  ${GREEN}✓ Nenhum gargalo operacional detectado. Recursos dentro dos limiares normais.${RESET}`);
+    console.log(
+      `  ${GREEN}✓ Nenhum gargalo operacional detectado. Recursos dentro dos limiares normais.${RESET}`,
+    );
   } else {
     console.log(
       `  ${RED}${BOLD}⚠ ${report.bottlenecks.length} GARGALO(S) OU DEGRADAÇÃO(ÕES) IDENTIFICADO(S):${RESET}`,
     );
     for (const b of report.bottlenecks) {
-      console.log(`  ------------------------------------------------------------`);
+      console.log(
+        `  ------------------------------------------------------------`,
+      );
       console.log(
         `  [${colorizeStatus(b.severity)}] ${BOLD}${b.type}${RESET} em ${b.resource}`,
       );
       console.log(`  • Problema:      ${b.message}`);
-      console.log(`  • Valor / Limite: ${b.currentValue} (limiar: ${b.threshold})`);
+      console.log(
+        `  • Valor / Limite: ${b.currentValue} (limiar: ${b.threshold})`,
+      );
       console.log(`  • Mitigação:     ${BLUE}${b.mitigation}${RESET}`);
     }
-    console.log(`  ------------------------------------------------------------`);
+    console.log(
+      `  ------------------------------------------------------------`,
+    );
   }
   console.log("=".repeat(78));
 }
@@ -175,9 +191,7 @@ async function main() {
   const args = process.argv.slice(2);
   const once = args.includes("--once");
   const apiUrl =
-    process.env.API_URL ||
-    process.env.PROD_API_URL ||
-    "http://localhost:3000";
+    process.env.API_URL || process.env.PROD_API_URL || "http://localhost:3000";
 
   const outputIndex = args.indexOf("--output");
   const outputPath =
@@ -197,7 +211,9 @@ async function main() {
         const resolved = path.resolve(outputPath);
         fs.mkdirSync(path.dirname(resolved), { recursive: true });
         fs.writeFileSync(resolved, JSON.stringify(report, null, 2), "utf8");
-        console.log(`[DevOps CLI] Relatório exportado com sucesso para: ${resolved}`);
+        console.log(
+          `[DevOps CLI] Relatório exportado com sucesso para: ${resolved}`,
+        );
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);

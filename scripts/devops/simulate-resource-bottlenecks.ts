@@ -9,7 +9,9 @@ const __dirname = path.dirname(__filename);
 
 export async function runSimulation() {
   console.log("=".repeat(75));
-  console.log("SIMULAÇÃO DE CARGA E VALIDAÇÃO DE GARGALOS DE RECURSOS E DESEMPENHO");
+  console.log(
+    "SIMULAÇÃO DE CARGA E VALIDAÇÃO DE GARGALOS DE RECURSOS E DESEMPENHO",
+  );
   console.log("=".repeat(75));
 
   const service = new DevOpsMetricsService();
@@ -58,15 +60,23 @@ export async function runSimulation() {
   );
 
   console.log(`  Status Geral: ${baselineSummary.status}`);
-  console.log(`  Disponibilidade: ${baselineSummary.availabilityRatePercentage}%`);
+  console.log(
+    `  Disponibilidade: ${baselineSummary.availabilityRatePercentage}%`,
+  );
   console.log(`  Latência p95: ${baselineSummary.overallLatency.p95} ms`);
-  console.log(`  Uso de Heap: ${baselineSummary.resources.memory.heapUsagePercent}%`);
+  console.log(
+    `  Uso de Heap: ${baselineSummary.resources.memory.heapUsagePercent}%`,
+  );
   console.log(`  CPU: ${baselineSummary.resources.cpu.cpuPercent}%`);
-  console.log(`  Event Loop Lag: ${baselineSummary.resources.eventLoop.lagMs} ms`);
+  console.log(
+    `  Event Loop Lag: ${baselineSummary.resources.eventLoop.lagMs} ms`,
+  );
   console.log(`  Gargalos Detectados: ${baselineSummary.bottlenecks.length}`);
 
   // 2. Simulação de Gargalos Críticos de Recursos e Desempenho
-  console.log("\n[2/3] Injetando Cenários de Alta Carga e Degradação de Recursos...");
+  console.log(
+    "\n[2/3] Injetando Cenários de Alta Carga e Degradação de Recursos...",
+  );
 
   // Injeção de latência alta em rotas
   for (let i = 0; i < 25; i++) {
@@ -114,12 +124,22 @@ export async function runSimulation() {
   );
 
   console.log(`  Status Após Carga: ${degradedSummary.status}`);
-  console.log(`  Latência p95 Global: ${degradedSummary.overallLatency.p95} ms`);
-  console.log(`  Uso de Heap: ${degradedSummary.resources.memory.heapUsagePercent}%`);
+  console.log(
+    `  Latência p95 Global: ${degradedSummary.overallLatency.p95} ms`,
+  );
+  console.log(
+    `  Uso de Heap: ${degradedSummary.resources.memory.heapUsagePercent}%`,
+  );
   console.log(`  CPU: ${degradedSummary.resources.cpu.cpuPercent}%`);
-  console.log(`  Event Loop Lag: ${degradedSummary.resources.eventLoop.lagMs} ms`);
-  console.log(`  Fila de Espera no Pool DB: ${degradedSummary.resources.databasePool.waitingClients} clientes`);
-  console.log(`  Total de Gargalos Detectados: ${degradedSummary.bottlenecks.length}`);
+  console.log(
+    `  Event Loop Lag: ${degradedSummary.resources.eventLoop.lagMs} ms`,
+  );
+  console.log(
+    `  Fila de Espera no Pool DB: ${degradedSummary.resources.databasePool.waitingClients} clientes`,
+  );
+  console.log(
+    `  Total de Gargalos Detectados: ${degradedSummary.bottlenecks.length}`,
+  );
 
   console.log("\n  Diagnósticos Gerados:");
   for (const b of degradedSummary.bottlenecks) {

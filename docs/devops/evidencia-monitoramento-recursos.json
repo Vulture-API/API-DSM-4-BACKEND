@@ -1,6 +1,6 @@
 {
   "metadata": {
-    "generatedAt": "2026-10-21T12:17:24.116Z",
+    "generatedAt": "2026-10-21T12:32:10.937Z",
     "task": "[DEVOPS] Configurar monitoramento de recursos e desempenho da aplicação",
     "environment": "Node.js (v8) + Fastify + PostgreSQL",
     "slaTargetPercentage": 99,
@@ -82,7 +82,7 @@
           "type": "HIGH_LATENCY",
           "resource": "Application HTTP Latency",
           "severity": "CRITICAL",
-          "triggerValue": "816.56 ms",
+          "triggerValue": "781.6 ms",
           "threshold": "500 ms",
           "mitigation": "Avaliar endpoints com status DEGRADED e habilitar cache ou otimização de consultas."
         }
@@ -93,7 +93,7 @@
     "baselineHealthy": {
       "status": "HEALTHY",
       "uptimeSeconds": 0,
-      "startedAt": "2026-10-21T12:17:24.111Z",
+      "startedAt": "2026-10-21T12:32:10.933Z",
       "totalRequests": 150,
       "successRequests": 150,
       "errorRequests": 0,
@@ -101,12 +101,12 @@
       "slaTargetPercentage": 99,
       "overallLatency": {
         "count": 150,
-        "mean": 20.11,
-        "min": 10.56,
-        "max": 30,
-        "p50": 19.56,
-        "p95": 29.2,
-        "p99": 29.8
+        "mean": 19.73,
+        "min": 10.4,
+        "max": 29.96,
+        "p50": 20.13,
+        "p95": 28.54,
+        "p99": 29.87
       },
       "routes": [
         {
@@ -116,12 +116,12 @@
           "errorCount": 0,
           "latency": {
             "count": 150,
-            "mean": 20.11,
-            "min": 10.56,
-            "max": 30,
-            "p50": 19.56,
-            "p95": 29.2,
-            "p99": 29.8
+            "mean": 19.73,
+            "min": 10.4,
+            "max": 29.96,
+            "p50": 20.13,
+            "p95": 28.54,
+            "p99": 29.87
           },
           "status": "NORMAL"
         }
@@ -159,11 +159,11 @@
         },
         "system": {
           "totalMemoryBytes": 16404631552,
-          "freeMemoryBytes": 8957870080,
-          "usedMemoryBytes": 7446761472,
-          "memoryUsagePercent": 45.39,
+          "freeMemoryBytes": 9216184320,
+          "usedMemoryBytes": 7188447232,
+          "memoryUsagePercent": 43.82,
           "cpuCores": 8,
-          "loadAverage1m": 1.48
+          "loadAverage1m": 0.96
         }
       },
       "bottlenecks": []
@@ -171,7 +171,7 @@
     "degradedWithBottlenecks": {
       "status": "UNHEALTHY",
       "uptimeSeconds": 0,
-      "startedAt": "2026-10-21T12:17:24.111Z",
+      "startedAt": "2026-10-21T12:32:10.933Z",
       "totalRequests": 175,
       "successRequests": 175,
       "errorRequests": 0,
@@ -179,12 +179,12 @@
       "slaTargetPercentage": 99,
       "overallLatency": {
         "count": 175,
-        "mean": 129.83,
-        "min": 10.56,
-        "max": 874.26,
-        "p50": 20.83,
-        "p95": 816.56,
-        "p99": 865.84
+        "mean": 125.8,
+        "min": 10.4,
+        "max": 884.55,
+        "p50": 21.09,
+        "p95": 781.6,
+        "p99": 882.66
       },
       "routes": [
         {
@@ -194,12 +194,12 @@
           "errorCount": 0,
           "latency": {
             "count": 150,
-            "mean": 20.11,
-            "min": 10.56,
-            "max": 30,
-            "p50": 19.56,
-            "p95": 29.2,
-            "p99": 29.8
+            "mean": 19.73,
+            "min": 10.4,
+            "max": 29.96,
+            "p50": 20.13,
+            "p95": 28.54,
+            "p99": 29.87
           },
           "status": "NORMAL"
         },
@@ -210,12 +210,12 @@
           "errorCount": 0,
           "latency": {
             "count": 25,
-            "mean": 788.16,
-            "min": 676.89,
-            "max": 874.26,
-            "p50": 788.56,
-            "p95": 865.84,
-            "p99": 874.26
+            "mean": 762.23,
+            "min": 660.88,
+            "max": 884.55,
+            "p50": 739.29,
+            "p95": 882.66,
+            "p99": 884.55
           },
           "status": "DEGRADED"
         }
@@ -228,19 +228,19 @@
         {
           "severity": "CRITICAL",
           "type": "HIGH_LATENCY",
-          "message": "Rota GET /api/occurrences apresentando p95 de 865.84ms (limiar: 500ms)",
+          "message": "Rota GET /api/occurrences apresentando p95 de 882.66ms (limiar: 500ms)",
           "target": "GET /api/occurrences",
-          "currentValue": 865.84,
+          "currentValue": 882.66,
           "threshold": 500,
-          "timestamp": "2026-10-21T12:17:24.115Z"
+          "timestamp": "2026-10-21T12:32:10.936Z"
         },
         {
           "severity": "CRITICAL",
           "type": "HIGH_LATENCY",
-          "message": "Latência global p95 elevada: 816.56ms (limiar: 500ms)",
-          "currentValue": 816.56,
+          "message": "Latência global p95 elevada: 781.6ms (limiar: 500ms)",
+          "currentValue": 781.6,
           "threshold": 500,
-          "timestamp": "2026-10-21T12:17:24.115Z"
+          "timestamp": "2026-10-21T12:32:10.936Z"
         },
         {
           "severity": "CRITICAL",
@@ -248,7 +248,7 @@
           "message": "Node.js V8 Heap: Consumo elevado de heap (460 MB de 500 MB - 92%)",
           "currentValue": "92%",
           "threshold": "85%",
-          "timestamp": "2026-10-21T12:17:24.115Z"
+          "timestamp": "2026-10-21T12:32:10.936Z"
         },
         {
           "severity": "CRITICAL",
@@ -256,7 +256,7 @@
           "message": "PostgreSQL Connection Pool: Pool de conexões saturado (7 clientes em espera, 20 ativas)",
           "currentValue": "7 em espera",
           "threshold": "0 clientes em espera",
-          "timestamp": "2026-10-21T12:17:24.115Z"
+          "timestamp": "2026-10-21T12:32:10.936Z"
         }
       ],
       "resources": {
@@ -287,11 +287,11 @@
         },
         "system": {
           "totalMemoryBytes": 16404631552,
-          "freeMemoryBytes": 8957603840,
-          "usedMemoryBytes": 7447027712,
-          "memoryUsagePercent": 45.4,
+          "freeMemoryBytes": 9216184320,
+          "usedMemoryBytes": 7188447232,
+          "memoryUsagePercent": 43.82,
           "cpuCores": 8,
-          "loadAverage1m": 1.48
+          "loadAverage1m": 0.96
         }
       },
       "bottlenecks": [
@@ -303,7 +303,7 @@
           "currentValue": "92%",
           "threshold": "85%",
           "mitigation": "Investigar possíveis vazamentos de memória (retenção de referências ou listeners) e considerar ajuste de --max-old-space-size.",
-          "timestamp": "2026-10-21T12:17:24.115Z"
+          "timestamp": "2026-10-21T12:32:10.936Z"
         },
         {
           "type": "CPU_SATURATION",
@@ -313,7 +313,7 @@
           "currentValue": "88.4%",
           "threshold": "80%",
           "mitigation": "Identificar loops intensivos, parsing de grandes payloads síncronos ou expressões regulares catastróficas.",
-          "timestamp": "2026-10-21T12:17:24.115Z"
+          "timestamp": "2026-10-21T12:32:10.936Z"
         },
         {
           "type": "EVENT_LOOP_BLOCKED",
@@ -323,7 +323,7 @@
           "currentValue": "78.5 ms",
           "threshold": "50 ms",
           "mitigation": "Evitar chamadas bloqueantes síncronas na thread principal do Node.js e delegar tarefas computacionais pesadas a workers.",
-          "timestamp": "2026-10-21T12:17:24.115Z"
+          "timestamp": "2026-10-21T12:32:10.936Z"
         },
         {
           "type": "DB_POOL_SATURATION",
@@ -333,7 +333,7 @@
           "currentValue": "7 em espera",
           "threshold": "0 clientes em espera",
           "mitigation": "Aumentar o limite de conexões no pool do banco ou otimizar consultas que mantêm conexões abertas por tempo prolongado.",
-          "timestamp": "2026-10-21T12:17:24.115Z"
+          "timestamp": "2026-10-21T12:32:10.936Z"
         },
         {
           "type": "DB_SLOW_QUERY",
@@ -343,17 +343,17 @@
           "currentValue": "720.5 ms",
           "threshold": "500 ms",
           "mitigation": "Verificar contenção de I/O de disco no banco de dados, locks de transações ativos e índices das tabelas.",
-          "timestamp": "2026-10-21T12:17:24.115Z"
+          "timestamp": "2026-10-21T12:32:10.936Z"
         },
         {
           "type": "HIGH_LATENCY",
           "severity": "CRITICAL",
           "resource": "Application HTTP Latency",
-          "message": "Latência p95 global de 816.56 ms acima do limiar crítico (500 ms)",
-          "currentValue": "816.56 ms",
+          "message": "Latência p95 global de 781.6 ms acima do limiar crítico (500 ms)",
+          "currentValue": "781.6 ms",
           "threshold": "500 ms",
           "mitigation": "Avaliar endpoints com status DEGRADED e habilitar cache ou otimização de consultas.",
-          "timestamp": "2026-10-21T12:17:24.115Z"
+          "timestamp": "2026-10-21T12:32:10.936Z"
         }
       ]
     }
