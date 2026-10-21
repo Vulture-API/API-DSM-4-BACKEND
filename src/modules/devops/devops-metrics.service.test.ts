@@ -1,3 +1,4 @@
+import type { Pool } from "pg";
 import { describe, expect, it } from "vitest";
 
 import { DevOpsMetricsService } from "./devops-metrics.service.js";
