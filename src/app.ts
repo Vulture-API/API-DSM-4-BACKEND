@@ -39,6 +39,10 @@ import {
   PgAuthRepository,
 } from "@/modules/auth/repositories/auth.repository.js";
 import { authRoutes } from "@/modules/auth/routes/auth.route.js";
+import { devopsRoutes } from "@/modules/devops/devops.route.js";
+import { DevOpsMetricsService } from "@/modules/devops/devops-metrics.service.js";
+import type { DevOpsOutageService } from "@/modules/devops/devops-outage.service.js";
+import type { SystemOutageRepository } from "@/modules/devops/system-outage.repository.js";
 import { CachedForecastProvider } from "@/modules/forecast/providers/cached-forecast.provider.js";
 import type { ForecastProvider } from "@/modules/forecast/providers/forecast.provider.js";
 import { OpenMeteoProvider } from "@/modules/forecast/providers/open-meteo.provider.js";
@@ -126,6 +130,9 @@ export type BuildAppOptions = {
   sensorTypeRepository?: SensorTypeRepository;
   sensorRepository?: SensorRepository;
   readingRepository?: ReadingRepository;
+  devopsMetricsService?: DevOpsMetricsService;
+  outageRepository?: SystemOutageRepository | undefined;
+  outageService?: DevOpsOutageService | undefined;
 };
 
 export function buildApp(options: BuildAppOptions = {}) {
@@ -156,6 +163,27 @@ export function buildApp(options: BuildAppOptions = {}) {
     assertAccessPolicy(route.config?.access, `${route.method} ${route.url}`);
   });
   app.decorateRequest("actor", null);
+  app.decorateRequest("metricsStartTime", 0);
+
+  const devopsMetricsService =
+    options.devopsMetricsService ?? DevOpsMetricsService.getInstance();
+
+  app.addHook("onRequest", async (request) => {
+    request.metricsStartTime = performance.now();
+  });
+
+  app.addHook("onResponse", async (request, reply) => {
+    const start = request.metricsStartTime ?? performance.now();
+    const durationMs = Number((performance.now() - start).toFixed(2));
+    const route = request.routeOptions?.url ?? request.url;
+    devopsMetricsService.recordRequest({
+      method: request.method,
+      route,
+      statusCode: reply.statusCode,
+      durationMs,
+      timestamp: Date.now(),
+    });
+  });
   const limits = {
     max: options.rateLimits?.max ?? env.RATE_LIMIT_MAX,
     loginMax: options.rateLimits?.loginMax ?? env.LOGIN_RATE_LIMIT_MAX,
@@ -244,6 +272,13 @@ export function buildApp(options: BuildAppOptions = {}) {
         status: "ok",
       }),
     );
+
+    app.register(devopsRoutes, {
+      database: pool,
+      metricsService: devopsMetricsService,
+      outageRepository: options.outageRepository,
+      outageService: options.outageService,
+    });
 
     app.register(async (users) => {
       users.setErrorHandler(handleUsersError);
