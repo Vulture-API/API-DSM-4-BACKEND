@@ -1,0 +1,361 @@
+{
+  "metadata": {
+    "generatedAt": "2026-10-21T12:32:10.937Z",
+    "task": "[DEVOPS] Configurar monitoramento de recursos e desempenho da aplicação",
+    "environment": "Node.js (v8) + Fastify + PostgreSQL",
+    "slaTargetPercentage": 99,
+    "latencySlaP95ThresholdMs": 500
+  },
+  "acceptanceCriteriaValidation": {
+    "ca1_recursosDefinidosMonitorados": {
+      "status": "PASSED",
+      "monitoredResources": [
+        "Process Memory (heapUsed, heapTotal, rss, external, heapUsagePercent)",
+        "Process CPU (userMicroseconds, systemMicroseconds, cpuPercent)",
+        "Event Loop Latency (lagMs, status)",
+        "Database Connection Pool (totalConnections, activeConnections, idleConnections, waitingClients)",
+        "Host System Resources (totalMemory, freeMemory, cpuCores, loadAverage1m)"
+      ]
+    },
+    "ca2_metricasDesempenhoColetadas": {
+      "status": "PASSED",
+      "performanceIndicators": [
+        "Throughput e contagem por status HTTP (2xx, 3xx, 4xx, 5xx)",
+        "Percentis de latência HTTP (min, max, mean, p50, p95, p99)",
+        "Taxa de disponibilidade contínua (SLA >= 99%)",
+        "Tempo de resposta de consultas no banco de dados (ping SQL)"
+      ]
+    },
+    "ca3_informacoesDisponibilizadasTime": {
+      "status": "PASSED",
+      "interfaces": [
+        "Endpoint JSON Detalhado: GET /health/detailed",
+        "Endpoint JSON de Recursos: GET /api/devops/resources",
+        "Métricas Padrão Prometheus: GET /metrics",
+        "CLI de Terminal DevOps: scripts/devops/monitor-resources.ts"
+      ]
+    },
+    "ca4_identificacaoGargalos": {
+      "status": "PASSED",
+      "detectedBottleneckTypes": [
+        {
+          "type": "HIGH_MEMORY",
+          "resource": "Node.js V8 Heap",
+          "severity": "CRITICAL",
+          "triggerValue": "92%",
+          "threshold": "85%",
+          "mitigation": "Investigar possíveis vazamentos de memória (retenção de referências ou listeners) e considerar ajuste de --max-old-space-size."
+        },
+        {
+          "type": "CPU_SATURATION",
+          "resource": "Node.js Process CPU",
+          "severity": "WARNING",
+          "triggerValue": "88.4%",
+          "threshold": "80%",
+          "mitigation": "Identificar loops intensivos, parsing de grandes payloads síncronos ou expressões regulares catastróficas."
+        },
+        {
+          "type": "EVENT_LOOP_BLOCKED",
+          "resource": "Node.js Event Loop",
+          "severity": "WARNING",
+          "triggerValue": "78.5 ms",
+          "threshold": "50 ms",
+          "mitigation": "Evitar chamadas bloqueantes síncronas na thread principal do Node.js e delegar tarefas computacionais pesadas a workers."
+        },
+        {
+          "type": "DB_POOL_SATURATION",
+          "resource": "PostgreSQL Connection Pool",
+          "severity": "CRITICAL",
+          "triggerValue": "7 em espera",
+          "threshold": "0 clientes em espera",
+          "mitigation": "Aumentar o limite de conexões no pool do banco ou otimizar consultas que mantêm conexões abertas por tempo prolongado."
+        },
+        {
+          "type": "DB_SLOW_QUERY",
+          "resource": "PostgreSQL Database Latency",
+          "severity": "WARNING",
+          "triggerValue": "720.5 ms",
+          "threshold": "500 ms",
+          "mitigation": "Verificar contenção de I/O de disco no banco de dados, locks de transações ativos e índices das tabelas."
+        },
+        {
+          "type": "HIGH_LATENCY",
+          "resource": "Application HTTP Latency",
+          "severity": "CRITICAL",
+          "triggerValue": "781.6 ms",
+          "threshold": "500 ms",
+          "mitigation": "Avaliar endpoints com status DEGRADED e habilitar cache ou otimização de consultas."
+        }
+      ]
+    }
+  },
+  "scenarios": {
+    "baselineHealthy": {
+      "status": "HEALTHY",
+      "uptimeSeconds": 0,
+      "startedAt": "2026-10-21T12:32:10.933Z",
+      "totalRequests": 150,
+      "successRequests": 150,
+      "errorRequests": 0,
+      "availabilityRatePercentage": 100,
+      "slaTargetPercentage": 99,
+      "overallLatency": {
+        "count": 150,
+        "mean": 19.73,
+        "min": 10.4,
+        "max": 29.96,
+        "p50": 20.13,
+        "p95": 28.54,
+        "p99": 29.87
+      },
+      "routes": [
+        {
+          "method": "GET",
+          "route": "/api/stations",
+          "totalRequests": 150,
+          "errorCount": 0,
+          "latency": {
+            "count": 150,
+            "mean": 19.73,
+            "min": 10.4,
+            "max": 29.96,
+            "p50": 20.13,
+            "p95": 28.54,
+            "p99": 29.87
+          },
+          "status": "NORMAL"
+        }
+      ],
+      "database": {
+        "status": "UP",
+        "latencyMs": 2.5
+      },
+      "degradationAlerts": [],
+      "resources": {
+        "memory": {
+          "heapUsedBytes": 62914560,
+          "heapTotalBytes": 262144000,
+          "rssBytes": 125829120,
+          "externalBytes": 8388608,
+          "heapUsedMb": 60,
+          "heapTotalMb": 250,
+          "rssMb": 120,
+          "heapUsagePercent": 24
+        },
+        "cpu": {
+          "userMicroseconds": 120000,
+          "systemMicroseconds": 80000,
+          "cpuPercent": 8.5
+        },
+        "eventLoop": {
+          "lagMs": 4.2,
+          "status": "NORMAL"
+        },
+        "databasePool": {
+          "totalConnections": 10,
+          "idleConnections": 8,
+          "activeConnections": 2,
+          "waitingClients": 0
+        },
+        "system": {
+          "totalMemoryBytes": 16404631552,
+          "freeMemoryBytes": 9216184320,
+          "usedMemoryBytes": 7188447232,
+          "memoryUsagePercent": 43.82,
+          "cpuCores": 8,
+          "loadAverage1m": 0.96
+        }
+      },
+      "bottlenecks": []
+    },
+    "degradedWithBottlenecks": {
+      "status": "UNHEALTHY",
+      "uptimeSeconds": 0,
+      "startedAt": "2026-10-21T12:32:10.933Z",
+      "totalRequests": 175,
+      "successRequests": 175,
+      "errorRequests": 0,
+      "availabilityRatePercentage": 100,
+      "slaTargetPercentage": 99,
+      "overallLatency": {
+        "count": 175,
+        "mean": 125.8,
+        "min": 10.4,
+        "max": 884.55,
+        "p50": 21.09,
+        "p95": 781.6,
+        "p99": 882.66
+      },
+      "routes": [
+        {
+          "method": "GET",
+          "route": "/api/stations",
+          "totalRequests": 150,
+          "errorCount": 0,
+          "latency": {
+            "count": 150,
+            "mean": 19.73,
+            "min": 10.4,
+            "max": 29.96,
+            "p50": 20.13,
+            "p95": 28.54,
+            "p99": 29.87
+          },
+          "status": "NORMAL"
+        },
+        {
+          "method": "GET",
+          "route": "/api/occurrences",
+          "totalRequests": 25,
+          "errorCount": 0,
+          "latency": {
+            "count": 25,
+            "mean": 762.23,
+            "min": 660.88,
+            "max": 884.55,
+            "p50": 739.29,
+            "p95": 882.66,
+            "p99": 884.55
+          },
+          "status": "DEGRADED"
+        }
+      ],
+      "database": {
+        "status": "DEGRADED",
+        "latencyMs": 720.5
+      },
+      "degradationAlerts": [
+        {
+          "severity": "CRITICAL",
+          "type": "HIGH_LATENCY",
+          "message": "Rota GET /api/occurrences apresentando p95 de 882.66ms (limiar: 500ms)",
+          "target": "GET /api/occurrences",
+          "currentValue": 882.66,
+          "threshold": 500,
+          "timestamp": "2026-10-21T12:32:10.936Z"
+        },
+        {
+          "severity": "CRITICAL",
+          "type": "HIGH_LATENCY",
+          "message": "Latência global p95 elevada: 781.6ms (limiar: 500ms)",
+          "currentValue": 781.6,
+          "threshold": 500,
+          "timestamp": "2026-10-21T12:32:10.936Z"
+        },
+        {
+          "severity": "CRITICAL",
+          "type": "RESOURCE_EXHAUSTION",
+          "message": "Node.js V8 Heap: Consumo elevado de heap (460 MB de 500 MB - 92%)",
+          "currentValue": "92%",
+          "threshold": "85%",
+          "timestamp": "2026-10-21T12:32:10.936Z"
+        },
+        {
+          "severity": "CRITICAL",
+          "type": "RESOURCE_EXHAUSTION",
+          "message": "PostgreSQL Connection Pool: Pool de conexões saturado (7 clientes em espera, 20 ativas)",
+          "currentValue": "7 em espera",
+          "threshold": "0 clientes em espera",
+          "timestamp": "2026-10-21T12:32:10.936Z"
+        }
+      ],
+      "resources": {
+        "memory": {
+          "heapUsedBytes": 482344960,
+          "heapTotalBytes": 524288000,
+          "rssBytes": 713031680,
+          "externalBytes": 31457280,
+          "heapUsedMb": 460,
+          "heapTotalMb": 500,
+          "rssMb": 680,
+          "heapUsagePercent": 92
+        },
+        "cpu": {
+          "userMicroseconds": 900000,
+          "systemMicroseconds": 650000,
+          "cpuPercent": 88.4
+        },
+        "eventLoop": {
+          "lagMs": 78.5,
+          "status": "WARNING"
+        },
+        "databasePool": {
+          "totalConnections": 20,
+          "idleConnections": 0,
+          "activeConnections": 20,
+          "waitingClients": 7
+        },
+        "system": {
+          "totalMemoryBytes": 16404631552,
+          "freeMemoryBytes": 9216184320,
+          "usedMemoryBytes": 7188447232,
+          "memoryUsagePercent": 43.82,
+          "cpuCores": 8,
+          "loadAverage1m": 0.96
+        }
+      },
+      "bottlenecks": [
+        {
+          "type": "HIGH_MEMORY",
+          "severity": "CRITICAL",
+          "resource": "Node.js V8 Heap",
+          "message": "Consumo elevado de heap (460 MB de 500 MB - 92%)",
+          "currentValue": "92%",
+          "threshold": "85%",
+          "mitigation": "Investigar possíveis vazamentos de memória (retenção de referências ou listeners) e considerar ajuste de --max-old-space-size.",
+          "timestamp": "2026-10-21T12:32:10.936Z"
+        },
+        {
+          "type": "CPU_SATURATION",
+          "severity": "WARNING",
+          "resource": "Node.js Process CPU",
+          "message": "Uso excessivo de CPU do processo (88.4%)",
+          "currentValue": "88.4%",
+          "threshold": "80%",
+          "mitigation": "Identificar loops intensivos, parsing de grandes payloads síncronos ou expressões regulares catastróficas.",
+          "timestamp": "2026-10-21T12:32:10.936Z"
+        },
+        {
+          "type": "EVENT_LOOP_BLOCKED",
+          "severity": "WARNING",
+          "resource": "Node.js Event Loop",
+          "message": "Atraso no Event Loop (78.5 ms)",
+          "currentValue": "78.5 ms",
+          "threshold": "50 ms",
+          "mitigation": "Evitar chamadas bloqueantes síncronas na thread principal do Node.js e delegar tarefas computacionais pesadas a workers.",
+          "timestamp": "2026-10-21T12:32:10.936Z"
+        },
+        {
+          "type": "DB_POOL_SATURATION",
+          "severity": "CRITICAL",
+          "resource": "PostgreSQL Connection Pool",
+          "message": "Pool de conexões saturado (7 clientes em espera, 20 ativas)",
+          "currentValue": "7 em espera",
+          "threshold": "0 clientes em espera",
+          "mitigation": "Aumentar o limite de conexões no pool do banco ou otimizar consultas que mantêm conexões abertas por tempo prolongado.",
+          "timestamp": "2026-10-21T12:32:10.936Z"
+        },
+        {
+          "type": "DB_SLOW_QUERY",
+          "severity": "WARNING",
+          "resource": "PostgreSQL Database Latency",
+          "message": "Latência de ping no banco elevada (720.5 ms)",
+          "currentValue": "720.5 ms",
+          "threshold": "500 ms",
+          "mitigation": "Verificar contenção de I/O de disco no banco de dados, locks de transações ativos e índices das tabelas.",
+          "timestamp": "2026-10-21T12:32:10.936Z"
+        },
+        {
+          "type": "HIGH_LATENCY",
+          "severity": "CRITICAL",
+          "resource": "Application HTTP Latency",
+          "message": "Latência p95 global de 781.6 ms acima do limiar crítico (500 ms)",
+          "currentValue": "781.6 ms",
+          "threshold": "500 ms",
+          "mitigation": "Avaliar endpoints com status DEGRADED e habilitar cache ou otimização de consultas.",
+          "timestamp": "2026-10-21T12:32:10.936Z"
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,337 @@
+{
+  "executionDate": "2026-10-21T11:11:59.656Z",
+  "overallStatus": "UNHEALTHY",
+  "slaAvailabilityTarget": 99,
+  "latencyThresholdNormalMs": 200,
+  "latencyThresholdDegradedMs": 500,
+  "totalServicesMonitored": 6,
+  "healthyServices": 0,
+  "degradedServices": 0,
+  "downServices": 6,
+  "services": [
+    {
+      "serviceName": "Backend - Health Base",
+      "targetUrl": "http://localhost:3000/health",
+      "totalProbes": 5,
+      "successfulProbes": 0,
+      "failedProbes": 5,
+      "availabilityPercentage": 0,
+      "latencyMs": {
+        "min": 0,
+        "max": 0,
+        "mean": 0,
+        "p50": 0,
+        "p95": 0
+      },
+      "status": "DOWN",
+      "degradationReason": "Serviço inalcançável (100% de falha nas sondas). Último erro: fetch failed",
+      "samples": [
+        {
+          "timestamp": "2026-10-21T11:11:57.161Z",
+          "statusCode": 0,
+          "durationMs": 41.98,
+          "success": false,
+          "error": "fetch failed"
+        },
+        {
+          "timestamp": "2026-10-21T11:11:57.304Z",
+          "statusCode": 0,
+          "durationMs": 1.7,
+          "success": false,
+          "error": "fetch failed"
+        },
+        {
+          "timestamp": "2026-10-21T11:11:57.406Z",
+          "statusCode": 0,
+          "durationMs": 2.24,
+          "success": false,
+          "error": "fetch failed"
+        },
+        {
+          "timestamp": "2026-10-21T11:11:57.508Z",
+          "statusCode": 0,
+          "durationMs": 2.85,
+          "success": false,
+          "error": "fetch failed"
+        },
+        {
+          "timestamp": "2026-10-21T11:11:57.612Z",
+          "statusCode": 0,
+          "durationMs": 4.67,
+          "success": false,
+          "error": "fetch failed"
+        }
+      ]
+    },
+    {
+      "serviceName": "Backend - Health Detailed",
+      "targetUrl": "http://localhost:3000/health/detailed",
+      "totalProbes": 5,
+      "successfulProbes": 0,
+      "failedProbes": 5,
+      "availabilityPercentage": 0,
+      "latencyMs": {
+        "min": 0,
+        "max": 0,
+        "mean": 0,
+        "p50": 0,
+        "p95": 0
+      },
+      "status": "DOWN",
+      "degradationReason": "Serviço inalcançável (100% de falha nas sondas). Último erro: fetch failed",
+      "samples": [
+        {
+          "timestamp": "2026-10-21T11:11:57.617Z",
+          "statusCode": 0,
+          "durationMs": 0.92,
+          "success": false,
+          "error": "fetch failed"
+        },
+        {
+          "timestamp": "2026-10-21T11:11:57.717Z",
+          "statusCode": 0,
+          "durationMs": 1.14,
+          "success": false,
+          "error": "fetch failed"
+        },
+        {
+          "timestamp": "2026-10-21T11:11:57.819Z",
+          "statusCode": 0,
+          "durationMs": 1.16,
+          "success": false,
+          "error": "fetch failed"
+        },
+        {
+          "timestamp": "2026-10-21T11:11:57.920Z",
+          "statusCode": 0,
+          "durationMs": 1.69,
+          "success": false,
+          "error": "fetch failed"
+        },
+        {
+          "timestamp": "2026-10-21T11:11:58.022Z",
+          "statusCode": 0,
+          "durationMs": 2.03,
+          "success": false,
+          "error": "fetch failed"
+        }
+      ]
+    },
+    {
+      "serviceName": "Backend - Prometheus Metrics",
+      "targetUrl": "http://localhost:3000/metrics",
+      "totalProbes": 5,
+      "successfulProbes": 0,
+      "failedProbes": 5,
+      "availabilityPercentage": 0,
+      "latencyMs": {
+        "min": 0,
+        "max": 0,
+        "mean": 0,
+        "p50": 0,
+        "p95": 0
+      },
+      "status": "DOWN",
+      "degradationReason": "Serviço inalcançável (100% de falha nas sondas). Último erro: fetch failed",
+      "samples": [
+        {
+          "timestamp": "2026-10-21T11:11:58.024Z",
+          "statusCode": 0,
+          "durationMs": 0.87,
+          "success": false,
+          "error": "fetch failed"
+        },
+        {
+          "timestamp": "2026-10-21T11:11:58.126Z",
+          "statusCode": 0,
+          "durationMs": 1.8,
+          "success": false,
+          "error": "fetch failed"
+        },
+        {
+          "timestamp": "2026-10-21T11:11:58.228Z",
+          "statusCode": 0,
+          "durationMs": 3.66,
+          "success": false,
+          "error": "fetch failed"
+        },
+        {
+          "timestamp": "2026-10-21T11:11:58.331Z",
+          "statusCode": 0,
+          "durationMs": 1.79,
+          "success": false,
+          "error": "fetch failed"
+        },
+        {
+          "timestamp": "2026-10-21T11:11:58.433Z",
+          "statusCode": 0,
+          "durationMs": 0.94,
+          "success": false,
+          "error": "fetch failed"
+        }
+      ]
+    },
+    {
+      "serviceName": "Backend - DevOps Ping",
+      "targetUrl": "http://localhost:3000/api/devops/ping",
+      "totalProbes": 5,
+      "successfulProbes": 0,
+      "failedProbes": 5,
+      "availabilityPercentage": 0,
+      "latencyMs": {
+        "min": 0,
+        "max": 0,
+        "mean": 0,
+        "p50": 0,
+        "p95": 0
+      },
+      "status": "DOWN",
+      "degradationReason": "Serviço inalcançável (100% de falha nas sondas). Último erro: fetch failed",
+      "samples": [
+        {
+          "timestamp": "2026-10-21T11:11:58.434Z",
+          "statusCode": 0,
+          "durationMs": 0.45,
+          "success": false,
+          "error": "fetch failed"
+        },
+        {
+          "timestamp": "2026-10-21T11:11:58.535Z",
+          "statusCode": 0,
+          "durationMs": 1.02,
+          "success": false,
+          "error": "fetch failed"
+        },
+        {
+          "timestamp": "2026-10-21T11:11:58.636Z",
+          "statusCode": 0,
+          "durationMs": 1.12,
+          "success": false,
+          "error": "fetch failed"
+        },
+        {
+          "timestamp": "2026-10-21T11:11:58.738Z",
+          "statusCode": 0,
+          "durationMs": 1.31,
+          "success": false,
+          "error": "fetch failed"
+        },
+        {
+          "timestamp": "2026-10-21T11:11:58.839Z",
+          "statusCode": 0,
+          "durationMs": 0.94,
+          "success": false,
+          "error": "fetch failed"
+        }
+      ]
+    },
+    {
+      "serviceName": "Backend - Raiz (API Info)",
+      "targetUrl": "http://localhost:3000/",
+      "totalProbes": 5,
+      "successfulProbes": 0,
+      "failedProbes": 5,
+      "availabilityPercentage": 0,
+      "latencyMs": {
+        "min": 0,
+        "max": 0,
+        "mean": 0,
+        "p50": 0,
+        "p95": 0
+      },
+      "status": "DOWN",
+      "degradationReason": "Serviço inalcançável (100% de falha nas sondas). Último erro: fetch failed",
+      "samples": [
+        {
+          "timestamp": "2026-10-21T11:11:58.840Z",
+          "statusCode": 0,
+          "durationMs": 1.16,
+          "success": false,
+          "error": "fetch failed"
+        },
+        {
+          "timestamp": "2026-10-21T11:11:58.942Z",
+          "statusCode": 0,
+          "durationMs": 1.29,
+          "success": false,
+          "error": "fetch failed"
+        },
+        {
+          "timestamp": "2026-10-21T11:11:59.044Z",
+          "statusCode": 0,
+          "durationMs": 3.94,
+          "success": false,
+          "error": "fetch failed"
+        },
+        {
+          "timestamp": "2026-10-21T11:11:59.148Z",
+          "statusCode": 0,
+          "durationMs": 2.56,
+          "success": false,
+          "error": "fetch failed"
+        },
+        {
+          "timestamp": "2026-10-21T11:11:59.250Z",
+          "statusCode": 0,
+          "durationMs": 0.89,
+          "success": false,
+          "error": "fetch failed"
+        }
+      ]
+    },
+    {
+      "serviceName": "Frontend - Portal Web",
+      "targetUrl": "http://localhost:3010/",
+      "totalProbes": 5,
+      "successfulProbes": 0,
+      "failedProbes": 5,
+      "availabilityPercentage": 0,
+      "latencyMs": {
+        "min": 0,
+        "max": 0,
+        "mean": 0,
+        "p50": 0,
+        "p95": 0
+      },
+      "status": "DOWN",
+      "degradationReason": "Serviço inalcançável (100% de falha nas sondas). Último erro: fetch failed",
+      "samples": [
+        {
+          "timestamp": "2026-10-21T11:11:59.251Z",
+          "statusCode": 0,
+          "durationMs": 0.54,
+          "success": false,
+          "error": "fetch failed"
+        },
+        {
+          "timestamp": "2026-10-21T11:11:59.352Z",
+          "statusCode": 0,
+          "durationMs": 1.29,
+          "success": false,
+          "error": "fetch failed"
+        },
+        {
+          "timestamp": "2026-10-21T11:11:59.453Z",
+          "statusCode": 0,
+          "durationMs": 1.31,
+          "success": false,
+          "error": "fetch failed"
+        },
+        {
+          "timestamp": "2026-10-21T11:11:59.555Z",
+          "statusCode": 0,
+          "durationMs": 0.83,
+          "success": false,
+          "error": "fetch failed"
+        },
+        {
+          "timestamp": "2026-10-21T11:11:59.655Z",
+          "statusCode": 0,
+          "durationMs": 1.1,
+          "success": false,
+          "error": "fetch failed"
+        }
+      ]
+    }
+  ]
+}
