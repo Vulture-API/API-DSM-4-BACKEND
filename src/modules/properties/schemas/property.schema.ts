@@ -39,3 +39,28 @@ export const updatePropertyBodySchema = z
 
 export type PropertyIdParam = z.infer<typeof propertyIdParamSchema>;
 export type UpdatePropertyBodyInput = z.infer<typeof updatePropertyBodySchema>;
+
+export const associateStationsBodySchema = z
+  .object({
+    station_id: z.coerce.number().int().positive().optional(),
+    station_ids: z.array(z.coerce.number().int().positive()).optional(),
+  })
+  .refine(
+    (data) =>
+      data.station_id !== undefined ||
+      (Array.isArray(data.station_ids) && data.station_ids.length > 0),
+    {
+      message:
+        "At least one of station_id or a non-empty station_ids array must be provided.",
+    },
+  );
+
+export const propertyStationParamsSchema = z.object({
+  id: z.coerce.number().int().positive(),
+  stationId: z.coerce.number().int().positive().optional(),
+});
+
+export type AssociateStationsBodyInput = z.infer<
+  typeof associateStationsBodySchema
+>;
+export type PropertyStationParams = z.infer<typeof propertyStationParamsSchema>;
