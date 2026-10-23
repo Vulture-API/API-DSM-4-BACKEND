@@ -91,13 +91,21 @@ export class PgPropertyRepository implements PropertyRepository {
   }
 
   async listProperties(): Promise<
-    Array<{ id: number; name: string; location: string | null }>
+    Array<{
+      id: number;
+      name: string;
+      location: string | null;
+      owner_user_id: number | null;
+    }>
   > {
     const result = await this.pool.query<{
       id: number;
       name: string;
       location: string | null;
-    }>("SELECT id, name, location FROM properties ORDER BY name ASC");
+      owner_user_id: number | null;
+    }>(
+      "SELECT id, name, location, owner_user_id FROM properties ORDER BY name ASC",
+    );
 
     return result.rows;
   }
