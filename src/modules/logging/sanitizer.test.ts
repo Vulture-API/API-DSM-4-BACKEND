@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  isForbiddenKey,
   isSensitiveKey,
   sanitizeHeaders,
   sanitizeLogData,
@@ -108,6 +109,19 @@ describe("sanitizer", () => {
       expect(sanitized.name).toBe("cycle");
       expect(sanitized.self).toBe("[CIRCULAR]");
     });
+
+    it("previne remote property injection e prototype pollution ignorando __proto__, constructor e prototype", () => {
+      const maliciousPayload = JSON.parse(
+        '{"name":"safe","__proto__":{"polluted":"yes"},"constructor":{"bad":"val"},"prototype":"danger"}',
+      );
+
+      const sanitized = sanitizeLogData(maliciousPayload) as Record<string, unknown>;
+      expect(sanitized.name).toBe("safe");
+      expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+      expect(Object.prototype.hasOwnProperty.call(sanitized, "__proto__")).toBe(false);
+      expect(Object.prototype.hasOwnProperty.call(sanitized, "constructor")).toBe(false);
+      expect(Object.prototype.hasOwnProperty.call(sanitized, "prototype")).toBe(false);
+    });
   });
 
   describe("sanitizeHeaders", () => {
@@ -132,6 +146,27 @@ describe("sanitizer", () => {
 
     it("retorna objeto vazio se headers for undefined", () => {
       expect(sanitizeHeaders(undefined)).toEqual({});
+    });
+
+    it("filtra chaves perigosas de headers (__proto__, constructor, prototype)", () => {
+      const maliciousHeaders = JSON.parse(
+        '{"authorization":"secret","__proto__":{"bad":"1"},"constructor":"2","prototype":"3"}',
+      );
+      const sanitized = sanitizeHeaders(maliciousHeaders);
+      expect(sanitized.authorization).toBe("[REDACTED]");
+      expect(Object.prototype.hasOwnProperty.call(sanitized, "__proto__")).toBe(false);
+      expect(Object.prototype.hasOwnProperty.call(sanitized, "constructor")).toBe(false);
+      expect(Object.prototype.hasOwnProperty.call(sanitized, "prototype")).toBe(false);
+    });
+  });
+
+  describe("isForbiddenKey", () => {
+    it("identifica corretamente chaves proibidas", () => {
+      expect(isForbiddenKey("__proto__")).toBe(true);
+      expect(isForbiddenKey("constructor")).toBe(true);
+      expect(isForbiddenKey("prototype")).toBe(true);
+      expect(isForbiddenKey("id")).toBe(false);
+      expect(isForbiddenKey("name")).toBe(false);
     });
   });
 });

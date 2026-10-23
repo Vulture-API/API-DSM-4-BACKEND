@@ -22,6 +22,19 @@ const SENSITIVE_KEY_PATTERNS = [
 const REDACTED = "[REDACTED]";
 
 /**
+ * Chaves protegidas contra ataques de prototype pollution e property injection (CWE-250 / CWE-400).
+ */
+const FORBIDDEN_PROTOTYPE_KEYS = new Set([
+  "__proto__",
+  "constructor",
+  "prototype",
+]);
+
+export function isForbiddenKey(key: string): boolean {
+  return FORBIDDEN_PROTOTYPE_KEYS.has(key);
+}
+
+/**
  * Verifica se o nome de um campo é considerado sensível.
  */
 export function isSensitiveKey(key: string): boolean {
@@ -30,7 +43,8 @@ export function isSensitiveKey(key: string): boolean {
 
 /**
  * Sanitiza recursivamente valores, objetos e arrays, substituindo
- * dados sensíveis por '[REDACTED]'. Trata referências circulares de forma segura.
+ * dados sensíveis por '[REDACTED]'. Trata referências circulares e
+ * previne remote property injection / prototype pollution.
  */
 export function sanitizeLogData<T = unknown>(data: T, seen = new WeakSet()): T {
   if (data === null || data === undefined) {
@@ -48,35 +62,33 @@ export function sanitizeLogData<T = unknown>(data: T, seen = new WeakSet()): T {
   seen.add(data);
 
   if (data instanceof Error) {
-    const errorCopy: Record<string, unknown> = {
+    const errorEntries = Object.entries(data)
+      .filter(([key]) => !isForbiddenKey(key))
+      .map(([key, value]) => [
+        key,
+        isSensitiveKey(key) ? REDACTED : sanitizeLogData(value, seen),
+      ]);
+
+    return {
       name: data.name,
       message: data.message,
       stack: data.stack,
-    };
-    for (const [key, value] of Object.entries(data)) {
-      if (isSensitiveKey(key)) {
-        errorCopy[key] = REDACTED;
-      } else {
-        errorCopy[key] = sanitizeLogData(value, seen);
-      }
-    }
-    return errorCopy as unknown as T;
+      ...Object.fromEntries(errorEntries),
+    } as unknown as T;
   }
 
   if (Array.isArray(data)) {
     return data.map((item) => sanitizeLogData(item, seen)) as unknown as T;
   }
 
-  const result: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(data)) {
-    if (isSensitiveKey(key)) {
-      result[key] = REDACTED;
-    } else {
-      result[key] = sanitizeLogData(value, seen);
-    }
-  }
+  const sanitizedEntries = Object.entries(data)
+    .filter(([key]) => !isForbiddenKey(key))
+    .map(([key, value]) => [
+      key,
+      isSensitiveKey(key) ? REDACTED : sanitizeLogData(value, seen),
+    ]);
 
-  return result as unknown as T;
+  return Object.fromEntries(sanitizedEntries) as unknown as T;
 }
 
 /**
@@ -86,23 +98,21 @@ export function sanitizeHeaders(
   headers: Record<string, unknown> | undefined,
 ): Record<string, unknown> {
   if (!headers) return {};
-  const sanitized: Record<string, unknown> = {};
 
-  for (const [key, value] of Object.entries(headers)) {
-    const lowerKey = key.toLowerCase();
-    if (
-      lowerKey === "authorization" ||
-      lowerKey === "proxy-authorization" ||
-      lowerKey === "cookie" ||
-      lowerKey === "set-cookie" ||
-      lowerKey === "x-api-key" ||
-      isSensitiveKey(lowerKey)
-    ) {
-      sanitized[key] = REDACTED;
-    } else {
-      sanitized[key] = value;
-    }
-  }
+  const entries = Object.entries(headers)
+    .filter(([key]) => !isForbiddenKey(key))
+    .map(([key, value]) => {
+      const lowerKey = key.toLowerCase();
+      const isRedacted =
+        lowerKey === "authorization" ||
+        lowerKey === "proxy-authorization" ||
+        lowerKey === "cookie" ||
+        lowerKey === "set-cookie" ||
+        lowerKey === "x-api-key" ||
+        isSensitiveKey(lowerKey);
 
-  return sanitized;
+      return [key, isRedacted ? REDACTED : value];
+    });
+
+  return Object.fromEntries(entries);
 }
