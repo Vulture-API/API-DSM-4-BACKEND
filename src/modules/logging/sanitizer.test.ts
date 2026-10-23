@@ -115,12 +115,21 @@ describe("sanitizer", () => {
         '{"name":"safe","__proto__":{"polluted":"yes"},"constructor":{"bad":"val"},"prototype":"danger"}',
       );
 
-      const sanitized = sanitizeLogData(maliciousPayload) as Record<string, unknown>;
+      const sanitized = sanitizeLogData(maliciousPayload) as Record<
+        string,
+        unknown
+      >;
       expect(sanitized.name).toBe("safe");
       expect(({} as Record<string, unknown>).polluted).toBeUndefined();
-      expect(Object.prototype.hasOwnProperty.call(sanitized, "__proto__")).toBe(false);
-      expect(Object.prototype.hasOwnProperty.call(sanitized, "constructor")).toBe(false);
-      expect(Object.prototype.hasOwnProperty.call(sanitized, "prototype")).toBe(false);
+      expect(Object.prototype.hasOwnProperty.call(sanitized, "__proto__")).toBe(
+        false,
+      );
+      expect(
+        Object.prototype.hasOwnProperty.call(sanitized, "constructor"),
+      ).toBe(false);
+      expect(Object.prototype.hasOwnProperty.call(sanitized, "prototype")).toBe(
+        false,
+      );
     });
   });
 
@@ -154,9 +163,15 @@ describe("sanitizer", () => {
       );
       const sanitized = sanitizeHeaders(maliciousHeaders);
       expect(sanitized.authorization).toBe("[REDACTED]");
-      expect(Object.prototype.hasOwnProperty.call(sanitized, "__proto__")).toBe(false);
-      expect(Object.prototype.hasOwnProperty.call(sanitized, "constructor")).toBe(false);
-      expect(Object.prototype.hasOwnProperty.call(sanitized, "prototype")).toBe(false);
+      expect(Object.prototype.hasOwnProperty.call(sanitized, "__proto__")).toBe(
+        false,
+      );
+      expect(
+        Object.prototype.hasOwnProperty.call(sanitized, "constructor"),
+      ).toBe(false);
+      expect(Object.prototype.hasOwnProperty.call(sanitized, "prototype")).toBe(
+        false,
+      );
     });
   });
 
