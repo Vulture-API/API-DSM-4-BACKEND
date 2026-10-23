@@ -16,7 +16,9 @@
     "test:coverage": "vitest run --coverage",
     "devops:simulate": "tsx scripts/devops/simulate-load-and-degradation.ts",
     "devops:monitor": "tsx scripts/devops/monitor-services.ts",
-    "devops:outages": "tsx scripts/devops/track-outages.ts"
+    "devops:outages": "tsx scripts/devops/track-outages.ts",
+    "devops:resources": "tsx scripts/devops/monitor-resources.ts",
+    "devops:simulate-bottlenecks": "tsx scripts/devops/simulate-resource-bottlenecks.ts"
   },
   "repository": {
     "type": "git",
