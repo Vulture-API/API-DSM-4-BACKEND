@@ -6,6 +6,7 @@ import {
   PgAlertConfigRepository,
   PgTriggeredAlertRepository,
 } from "@/modules/alerts/repositories/pg-alert.repository.js";
+import { createLogger } from "@/modules/logging/logger.js";
 import { PgOccurrenceRepository } from "@/modules/occurrences/repositories/pg-occurrence.repository.js";
 import { CheckSensorLimitsService } from "@/modules/occurrences/services/check-sensor-limits.service.js";
 import { DetectCommunicationFailuresService } from "@/modules/occurrences/services/detect-communication-failures.service.js";
@@ -16,6 +17,10 @@ import {
 } from "@/modules/rules-engine/repositories/pg-reading.repository.js";
 import { ProcessReadingsService } from "@/modules/rules-engine/services/process-readings.service.js";
 import { RulesEngineWorker } from "@/modules/rules-engine/services/rules-engine.worker.js";
+
+const appLogger = createLogger({ level: env.LOG_LEVEL, component: "app" });
+const rulesLogger = appLogger.child({ component: "rules-engine" });
+const occurrencesLogger = appLogger.child({ component: "occurrences" });
 
 const alertConfigRepository = new PgAlertConfigRepository(database);
 const triggeredAlertRepository = new PgTriggeredAlertRepository(database);
@@ -31,12 +36,21 @@ const rulesEngineWorker = new RulesEngineWorker(
     intervalMs: env.RULES_ENGINE_INTERVAL_MS,
     onCycle: (result) => {
       if (result.readings_processed === 0) return;
-      console.log(
+      rulesLogger.info(
+        {
+          operation: "rules_engine_cycle",
+          readingsProcessed: result.readings_processed,
+          alertsTriggered: result.alerts_triggered,
+          lastReadingId: result.last_reading_id,
+        },
         `[rules-engine] ${result.readings_processed} leituras, ${result.alerts_triggered} alertas, checkpoint ${result.last_reading_id}`,
       );
     },
     onError: (error) =>
-      console.error("[rules-engine] falha de processamento:", error),
+      rulesLogger.error(
+        { operation: "rules_engine_cycle", error },
+        "[rules-engine] falha de processamento",
+      ),
   },
 );
 const occurrenceRepository = new PgOccurrenceRepository(database);
@@ -58,12 +72,22 @@ const occurrenceMonitorWorker = new OccurrenceMonitorWorker(
         0
       )
         return;
-      console.log(
+      occurrencesLogger.info(
+        {
+          operation: "occurrences_cycle",
+          failuresOpened: communication.failures_opened,
+          failuresResolved: communication.failures_resolved,
+          outOfRange: limits.out_of_range,
+          lastReadingId: limits.last_reading_id,
+        },
         `[occurrences] ${communication.failures_opened} falhas de comunicação abertas, ${communication.failures_resolved} resolvidas, ${limits.out_of_range} leituras fora do limite (checkpoint ${limits.last_reading_id})`,
       );
     },
     onError: (error) =>
-      console.error("[occurrences] falha na verificação:", error),
+      occurrencesLogger.error(
+        { operation: "occurrences_cycle", error },
+        "[occurrences] falha na verificação",
+      ),
   },
 );
 const app = buildApp({
@@ -72,13 +96,20 @@ const app = buildApp({
   rulesEngineWorker,
   occurrenceRepository,
   occurrenceMonitorWorker,
+  logger: appLogger,
 });
 const shutdown = createShutdown(app, database);
 for (const signal of ["SIGINT", "SIGTERM"] as const) {
   process.once(signal, () => {
-    console.log(`Recebido ${signal}. Encerrando backend...`);
+    appLogger.info(
+      { operation: "shutdown", signal },
+      `Recebido ${signal}. Encerrando backend...`,
+    );
     void shutdown().catch((error: unknown) => {
-      console.error("Falha ao encerrar backend:", error);
+      appLogger.error(
+        { operation: "shutdown", error },
+        "Falha ao encerrar backend",
+      );
       process.exitCode = 1;
     });
   });
@@ -87,9 +118,12 @@ try {
   await app.listen({ host: "0.0.0.0", port: env.PORT });
   if (env.RULES_ENGINE_ENABLED) rulesEngineWorker.start();
   if (env.OCCURRENCES_ENABLED) occurrenceMonitorWorker.start();
-  console.log(`AgriTech backend: http://localhost:${env.PORT}`);
+  appLogger.info(
+    { operation: "startup", port: env.PORT },
+    `AgriTech backend iniciado na porta ${env.PORT}`,
+  );
 } catch (error) {
-  console.error("Falha ao iniciar backend:", error);
+  appLogger.fatal({ operation: "startup", error }, "Falha ao iniciar backend");
   process.exitCode = 1;
   await shutdown();
 }

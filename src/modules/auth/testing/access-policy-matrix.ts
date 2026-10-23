@@ -36,6 +36,7 @@ export function expectedAccessPolicies() {
     "/api/devops/outages",
     "/api/devops/outages/:id",
     "/api/devops/sla",
+    "/api/devops/audit-logs",
   ])
     add("GET", path, { public: true });
   add("POST", "/api/auth/login", { public: true });

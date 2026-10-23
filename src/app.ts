@@ -1,10 +1,12 @@
 import "@/config/zod.config.js";
 
+import crypto from "node:crypto";
+
 import cookie from "@fastify/cookie";
 import jwt from "@fastify/jwt";
 import rateLimit, { normalizeIP } from "@fastify/rate-limit";
 import websocket from "@fastify/websocket";
-import Fastify, { type FastifyReply } from "fastify";
+import Fastify, { type FastifyBaseLogger, type FastifyReply } from "fastify";
 import {
   serializerCompiler,
   validatorCompiler,
@@ -42,11 +44,17 @@ import { authRoutes } from "@/modules/auth/routes/auth.route.js";
 import { devopsRoutes } from "@/modules/devops/devops.route.js";
 import { DevOpsMetricsService } from "@/modules/devops/devops-metrics.service.js";
 import type { DevOpsOutageService } from "@/modules/devops/devops-outage.service.js";
-import type { SystemOutageRepository } from "@/modules/devops/system-outage.repository.js";
+import {
+  InMemorySystemOutageRepository,
+  type SystemOutageRepository,
+} from "@/modules/devops/system-outage.repository.js";
 import { CachedForecastProvider } from "@/modules/forecast/providers/cached-forecast.provider.js";
 import type { ForecastProvider } from "@/modules/forecast/providers/forecast.provider.js";
 import { OpenMeteoProvider } from "@/modules/forecast/providers/open-meteo.provider.js";
 import { buildForecastRoutes } from "@/modules/forecast/routes/forecast.route.js";
+import { AuditService } from "@/modules/logging/audit-logger.js";
+import { setupHttpLogging } from "@/modules/logging/http-logger.js";
+import { type AppLogger, createLogger } from "@/modules/logging/logger.js";
 import type { MonitoringRepository } from "@/modules/monitoring/repositories/monitoring.repository.js";
 import { PgMonitoringRepository } from "@/modules/monitoring/repositories/pg-monitoring.repository.js";
 import {
@@ -134,10 +142,25 @@ export type BuildAppOptions = {
   devopsMetricsService?: DevOpsMetricsService;
   outageRepository?: SystemOutageRepository | undefined;
   outageService?: DevOpsOutageService | undefined;
+  logger?: AppLogger | undefined;
+  auditService?: AuditService | undefined;
 };
 
 export function buildApp(options: BuildAppOptions = {}) {
-  const app = Fastify({ logger: false }).withTypeProvider<ZodTypeProvider>();
+  const appLogger =
+    options.logger ??
+    createLogger({
+      level: env.LOG_LEVEL,
+      component: "http",
+    });
+  const app = Fastify({
+    loggerInstance: appLogger as FastifyBaseLogger,
+    logController: new Fastify.LogController({ disableRequestLogging: true }),
+    genReqId: (req) =>
+      (req.headers["x-request-id"] as string | undefined) ||
+      crypto.randomUUID(),
+    requestIdHeader: "x-request-id",
+  }).withTypeProvider<ZodTypeProvider>();
   const pool = options.database ?? database;
   app.setValidatorCompiler(validatorCompiler);
   app.setSerializerCompiler(serializerCompiler);
@@ -166,12 +189,11 @@ export function buildApp(options: BuildAppOptions = {}) {
   app.decorateRequest("actor", null);
   app.decorateRequest("metricsStartTime", 0);
 
+  const auditService = options.auditService ?? AuditService.getInstance();
+  setupHttpLogging(app, { logger: appLogger, auditService });
+
   const devopsMetricsService =
     options.devopsMetricsService ?? DevOpsMetricsService.getInstance();
-
-  app.addHook("onRequest", async (request) => {
-    request.metricsStartTime = performance.now();
-  });
 
   app.addHook("onResponse", async (request, reply) => {
     const start = request.metricsStartTime ?? performance.now();
@@ -274,11 +296,18 @@ export function buildApp(options: BuildAppOptions = {}) {
       }),
     );
 
+    const outageRepository =
+      options.outageRepository ??
+      (process.env.NODE_ENV === "test" && !options.database
+        ? new InMemorySystemOutageRepository()
+        : undefined);
+
     app.register(devopsRoutes, {
       database: pool,
       metricsService: devopsMetricsService,
-      outageRepository: options.outageRepository,
+      outageRepository,
       outageService: options.outageService,
+      auditService,
     });
 
     app.register(async (users) => {
