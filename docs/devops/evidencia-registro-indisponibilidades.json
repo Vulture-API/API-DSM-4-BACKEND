@@ -1,0 +1,147 @@
+{
+  "generatedAt": "2026-10-23T14:16:30.941Z",
+  "feature": "[DEVOPS] Mecanismo de Registro e Acompanhamento de Indisponibilidades",
+  "slaEvaluation": {
+    "evaluationWindowHours": 24,
+    "evaluationWindowSeconds": 86400,
+    "totalTimeSeconds": 86400,
+    "downtimeSeconds": 680,
+    "uptimeSeconds": 85720,
+    "availabilityPercentage": 99.213,
+    "slaTargetPercentage": 99,
+    "slaCompliant": true,
+    "slaGapPercentage": 0.213,
+    "outagesCount": 2,
+    "activeOutagesCount": 0,
+    "mttrMinutes": 5.67,
+    "mttfHours": 11.91,
+    "evaluatedFrom": "2026-10-20T12:00:00.000Z",
+    "evaluatedTo": "2026-10-21T12:00:00.000Z",
+    "outages": [
+      {
+        "service": "api-backend",
+        "severity": "HIGH",
+        "status": "RESOLVED",
+        "startTime": "2026-10-21T07:00:00.000Z",
+        "endTime": "2026-10-21T07:03:00.000Z",
+        "durationSeconds": 180,
+        "reason": "Deploy de release e reciclagem de pods no cluster",
+        "failureDetails": {
+          "resolutionNotes": "Rolling update completado com sucesso e zero erros 5xx pós-aquecimento.",
+          "detectionSource": "MANUAL"
+        },
+        "id": "outage-1792764990935-c00c3a22",
+        "createdAt": "2026-10-23T14:16:30.935Z",
+        "updatedAt": "2026-10-23T14:16:30.935Z"
+      },
+      {
+        "service": "postgresql",
+        "severity": "CRITICAL",
+        "status": "RESOLVED",
+        "startTime": "2026-10-21T04:00:00.000Z",
+        "endTime": "2026-10-21T04:08:20.000Z",
+        "durationSeconds": 500,
+        "reason": "Esgotamento de conexões no pool de dados e falha de handshake",
+        "failureDetails": {
+          "error": "FATAL: remaining connection slots are reserved for non-replication superuser connections",
+          "rootCause": "Conexões não encerradas após timeout de leitura em endpoints legados.",
+          "impactedEndpoints": [
+            "/api/readings",
+            "/api/stations",
+            "/api/occurrences"
+          ],
+          "httpStatus": 503,
+          "diagnosticData": {
+            "activeConnections": 100,
+            "idleConnections": 0,
+            "waitingClients": 42
+          },
+          "detectionSource": "HEALTH_CHECK",
+          "resolutionNotes": "Executado pg_terminate_backend em conexões ociosas em transação e aplicado restart no PgBouncer."
+        },
+        "id": "outage-1792764990925-7da83ca1",
+        "createdAt": "2026-10-23T14:16:30.925Z",
+        "updatedAt": "2026-10-23T14:16:30.932Z"
+      }
+    ]
+  },
+  "outagesHistory": [
+    {
+      "service": "api-backend",
+      "severity": "HIGH",
+      "status": "RESOLVED",
+      "startTime": "2026-10-21T07:00:00.000Z",
+      "endTime": "2026-10-21T07:03:00.000Z",
+      "durationSeconds": 180,
+      "reason": "Deploy de release e reciclagem de pods no cluster",
+      "failureDetails": {
+        "resolutionNotes": "Rolling update completado com sucesso e zero erros 5xx pós-aquecimento.",
+        "detectionSource": "MANUAL"
+      },
+      "id": "outage-1792764990935-c00c3a22",
+      "createdAt": "2026-10-23T14:16:30.935Z",
+      "updatedAt": "2026-10-23T14:16:30.935Z"
+    },
+    {
+      "service": "postgresql",
+      "severity": "CRITICAL",
+      "status": "RESOLVED",
+      "startTime": "2026-10-21T04:00:00.000Z",
+      "endTime": "2026-10-21T04:08:20.000Z",
+      "durationSeconds": 500,
+      "reason": "Esgotamento de conexões no pool de dados e falha de handshake",
+      "failureDetails": {
+        "error": "FATAL: remaining connection slots are reserved for non-replication superuser connections",
+        "rootCause": "Conexões não encerradas após timeout de leitura em endpoints legados.",
+        "impactedEndpoints": [
+          "/api/readings",
+          "/api/stations",
+          "/api/occurrences"
+        ],
+        "httpStatus": 503,
+        "diagnosticData": {
+          "activeConnections": 100,
+          "idleConnections": 0,
+          "waitingClients": 42
+        },
+        "detectionSource": "HEALTH_CHECK",
+        "resolutionNotes": "Executado pg_terminate_backend em conexões ociosas em transação e aplicado restart no PgBouncer."
+      },
+      "id": "outage-1792764990925-7da83ca1",
+      "createdAt": "2026-10-23T14:16:30.925Z",
+      "updatedAt": "2026-10-23T14:16:30.932Z"
+    }
+  ],
+  "prometheusMetricsSnapshot": [
+    "# HELP vulture_outages_total Total de ocorrencias de indisponibilidade registradas no historico.",
+    "# TYPE vulture_outages_total counter",
+    "vulture_outages_total 2",
+    "# HELP vulture_outages_active Quantidade de indisponibilidades ativas no momento (1 se houver indisponibilidade aberta, 0 caso contrario).",
+    "# TYPE vulture_outages_active gauge",
+    "vulture_outages_active 0",
+    "# HELP vulture_outage_downtime_seconds_total Tempo total acumulado de indisponibilidade em segundos.",
+    "# TYPE vulture_outage_downtime_seconds_total counter",
+    "vulture_outage_downtime_seconds_total 680",
+    "# HELP vulture_sla_availability_ratio_percentage Percentual de disponibilidade calculado para validacao do SLA com base em indisponibilidades.",
+    "# TYPE vulture_sla_availability_ratio_percentage gauge",
+    "vulture_sla_availability_ratio_percentage 99.974"
+  ],
+  "acceptanceCriteriaValidation": {
+    "Indisponibilidades são registradas": {
+      "status": "ATENDIDO",
+      "details": "Registradas 2 indisponibilidades com persistência estruturada e identificador único."
+    },
+    "Registros permitem identificar quando a falha ocorreu": {
+      "status": "ATENDIDO",
+      "details": "Registros contêm startTime, endTime e durationSeconds calculados com precisão."
+    },
+    "Histórico fica disponível para consulta": {
+      "status": "ATENDIDO",
+      "details": "Disponibilizado endpoint GET /api/devops/outages com filtros por serviço, status e período."
+    },
+    "Dados registrados podem ser utilizados no cálculo ou validação da disponibilidade": {
+      "status": "ATENDIDO",
+      "details": "Disponibilizado endpoint GET /api/devops/sla calculando disponibilidade de 99.213% contra a meta de 99%."
+    }
+  }
+}
