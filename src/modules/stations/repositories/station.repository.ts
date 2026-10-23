@@ -14,6 +14,11 @@ export interface StationRepository {
   update(id: number, data: UpdateStationData): Promise<Station | null>;
   delete(id: number): Promise<boolean>;
   propertyExists(propertyId: number): Promise<boolean>;
+  findByPropertyId(propertyId: number): Promise<Station[]>;
+  updatePropertyId(
+    stationId: number,
+    propertyId: number,
+  ): Promise<Station | null>;
   listProperties?(): Promise<
     Array<{ id: number; name: string; location: string | null }>
   >;

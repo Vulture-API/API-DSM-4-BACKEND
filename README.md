@@ -60,6 +60,7 @@ Cada módulo mantém controllers, schemas, serviços e repositórios próprios. 
 | Configurações e alertas | `/api/alerts/config`, `/api/alerts/triggered`, `/api/alerts/triggered/:id/acknowledge`                                     |
 | Ocorrências de falhas   | `/api/occurrences`, `/api/occurrences/:id`, `PATCH /api/occurrences/:id/resolve`                                           |
 | Operação do motor       | `POST /internal/rules-engine/run`, `POST /internal/occurrences/run`                                                        |
+| Auditoria e DevOps      | `/api/devops/audit-logs`, `/api/devops/metrics`, `/api/devops/resources`, `/api/devops/outages`, `/api/devops/sla`         |
 
 CRUD, métodos, payloads, paginação e erros de negócio continuam iguais aos serviços de origem. As recusas de autenticação/autorização (401/403) usam o contrato comum descrito abaixo. Tipos e sensores também aceitam os aliases sem prefixo, com `/v1` e com `/api/v1`. O CORS desses recursos permanece encapsulado no módulo de parâmetros.
 
@@ -77,28 +78,29 @@ Os healthchecks foram unificados e as portas antigas 3001, 3002 e 3005 deixaram 
 
 ## Variáveis de ambiente
 
-| Variável                            | Padrão        | Uso                                                                                |
-| ----------------------------------- | ------------- | ---------------------------------------------------------------------------------- |
-| `NODE_ENV`                          | `development` | Ambiente da aplicação                                                              |
-| `PORT`                              | `3000`        | Porta HTTP                                                                         |
-| `DATABASE_URL`                      | obrigatório   | Única conexão PostgreSQL                                                           |
-| `JWT_SECRET`                        | sem padrão    | Segredo de ao menos 32 caracteres para login e JWT; obrigatório com controle ativo |
-| `ACCESS_CONTROL_ENABLED`            | `false`       | Ativa autorização das rotas existentes e do WebSocket                              |
-| `RATE_LIMIT_MAX`                    | `300`         | Requisições por IP no orçamento compartilhado da API                               |
-| `LOGIN_RATE_LIMIT_MAX`              | `10`          | Requisições de login por IP, em orçamento separado                                 |
-| `RATE_LIMIT_WINDOW_MS`              | `60000`       | Janela de contagem dos limites de requisição                                       |
-| `STATION_OFFLINE_THRESHOLD_MINUTES` | `10`          | Limite para estação Offline                                                        |
-| `RULES_ENGINE_ENABLED`              | `false`       | Ativa o agendamento do motor                                                       |
-| `RULES_ENGINE_INTERVAL_MS`          | `15000`       | Intervalo entre ciclos                                                             |
-| `RULES_ENGINE_BATCH_SIZE`           | `500`         | Leituras por lote, máximo 5000                                                     |
-| `CURRENT_READINGS_POLL_MS`          | `3000`        | Intervalo do WebSocket de leituras                                                 |
-| `CURRENT_READINGS_MAX_CONNECTIONS`  | `200`         | Conexões simultâneas no WebSocket                                                  |
-| `OCCURRENCES_ENABLED`               | `false`       | Ativa a verificação periódica de ocorrências                                       |
-| `OCCURRENCES_INTERVAL_MS`           | `60000`       | Intervalo entre verificações                                                       |
-| `OCCURRENCES_BATCH_SIZE`            | `500`         | Leituras validadas por ciclo, máximo 5000                                          |
-| `FORECAST_API_URL`                  | Open-Meteo    | Endpoint de previsão                                                               |
-| `FORECAST_TIMEOUT_MS`               | `5000`        | Tempo máximo da chamada externa                                                    |
-| `FORECAST_CACHE_TTL_MINUTES`        | `30`          | Cache da previsão por posição                                                      |
+| Variável                            | Padrão                     | Uso                                                                                            |
+| ----------------------------------- | -------------------------- | ---------------------------------------------------------------------------------------------- |
+| `NODE_ENV`                          | `development`              | Ambiente da aplicação                                                                          |
+| `LOG_LEVEL`                         | `info` / `silent` em teste | Nível mínimo de log estruturado (`fatal`, `error`, `warn`, `info`, `debug`, `trace`, `silent`) |
+| `PORT`                              | `3000`                     | Porta HTTP                                                                                     |
+| `DATABASE_URL`                      | obrigatório                | Única conexão PostgreSQL                                                                       |
+| `JWT_SECRET`                        | sem padrão                 | Segredo de ao menos 32 caracteres para login e JWT; obrigatório com controle ativo             |
+| `ACCESS_CONTROL_ENABLED`            | `false`                    | Ativa autorização das rotas existentes e do WebSocket                                          |
+| `RATE_LIMIT_MAX`                    | `300`                      | Requisições por IP no orçamento compartilhado da API                                           |
+| `LOGIN_RATE_LIMIT_MAX`              | `10`                       | Requisições de login por IP, em orçamento separado                                             |
+| `RATE_LIMIT_WINDOW_MS`              | `60000`                    | Janela de contagem dos limites de requisição                                                   |
+| `STATION_OFFLINE_THRESHOLD_MINUTES` | `10`                       | Limite para estação Offline                                                                    |
+| `RULES_ENGINE_ENABLED`              | `false`                    | Ativa o agendamento do motor                                                                   |
+| `RULES_ENGINE_INTERVAL_MS`          | `15000`                    | Intervalo entre ciclos                                                                         |
+| `RULES_ENGINE_BATCH_SIZE`           | `500`                      | Leituras por lote, máximo 5000                                                                 |
+| `CURRENT_READINGS_POLL_MS`          | `3000`                     | Intervalo do WebSocket de leituras                                                             |
+| `CURRENT_READINGS_MAX_CONNECTIONS`  | `200`                      | Conexões simultâneas no WebSocket                                                              |
+| `OCCURRENCES_ENABLED`               | `false`                    | Ativa a verificação periódica de ocorrências                                                   |
+| `OCCURRENCES_INTERVAL_MS`           | `60000`                    | Intervalo entre verificações                                                                   |
+| `OCCURRENCES_BATCH_SIZE`            | `500`                      | Leituras validadas por ciclo, máximo 5000                                                      |
+| `FORECAST_API_URL`                  | Open-Meteo                 | Endpoint de previsão                                                                           |
+| `FORECAST_TIMEOUT_MS`               | `5000`                     | Tempo máximo da chamada externa                                                                |
+| `FORECAST_CACHE_TTL_MINUTES`        | `30`                       | Cache da previsão por posição                                                                  |
 
 O motor fica desligado por padrão para não avançar o checkpoint do banco compartilhado durante desenvolvimento. O Compose o habilita e usa intervalo de 5000 ms. A rota manual permanece disponível quando um motor está anexado, mesmo sem agendamento, e retorna 409 durante um ciclo concorrente.
 
@@ -162,5 +164,6 @@ Publique os commits do BACKEND antes de publicar o gitlink correspondente do INF
 - [Permissões e autenticação — SCRUM-432](docs/permissoes.md)
 - [Bloqueio e desbloqueio de usuários — SCRUM-433](docs/bloqueio-usuarios.md)
 - [Autorização das funcionalidades — SCRUM-434](docs/autorizacao.md)
+- [Logging Estruturado e Auditoria — SCRUM-542](docs/logging-e-auditoria.md)
 
 A pasta local `confluence/` contém material para publicação e validação pelo time. Ela está ignorada pelo Git e pelo contexto Docker; sua publicação e o aceite do time são etapas externas.
