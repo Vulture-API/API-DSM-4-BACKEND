@@ -8,6 +8,9 @@ const environmentSchema = z
     NODE_ENV: z
       .enum(["development", "test", "production"])
       .default("development"),
+    LOG_LEVEL: z
+      .enum(["fatal", "error", "warn", "info", "debug", "trace", "silent"])
+      .default(process.env.NODE_ENV === "test" ? "silent" : "info"),
     JWT_SECRET: z.string().min(32).optional(),
     ACCESS_CONTROL_ENABLED: z
       .enum(["true", "false"])

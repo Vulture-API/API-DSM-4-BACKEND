@@ -2,6 +2,12 @@ import type { FastifyPluginAsync } from "fastify";
 import type { Pool } from "pg";
 
 import {
+  type AuditAction,
+  type AuditCategory,
+  type AuditResult,
+  AuditService,
+} from "../logging/audit-logger.js";
+import {
   type DatabaseHealth,
   DevOpsMetricsService,
 } from "./devops-metrics.service.js";
@@ -23,6 +29,7 @@ export type DevOpsRoutesOptions = {
   metricsService?: DevOpsMetricsService | undefined;
   outageRepository?: SystemOutageRepository | undefined;
   outageService?: DevOpsOutageService | undefined;
+  auditService?: AuditService | undefined;
 };
 
 export const devopsRoutes: FastifyPluginAsync<DevOpsRoutesOptions> = async (
@@ -297,6 +304,33 @@ export const devopsRoutes: FastifyPluginAsync<DevOpsRoutesOptions> = async (
     async (request) => {
       const params = slaCalculationSchema.parse(request.query);
       return outageService.calculateSlaReport(params);
+    },
+  );
+
+  // Consulta do histórico recente de logs de auditoria
+  const resolvedAuditService =
+    options.auditService ?? AuditService.getInstance();
+  fastify.get(
+    "/api/devops/audit-logs",
+    {
+      config: {
+        access: { public: true },
+        rateLimit: false,
+      },
+    },
+    async (request) => {
+      const query = request.query as Record<string, string | undefined>;
+      const limit = query.limit ? Number(query.limit) : 50;
+      return resolvedAuditService.listEvents({
+        category: query.category as AuditCategory | undefined,
+        action: query.action as AuditAction | undefined,
+        result: query.result as AuditResult | undefined,
+        actorId: query.actorId,
+        targetType: query.targetType,
+        fromDate: query.fromDate,
+        toDate: query.toDate,
+        limit,
+      });
     },
   );
 };
