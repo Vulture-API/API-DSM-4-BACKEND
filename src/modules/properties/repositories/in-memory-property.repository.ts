@@ -33,10 +33,20 @@ export class InMemoryPropertyRepository implements PropertyRepository {
   }
 
   async listProperties(): Promise<
-    Array<{ id: number; name: string; location: string | null }>
+    Array<{
+      id: number;
+      name: string;
+      location: string | null;
+      owner_user_id: number | null;
+    }>
   > {
     return this.properties
-      .map(({ id, name, location }) => ({ id, name, location }))
+      .map(({ id, name, location, owner_user_id }) => ({
+        id,
+        name,
+        location,
+        owner_user_id,
+      }))
       .sort((a, b) => a.name.localeCompare(b.name));
   }
 
