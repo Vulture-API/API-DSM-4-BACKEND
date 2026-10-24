@@ -1,0 +1,578 @@
+{
+  "name": "limit-recovery",
+  "users": 1,
+  "plannedSeconds": 15,
+  "elapsedSeconds": 15.558568100000004,
+  "thinkMs": 1000,
+  "circuitBroken": false,
+  "stopReason": null,
+  "generator": {
+    "cpuPercentOfOneCore": 0.6041687088158195,
+    "rssMb": 305.78515625
+  },
+  "requests": 15,
+  "successes": 15,
+  "errors": 0,
+  "rateLimited": 0,
+  "timeouts": 0,
+  "slowRequests": 0,
+  "successPercent": 100,
+  "requestsPerSecond": 0.9640990034294992,
+  "latencyMs": {
+    "mean": 28.195800000000357,
+    "p50": 26.470200000010664,
+    "p95": 35.281700000021374,
+    "p99": 35.281700000021374,
+    "max": 35.281700000021374
+  },
+  "passed": true,
+  "statuses": {
+    "200": 15
+  },
+  "byRoute": {
+    "/api/stations/overview": {
+      "requests": 3,
+      "successes": 3,
+      "errors": 0,
+      "rateLimited": 0,
+      "timeouts": 0,
+      "slowRequests": 0,
+      "successPercent": 100,
+      "requestsPerSecond": 0.19281980068589982,
+      "latencyMs": {
+        "mean": 28.646766666672193,
+        "p50": 26.104699999996228,
+        "p95": 35.281700000021374,
+        "p99": 35.281700000021374,
+        "max": 35.281700000021374
+      },
+      "passed": true,
+      "statuses": {
+        "200": 3
+      }
+    },
+    "/api/stations/current": {
+      "requests": 3,
+      "successes": 3,
+      "errors": 0,
+      "rateLimited": 0,
+      "timeouts": 0,
+      "slowRequests": 0,
+      "successPercent": 100,
+      "requestsPerSecond": 0.19281980068589982,
+      "latencyMs": {
+        "mean": 25.25466666666519,
+        "p50": 25.173099999985425,
+        "p95": 26.470200000010664,
+        "p99": 26.470200000010664,
+        "max": 26.470200000010664
+      },
+      "passed": true,
+      "statuses": {
+        "200": 3
+      }
+    },
+    "/api/stations/5/current": {
+      "requests": 3,
+      "successes": 3,
+      "errors": 0,
+      "rateLimited": 0,
+      "timeouts": 0,
+      "slowRequests": 0,
+      "successPercent": 100,
+      "requestsPerSecond": 0.19281980068589982,
+      "latencyMs": {
+        "mean": 32.85273333333316,
+        "p50": 32.639400000014575,
+        "p95": 33.73009999998612,
+        "p99": 33.73009999998612,
+        "max": 33.73009999998612
+      },
+      "passed": true,
+      "statuses": {
+        "200": 3
+      }
+    },
+    "/api/stations/readings/series?hours=720&bucket_minutes=120": {
+      "requests": 2,
+      "successes": 2,
+      "errors": 0,
+      "rateLimited": 0,
+      "timeouts": 0,
+      "slowRequests": 0,
+      "successPercent": 100,
+      "requestsPerSecond": 0.12854653379059988,
+      "latencyMs": {
+        "mean": 27.270749999996042,
+        "p50": 26.15529999998398,
+        "p95": 28.386200000008103,
+        "p99": 28.386200000008103,
+        "max": 28.386200000008103
+      },
+      "passed": true,
+      "statuses": {
+        "200": 2
+      }
+    },
+    "/api/readings?station_id=5&limit=100&start_unix_time=1790211699&end_unix_time=1792803699": {
+      "requests": 2,
+      "successes": 2,
+      "errors": 0,
+      "rateLimited": 0,
+      "timeouts": 0,
+      "slowRequests": 0,
+      "successPercent": 100,
+      "requestsPerSecond": 0.12854653379059988,
+      "latencyMs": {
+        "mean": 31.362099999998463,
+        "p50": 30.629199999995762,
+        "p95": 32.095000000001164,
+        "p99": 32.095000000001164,
+        "max": 32.095000000001164
+      },
+      "passed": true,
+      "statuses": {
+        "200": 2
+      }
+    },
+    "/api/stations/statistics": {
+      "requests": 2,
+      "successes": 2,
+      "errors": 0,
+      "rateLimited": 0,
+      "timeouts": 0,
+      "slowRequests": 0,
+      "successPercent": 100,
+      "requestsPerSecond": 0.12854653379059988,
+      "latencyMs": {
+        "mean": 22.70440000000235,
+        "p50": 22.567699999985052,
+        "p95": 22.84110000001965,
+        "p99": 22.84110000001965,
+        "max": 22.84110000001965
+      },
+      "passed": true,
+      "statuses": {
+        "200": 2
+      }
+    }
+  },
+  "resourceSamples": [
+    {
+      "status": "DEGRADED",
+      "timestamp": "2026-10-24T01:05:18.649Z",
+      "uptimeSeconds": 220,
+      "resources": {
+        "memory": {
+          "heapUsedBytes": 69329512,
+          "heapTotalBytes": 204025856,
+          "rssBytes": 268730368,
+          "externalBytes": 5970290,
+          "heapUsedMb": 66.12,
+          "heapTotalMb": 194.57,
+          "rssMb": 256.28,
+          "heapUsagePercent": 33.98
+        },
+        "cpu": {
+          "userMicroseconds": 69750000,
+          "systemMicroseconds": 24343000,
+          "cpuPercent": 0.23
+        },
+        "eventLoop": {
+          "lagMs": 23.18,
+          "status": "NORMAL"
+        },
+        "databasePool": {
+          "totalConnections": 10,
+          "idleConnections": 10,
+          "activeConnections": 0,
+          "waitingClients": 0
+        },
+        "system": {
+          "totalMemoryBytes": 16844550144,
+          "freeMemoryBytes": 2774548480,
+          "usedMemoryBytes": 14070001664,
+          "memoryUsagePercent": 83.53,
+          "cpuCores": 8,
+          "loadAverage1m": 0
+        }
+      },
+      "bottlenecks": [
+        {
+          "type": "HIGH_LATENCY",
+          "severity": "CRITICAL",
+          "resource": "Application HTTP Latency",
+          "message": "Latência p95 global de 2929.76 ms acima do limiar crítico (500 ms)",
+          "currentValue": "2929.76 ms",
+          "threshold": "500 ms",
+          "mitigation": "Avaliar endpoints com status DEGRADED e habilitar cache ou otimização de consultas.",
+          "timestamp": "2026-10-24T01:05:18.639Z"
+        }
+      ]
+    },
+    {
+      "status": "DEGRADED",
+      "timestamp": "2026-10-24T01:05:20.677Z",
+      "uptimeSeconds": 222,
+      "resources": {
+        "memory": {
+          "heapUsedBytes": 72652720,
+          "heapTotalBytes": 204025856,
+          "rssBytes": 268787712,
+          "externalBytes": 5992787,
+          "heapUsedMb": 69.29,
+          "heapTotalMb": 194.57,
+          "rssMb": 256.34,
+          "heapUsagePercent": 35.61
+        },
+        "cpu": {
+          "userMicroseconds": 69812000,
+          "systemMicroseconds": 24359000,
+          "cpuPercent": 3.84
+        },
+        "eventLoop": {
+          "lagMs": 23.24,
+          "status": "NORMAL"
+        },
+        "databasePool": {
+          "totalConnections": 10,
+          "idleConnections": 10,
+          "activeConnections": 0,
+          "waitingClients": 0
+        },
+        "system": {
+          "totalMemoryBytes": 16844550144,
+          "freeMemoryBytes": 2907090944,
+          "usedMemoryBytes": 13937459200,
+          "memoryUsagePercent": 82.74,
+          "cpuCores": 8,
+          "loadAverage1m": 0
+        }
+      },
+      "bottlenecks": [
+        {
+          "type": "HIGH_LATENCY",
+          "severity": "CRITICAL",
+          "resource": "Application HTTP Latency",
+          "message": "Latência p95 global de 2929.76 ms acima do limiar crítico (500 ms)",
+          "currentValue": "2929.76 ms",
+          "threshold": "500 ms",
+          "mitigation": "Avaliar endpoints com status DEGRADED e habilitar cache ou otimização de consultas.",
+          "timestamp": "2026-10-24T01:05:20.673Z"
+        }
+      ]
+    },
+    {
+      "status": "DEGRADED",
+      "timestamp": "2026-10-24T01:05:22.701Z",
+      "uptimeSeconds": 224,
+      "resources": {
+        "memory": {
+          "heapUsedBytes": 76019936,
+          "heapTotalBytes": 204025856,
+          "rssBytes": 269135872,
+          "externalBytes": 6061465,
+          "heapUsedMb": 72.5,
+          "heapTotalMb": 194.57,
+          "rssMb": 256.67,
+          "heapUsagePercent": 37.26
+        },
+        "cpu": {
+          "userMicroseconds": 69828000,
+          "systemMicroseconds": 24390000,
+          "cpuPercent": 2.32
+        },
+        "eventLoop": {
+          "lagMs": 23.29,
+          "status": "NORMAL"
+        },
+        "databasePool": {
+          "totalConnections": 1,
+          "idleConnections": 1,
+          "activeConnections": 0,
+          "waitingClients": 0
+        },
+        "system": {
+          "totalMemoryBytes": 16844550144,
+          "freeMemoryBytes": 2914725888,
+          "usedMemoryBytes": 13929824256,
+          "memoryUsagePercent": 82.7,
+          "cpuCores": 8,
+          "loadAverage1m": 0
+        }
+      },
+      "bottlenecks": [
+        {
+          "type": "HIGH_LATENCY",
+          "severity": "CRITICAL",
+          "resource": "Application HTTP Latency",
+          "message": "Latência p95 global de 2929.76 ms acima do limiar crítico (500 ms)",
+          "currentValue": "2929.76 ms",
+          "threshold": "500 ms",
+          "mitigation": "Avaliar endpoints com status DEGRADED e habilitar cache ou otimização de consultas.",
+          "timestamp": "2026-10-24T01:05:22.695Z"
+        }
+      ]
+    },
+    {
+      "status": "DEGRADED",
+      "timestamp": "2026-10-24T01:05:24.735Z",
+      "uptimeSeconds": 226,
+      "resources": {
+        "memory": {
+          "heapUsedBytes": 79252600,
+          "heapTotalBytes": 204025856,
+          "rssBytes": 269152256,
+          "externalBytes": 6064026,
+          "heapUsedMb": 75.58,
+          "heapTotalMb": 194.57,
+          "rssMb": 256.68,
+          "heapUsagePercent": 38.84
+        },
+        "cpu": {
+          "userMicroseconds": 69859000,
+          "systemMicroseconds": 24390000,
+          "cpuPercent": 1.53
+        },
+        "eventLoop": {
+          "lagMs": 23.34,
+          "status": "NORMAL"
+        },
+        "databasePool": {
+          "totalConnections": 1,
+          "idleConnections": 1,
+          "activeConnections": 0,
+          "waitingClients": 0
+        },
+        "system": {
+          "totalMemoryBytes": 16844550144,
+          "freeMemoryBytes": 2899116032,
+          "usedMemoryBytes": 13945434112,
+          "memoryUsagePercent": 82.79,
+          "cpuCores": 8,
+          "loadAverage1m": 0
+        }
+      },
+      "bottlenecks": [
+        {
+          "type": "HIGH_LATENCY",
+          "severity": "CRITICAL",
+          "resource": "Application HTTP Latency",
+          "message": "Latência p95 global de 2929.76 ms acima do limiar crítico (500 ms)",
+          "currentValue": "2929.76 ms",
+          "threshold": "500 ms",
+          "mitigation": "Avaliar endpoints com status DEGRADED e habilitar cache ou otimização de consultas.",
+          "timestamp": "2026-10-24T01:05:24.725Z"
+        }
+      ]
+    },
+    {
+      "status": "DEGRADED",
+      "timestamp": "2026-10-24T01:05:26.768Z",
+      "uptimeSeconds": 228,
+      "resources": {
+        "memory": {
+          "heapUsedBytes": 82573088,
+          "heapTotalBytes": 204025856,
+          "rssBytes": 269185024,
+          "externalBytes": 6086523,
+          "heapUsedMb": 78.75,
+          "heapTotalMb": 194.57,
+          "rssMb": 256.71,
+          "heapUsagePercent": 40.47
+        },
+        "cpu": {
+          "userMicroseconds": 69875000,
+          "systemMicroseconds": 24390000,
+          "cpuPercent": 0.78
+        },
+        "eventLoop": {
+          "lagMs": 23.39,
+          "status": "NORMAL"
+        },
+        "databasePool": {
+          "totalConnections": 1,
+          "idleConnections": 1,
+          "activeConnections": 0,
+          "waitingClients": 0
+        },
+        "system": {
+          "totalMemoryBytes": 16844550144,
+          "freeMemoryBytes": 2898079744,
+          "usedMemoryBytes": 13946470400,
+          "memoryUsagePercent": 82.8,
+          "cpuCores": 8,
+          "loadAverage1m": 0
+        }
+      },
+      "bottlenecks": [
+        {
+          "type": "HIGH_LATENCY",
+          "severity": "CRITICAL",
+          "resource": "Application HTTP Latency",
+          "message": "Latência p95 global de 2929.76 ms acima do limiar crítico (500 ms)",
+          "currentValue": "2929.76 ms",
+          "threshold": "500 ms",
+          "mitigation": "Avaliar endpoints com status DEGRADED e habilitar cache ou otimização de consultas.",
+          "timestamp": "2026-10-24T01:05:26.763Z"
+        }
+      ]
+    },
+    {
+      "status": "DEGRADED",
+      "timestamp": "2026-10-24T01:05:28.799Z",
+      "uptimeSeconds": 230,
+      "resources": {
+        "memory": {
+          "heapUsedBytes": 85810504,
+          "heapTotalBytes": 204025856,
+          "rssBytes": 269197312,
+          "externalBytes": 6089665,
+          "heapUsedMb": 81.84,
+          "heapTotalMb": 194.57,
+          "rssMb": 256.73,
+          "heapUsagePercent": 42.06
+        },
+        "cpu": {
+          "userMicroseconds": 69875000,
+          "systemMicroseconds": 24390000,
+          "cpuPercent": 0
+        },
+        "eventLoop": {
+          "lagMs": 23.44,
+          "status": "NORMAL"
+        },
+        "databasePool": {
+          "totalConnections": 1,
+          "idleConnections": 1,
+          "activeConnections": 0,
+          "waitingClients": 0
+        },
+        "system": {
+          "totalMemoryBytes": 16844550144,
+          "freeMemoryBytes": 2890776576,
+          "usedMemoryBytes": 13953773568,
+          "memoryUsagePercent": 82.84,
+          "cpuCores": 8,
+          "loadAverage1m": 0
+        }
+      },
+      "bottlenecks": [
+        {
+          "type": "HIGH_LATENCY",
+          "severity": "CRITICAL",
+          "resource": "Application HTTP Latency",
+          "message": "Latência p95 global de 2929.76 ms acima do limiar crítico (500 ms)",
+          "currentValue": "2929.76 ms",
+          "threshold": "500 ms",
+          "mitigation": "Avaliar endpoints com status DEGRADED e habilitar cache ou otimização de consultas.",
+          "timestamp": "2026-10-24T01:05:28.795Z"
+        }
+      ]
+    },
+    {
+      "status": "DEGRADED",
+      "timestamp": "2026-10-24T01:05:30.839Z",
+      "uptimeSeconds": 232,
+      "resources": {
+        "memory": {
+          "heapUsedBytes": 89065656,
+          "heapTotalBytes": 204025856,
+          "rssBytes": 269238272,
+          "externalBytes": 6092226,
+          "heapUsedMb": 84.94,
+          "heapTotalMb": 194.57,
+          "rssMb": 256.77,
+          "heapUsagePercent": 43.65
+        },
+        "cpu": {
+          "userMicroseconds": 69875000,
+          "systemMicroseconds": 24390000,
+          "cpuPercent": 0
+        },
+        "eventLoop": {
+          "lagMs": 23.49,
+          "status": "NORMAL"
+        },
+        "databasePool": {
+          "totalConnections": 1,
+          "idleConnections": 1,
+          "activeConnections": 0,
+          "waitingClients": 0
+        },
+        "system": {
+          "totalMemoryBytes": 16844550144,
+          "freeMemoryBytes": 2866962432,
+          "usedMemoryBytes": 13977587712,
+          "memoryUsagePercent": 82.98,
+          "cpuCores": 8,
+          "loadAverage1m": 0
+        }
+      },
+      "bottlenecks": [
+        {
+          "type": "HIGH_LATENCY",
+          "severity": "CRITICAL",
+          "resource": "Application HTTP Latency",
+          "message": "Latência p95 global de 2929.76 ms acima do limiar crítico (500 ms)",
+          "currentValue": "2929.76 ms",
+          "threshold": "500 ms",
+          "mitigation": "Avaliar endpoints com status DEGRADED e habilitar cache ou otimização de consultas.",
+          "timestamp": "2026-10-24T01:05:30.833Z"
+        }
+      ]
+    },
+    {
+      "status": "DEGRADED",
+      "timestamp": "2026-10-24T01:05:32.881Z",
+      "uptimeSeconds": 234,
+      "resources": {
+        "memory": {
+          "heapUsedBytes": 92392880,
+          "heapTotalBytes": 204025856,
+          "rssBytes": 269254656,
+          "externalBytes": 6180259,
+          "heapUsedMb": 88.11,
+          "heapTotalMb": 194.57,
+          "rssMb": 256.78,
+          "heapUsagePercent": 45.28
+        },
+        "cpu": {
+          "userMicroseconds": 69906000,
+          "systemMicroseconds": 24390000,
+          "cpuPercent": 1.52
+        },
+        "eventLoop": {
+          "lagMs": 23.54,
+          "status": "NORMAL"
+        },
+        "databasePool": {
+          "totalConnections": 1,
+          "idleConnections": 1,
+          "activeConnections": 0,
+          "waitingClients": 0
+        },
+        "system": {
+          "totalMemoryBytes": 16844550144,
+          "freeMemoryBytes": 2879787008,
+          "usedMemoryBytes": 13964763136,
+          "memoryUsagePercent": 82.9,
+          "cpuCores": 8,
+          "loadAverage1m": 0
+        }
+      },
+      "bottlenecks": [
+        {
+          "type": "HIGH_LATENCY",
+          "severity": "CRITICAL",
+          "resource": "Application HTTP Latency",
+          "message": "Latência p95 global de 2929.76 ms acima do limiar crítico (500 ms)",
+          "currentValue": "2929.76 ms",
+          "threshold": "500 ms",
+          "mitigation": "Avaliar endpoints com status DEGRADED e habilitar cache ou otimização de consultas.",
+          "timestamp": "2026-10-24T01:05:32.870Z"
+        }
+      ]
+    }
+  ]
+}
