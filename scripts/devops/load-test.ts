@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 
 import WebSocket from "ws";
 
+import { resourceEvidence } from "./load-evidence.js";
 import { type Sample, summarize } from "./load-metrics.js";
 
 type Server = {
@@ -176,7 +177,9 @@ async function stage(
     if (!monitorResources) return;
     while (!done && !controller.signal.aborted) {
       try {
-        const resource = await json(`${base}/api/devops/resources`);
+        const resource = resourceEvidence(
+          await json(`${base}/api/devops/resources`),
+        );
         resources.push(resource);
         if (
           stopAtSlo &&
@@ -187,6 +190,10 @@ async function stage(
           circuitBroken = true;
         }
       } catch {
+        if (stopAtSlo) {
+          stopReason = "RESOURCE_GUARD";
+          circuitBroken = true;
+        }
         resources.push({
           error: "Falha ao consultar recursos",
           timestamp: new Date().toISOString(),
@@ -571,8 +578,14 @@ async function main() {
     const overview = (await json(`${server.address}/api/stations/overview`, {
       headers,
     })) as { stations: { id: number }[] };
-    const id = overview.stations[0]?.id;
-    if (!id) throw new Error("É necessário pelo menos uma estação no banco.");
+    const stationId = overview.stations[0]?.id;
+    if (
+      typeof stationId !== "number" ||
+      !Number.isSafeInteger(stationId) ||
+      stationId <= 0
+    )
+      throw new Error("É necessário pelo menos uma estação válida no banco.");
+    const id = Number(stationId);
     const now = Math.floor(Date.now() / 1000);
     const endpoints: Endpoint[] = [
       { route: "/api/stations/overview", key: "stations" },
@@ -784,8 +797,11 @@ async function main() {
   }
 }
 main()
-  .catch((error: unknown) => {
-    console.error(error instanceof Error ? error.message : "Falha no ensaio.");
+  .catch(() => {
+    const message = controller.signal.aborted
+      ? "Execução interrompida."
+      : "Falha no ensaio. Confira as credenciais, a conexão e as pré-condições do plano de testes.";
+    console.error(message);
     if (fs.existsSync(output))
       fs.writeFileSync(
         path.join(output, "execution-error.json"),
@@ -793,8 +809,7 @@ main()
           {
             timestamp: new Date().toISOString(),
             aborted: controller.signal.aborted,
-            message:
-              error instanceof Error ? error.message : "Falha no ensaio.",
+            message,
           },
           null,
           2,
