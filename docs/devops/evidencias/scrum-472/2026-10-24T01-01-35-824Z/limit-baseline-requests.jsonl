@@ -1,0 +1,10 @@
+{"route":"/api/stations/overview","status":200,"durationMs":122.03430000000026,"bytes":11402,"valid":true,"startedAt":"2026-10-24T01:01:40.091Z"}
+{"route":"/api/stations/current","status":200,"durationMs":30.901200000000244,"bytes":9698,"valid":true,"startedAt":"2026-10-24T01:01:41.220Z"}
+{"route":"/api/stations/5/current","status":200,"durationMs":37.27809999999954,"bytes":387,"valid":true,"startedAt":"2026-10-24T01:01:42.265Z"}
+{"route":"/api/stations/readings/series?hours=720&bucket_minutes=120","status":200,"durationMs":25.132000000000517,"bytes":732,"valid":true,"startedAt":"2026-10-24T01:01:43.308Z"}
+{"route":"/api/readings?station_id=5&limit=100&start_unix_time=1790211699&end_unix_time=1792803699","status":200,"durationMs":34.90970000000016,"bytes":71,"valid":true,"startedAt":"2026-10-24T01:01:44.338Z"}
+{"route":"/api/stations/statistics","status":200,"durationMs":23.90899999999965,"bytes":141,"valid":true,"startedAt":"2026-10-24T01:01:45.377Z"}
+{"route":"/api/stations/overview","status":200,"durationMs":30.839399999998932,"bytes":11402,"valid":true,"startedAt":"2026-10-24T01:01:46.414Z"}
+{"route":"/api/stations/current","status":200,"durationMs":40.495199999999386,"bytes":9698,"valid":true,"startedAt":"2026-10-24T01:01:47.448Z"}
+{"route":"/api/stations/5/current","status":200,"durationMs":37.45309999999881,"bytes":387,"valid":true,"startedAt":"2026-10-24T01:01:48.493Z"}
+{"route":"/api/stations/readings/series?hours=720&bucket_minutes=120","status":200,"durationMs":52.0580000000009,"bytes":732,"valid":true,"startedAt":"2026-10-24T01:01:49.539Z"}
