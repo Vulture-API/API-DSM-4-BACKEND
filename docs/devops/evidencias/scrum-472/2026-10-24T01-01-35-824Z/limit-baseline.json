@@ -1,0 +1,430 @@
+{
+  "name": "limit-baseline",
+  "users": 1,
+  "plannedSeconds": 10,
+  "elapsedSeconds": 10.510315900000002,
+  "thinkMs": 1000,
+  "circuitBroken": false,
+  "stopReason": null,
+  "generator": {
+    "cpuPercentOfOneCore": 1.6269729818491943,
+    "rssMb": 74.3046875
+  },
+  "requests": 10,
+  "successes": 10,
+  "errors": 0,
+  "rateLimited": 0,
+  "timeouts": 0,
+  "slowRequests": 0,
+  "successPercent": 100,
+  "requestsPerSecond": 0.951446188215903,
+  "latencyMs": {
+    "mean": 43.50099999999984,
+    "p50": 34.90970000000016,
+    "p95": 122.03430000000026,
+    "p99": 122.03430000000026,
+    "max": 122.03430000000026
+  },
+  "passed": true,
+  "statuses": {
+    "200": 10
+  },
+  "byRoute": {
+    "/api/stations/overview": {
+      "requests": 2,
+      "successes": 2,
+      "errors": 0,
+      "rateLimited": 0,
+      "timeouts": 0,
+      "slowRequests": 0,
+      "successPercent": 100,
+      "requestsPerSecond": 0.1902892376431806,
+      "latencyMs": {
+        "mean": 76.4368499999996,
+        "p50": 30.839399999998932,
+        "p95": 122.03430000000026,
+        "p99": 122.03430000000026,
+        "max": 122.03430000000026
+      },
+      "passed": true,
+      "statuses": {
+        "200": 2
+      }
+    },
+    "/api/stations/current": {
+      "requests": 2,
+      "successes": 2,
+      "errors": 0,
+      "rateLimited": 0,
+      "timeouts": 0,
+      "slowRequests": 0,
+      "successPercent": 100,
+      "requestsPerSecond": 0.1902892376431806,
+      "latencyMs": {
+        "mean": 35.698199999999815,
+        "p50": 30.901200000000244,
+        "p95": 40.495199999999386,
+        "p99": 40.495199999999386,
+        "max": 40.495199999999386
+      },
+      "passed": true,
+      "statuses": {
+        "200": 2
+      }
+    },
+    "/api/stations/5/current": {
+      "requests": 2,
+      "successes": 2,
+      "errors": 0,
+      "rateLimited": 0,
+      "timeouts": 0,
+      "slowRequests": 0,
+      "successPercent": 100,
+      "requestsPerSecond": 0.1902892376431806,
+      "latencyMs": {
+        "mean": 37.365599999999176,
+        "p50": 37.27809999999954,
+        "p95": 37.45309999999881,
+        "p99": 37.45309999999881,
+        "max": 37.45309999999881
+      },
+      "passed": true,
+      "statuses": {
+        "200": 2
+      }
+    },
+    "/api/stations/readings/series?hours=720&bucket_minutes=120": {
+      "requests": 2,
+      "successes": 2,
+      "errors": 0,
+      "rateLimited": 0,
+      "timeouts": 0,
+      "slowRequests": 0,
+      "successPercent": 100,
+      "requestsPerSecond": 0.1902892376431806,
+      "latencyMs": {
+        "mean": 38.59500000000071,
+        "p50": 25.132000000000517,
+        "p95": 52.0580000000009,
+        "p99": 52.0580000000009,
+        "max": 52.0580000000009
+      },
+      "passed": true,
+      "statuses": {
+        "200": 2
+      }
+    },
+    "/api/readings?station_id=5&limit=100&start_unix_time=1790211699&end_unix_time=1792803699": {
+      "requests": 1,
+      "successes": 1,
+      "errors": 0,
+      "rateLimited": 0,
+      "timeouts": 0,
+      "slowRequests": 0,
+      "successPercent": 100,
+      "requestsPerSecond": 0.0951446188215903,
+      "latencyMs": {
+        "mean": 34.90970000000016,
+        "p50": 34.90970000000016,
+        "p95": 34.90970000000016,
+        "p99": 34.90970000000016,
+        "max": 34.90970000000016
+      },
+      "passed": true,
+      "statuses": {
+        "200": 1
+      }
+    },
+    "/api/stations/statistics": {
+      "requests": 1,
+      "successes": 1,
+      "errors": 0,
+      "rateLimited": 0,
+      "timeouts": 0,
+      "slowRequests": 0,
+      "successPercent": 100,
+      "requestsPerSecond": 0.0951446188215903,
+      "latencyMs": {
+        "mean": 23.90899999999965,
+        "p50": 23.90899999999965,
+        "p95": 23.90899999999965,
+        "p99": 23.90899999999965,
+        "max": 23.90899999999965
+      },
+      "passed": true,
+      "statuses": {
+        "200": 1
+      }
+    }
+  },
+  "resourceSamples": [
+    {
+      "status": "HEALTHY",
+      "timestamp": "2026-10-24T01:01:40.107Z",
+      "uptimeSeconds": 2,
+      "resources": {
+        "memory": {
+          "heapUsedBytes": 30627192,
+          "heapTotalBytes": 65875968,
+          "rssBytes": 135913472,
+          "externalBytes": 5787234,
+          "heapUsedMb": 29.21,
+          "heapTotalMb": 62.82,
+          "rssMb": 129.62,
+          "heapUsagePercent": 46.49
+        },
+        "cpu": {
+          "userMicroseconds": 1375000,
+          "systemMicroseconds": 1218000,
+          "cpuPercent": 23.38
+        },
+        "eventLoop": {
+          "lagMs": 31.03,
+          "status": "NORMAL"
+        },
+        "databasePool": {
+          "totalConnections": 2,
+          "idleConnections": 1,
+          "activeConnections": 1,
+          "waitingClients": 0
+        },
+        "system": {
+          "totalMemoryBytes": 16844550144,
+          "freeMemoryBytes": 478109696,
+          "usedMemoryBytes": 16366440448,
+          "memoryUsagePercent": 97.16,
+          "cpuCores": 8,
+          "loadAverage1m": 0
+        }
+      },
+      "bottlenecks": []
+    },
+    {
+      "status": "HEALTHY",
+      "timestamp": "2026-10-24T01:01:42.139Z",
+      "uptimeSeconds": 4,
+      "resources": {
+        "memory": {
+          "heapUsedBytes": 31445848,
+          "heapTotalBytes": 65875968,
+          "rssBytes": 136110080,
+          "externalBytes": 5818205,
+          "heapUsedMb": 29.99,
+          "heapTotalMb": 62.82,
+          "rssMb": 129.8,
+          "heapUsagePercent": 47.73
+        },
+        "cpu": {
+          "userMicroseconds": 1453000,
+          "systemMicroseconds": 1234000,
+          "cpuPercent": 4.62
+        },
+        "eventLoop": {
+          "lagMs": 30.75,
+          "status": "NORMAL"
+        },
+        "databasePool": {
+          "totalConnections": 2,
+          "idleConnections": 2,
+          "activeConnections": 0,
+          "waitingClients": 0
+        },
+        "system": {
+          "totalMemoryBytes": 16844550144,
+          "freeMemoryBytes": 499671040,
+          "usedMemoryBytes": 16344879104,
+          "memoryUsagePercent": 97.03,
+          "cpuCores": 8,
+          "loadAverage1m": 0
+        }
+      },
+      "bottlenecks": []
+    },
+    {
+      "status": "HEALTHY",
+      "timestamp": "2026-10-24T01:01:44.168Z",
+      "uptimeSeconds": 6,
+      "resources": {
+        "memory": {
+          "heapUsedBytes": 31827872,
+          "heapTotalBytes": 65875968,
+          "rssBytes": 136130560,
+          "externalBytes": 5821347,
+          "heapUsedMb": 30.35,
+          "heapTotalMb": 62.82,
+          "rssMb": 129.82,
+          "heapUsagePercent": 48.31
+        },
+        "cpu": {
+          "userMicroseconds": 1484000,
+          "systemMicroseconds": 1234000,
+          "cpuPercent": 1.53
+        },
+        "eventLoop": {
+          "lagMs": 30.82,
+          "status": "NORMAL"
+        },
+        "databasePool": {
+          "totalConnections": 2,
+          "idleConnections": 2,
+          "activeConnections": 0,
+          "waitingClients": 0
+        },
+        "system": {
+          "totalMemoryBytes": 16844550144,
+          "freeMemoryBytes": 584577024,
+          "usedMemoryBytes": 16259973120,
+          "memoryUsagePercent": 96.53,
+          "cpuCores": 8,
+          "loadAverage1m": 0
+        }
+      },
+      "bottlenecks": []
+    },
+    {
+      "status": "HEALTHY",
+      "timestamp": "2026-10-24T01:01:46.191Z",
+      "uptimeSeconds": 8,
+      "resources": {
+        "memory": {
+          "heapUsedBytes": 32235824,
+          "heapTotalBytes": 65875968,
+          "rssBytes": 133271552,
+          "externalBytes": 5889444,
+          "heapUsedMb": 30.74,
+          "heapTotalMb": 62.82,
+          "rssMb": 127.1,
+          "heapUsagePercent": 48.93
+        },
+        "cpu": {
+          "userMicroseconds": 1500000,
+          "systemMicroseconds": 1234000,
+          "cpuPercent": 0.79
+        },
+        "eventLoop": {
+          "lagMs": 30.85,
+          "status": "NORMAL"
+        },
+        "databasePool": {
+          "totalConnections": 2,
+          "idleConnections": 2,
+          "activeConnections": 0,
+          "waitingClients": 0
+        },
+        "system": {
+          "totalMemoryBytes": 16844550144,
+          "freeMemoryBytes": 597405696,
+          "usedMemoryBytes": 16247144448,
+          "memoryUsagePercent": 96.45,
+          "cpuCores": 8,
+          "loadAverage1m": 0
+        }
+      },
+      "bottlenecks": []
+    },
+    {
+      "status": "DEGRADED",
+      "timestamp": "2026-10-24T01:01:48.211Z",
+      "uptimeSeconds": 10,
+      "resources": {
+        "memory": {
+          "heapUsedBytes": 28731464,
+          "heapTotalBytes": 31535104,
+          "rssBytes": 99213312,
+          "externalBytes": 5746484,
+          "heapUsedMb": 27.4,
+          "heapTotalMb": 30.07,
+          "rssMb": 94.62,
+          "heapUsagePercent": 91.11
+        },
+        "cpu": {
+          "userMicroseconds": 1656000,
+          "systemMicroseconds": 1234000,
+          "cpuPercent": 7.73
+        },
+        "eventLoop": {
+          "lagMs": 30.84,
+          "status": "NORMAL"
+        },
+        "databasePool": {
+          "totalConnections": 2,
+          "idleConnections": 2,
+          "activeConnections": 0,
+          "waitingClients": 0
+        },
+        "system": {
+          "totalMemoryBytes": 16844550144,
+          "freeMemoryBytes": 609734656,
+          "usedMemoryBytes": 16234815488,
+          "memoryUsagePercent": 96.38,
+          "cpuCores": 8,
+          "loadAverage1m": 0
+        }
+      },
+      "bottlenecks": [
+        {
+          "type": "HIGH_MEMORY",
+          "severity": "WARNING",
+          "resource": "Node.js V8 Heap",
+          "message": "Consumo elevado de heap (27.4 MB de 30.07 MB - 91.11%)",
+          "currentValue": "91.11%",
+          "threshold": "85%",
+          "mitigation": "Investigar possíveis vazamentos de memória (retenção de referências ou listeners) e considerar ajuste de --max-old-space-size.",
+          "timestamp": "2026-10-24T01:01:48.211Z"
+        }
+      ]
+    },
+    {
+      "status": "UNHEALTHY",
+      "timestamp": "2026-10-24T01:01:50.238Z",
+      "uptimeSeconds": 12,
+      "resources": {
+        "memory": {
+          "heapUsedBytes": 29199024,
+          "heapTotalBytes": 31535104,
+          "rssBytes": 99635200,
+          "externalBytes": 5749626,
+          "heapUsedMb": 27.85,
+          "heapTotalMb": 30.07,
+          "rssMb": 95.02,
+          "heapUsagePercent": 92.59
+        },
+        "cpu": {
+          "userMicroseconds": 1656000,
+          "systemMicroseconds": 1234000,
+          "cpuPercent": 0
+        },
+        "eventLoop": {
+          "lagMs": 30.82,
+          "status": "NORMAL"
+        },
+        "databasePool": {
+          "totalConnections": 1,
+          "idleConnections": 1,
+          "activeConnections": 0,
+          "waitingClients": 0
+        },
+        "system": {
+          "totalMemoryBytes": 16844550144,
+          "freeMemoryBytes": 670171136,
+          "usedMemoryBytes": 16174379008,
+          "memoryUsagePercent": 96.02,
+          "cpuCores": 8,
+          "loadAverage1m": 0
+        }
+      },
+      "bottlenecks": [
+        {
+          "type": "HIGH_MEMORY",
+          "severity": "CRITICAL",
+          "resource": "Node.js V8 Heap",
+          "message": "Consumo elevado de heap (27.85 MB de 30.07 MB - 92.59%)",
+          "currentValue": "92.59%",
+          "threshold": "85%",
+          "mitigation": "Investigar possíveis vazamentos de memória (retenção de referências ou listeners) e considerar ajuste de --max-old-space-size.",
+          "timestamp": "2026-10-24T01:01:50.238Z"
+        }
+      ]
+    }
+  ]
+}
