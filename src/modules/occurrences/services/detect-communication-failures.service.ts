@@ -38,8 +38,8 @@ export class DetectCommunicationFailuresService {
       if (silentMs > limitMs) {
         if (openIds) continue;
         const description = station.last_communication_at
-          ? `Estação ${station.station_name} sem comunicação há ${Math.floor(silentMs / 60_000)} min (limite de ${this.thresholdMinutes} min). Última comunicação: ${station.last_communication_at.toISOString()}.`
-          : `Estação ${station.station_name} sem nenhuma comunicação registrada desde o cadastro (limite de ${this.thresholdMinutes} min).`;
+          ? `${station.station_name} sem comunicação há ${Math.floor(silentMs / 60_000)} min (limite de ${this.thresholdMinutes} min). Última comunicação: ${formatBrasilia(station.last_communication_at)}.`
+          : `${station.station_name} sem nenhuma comunicação registrada desde o cadastro (limite de ${this.thresholdMinutes} min).`;
         if (
           await this.repository.openCommunicationFailure({
             station_id: station.station_id,
@@ -63,4 +63,15 @@ export class DetectCommunicationFailuresService {
       failures_resolved: resolved,
     };
   }
+}
+
+const brasilia = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: "America/Sao_Paulo",
+  dateStyle: "short",
+  timeStyle: "short",
+});
+
+/** Data legível no fuso de Brasília para a descrição da ocorrência. */
+function formatBrasilia(date: Date): string {
+  return brasilia.format(date);
 }
