@@ -1,0 +1,565 @@
+{
+  "name": "limit-160",
+  "users": 160,
+  "plannedSeconds": 15,
+  "elapsedSeconds": 15.317008199999997,
+  "thinkMs": 0,
+  "circuitBroken": false,
+  "stopReason": null,
+  "generator": {
+    "cpuPercentOfOneCore": 29.992802380297746,
+    "rssMb": 263.36328125
+  },
+  "requests": 4539,
+  "successes": 4539,
+  "errors": 0,
+  "rateLimited": 0,
+  "timeouts": 0,
+  "slowRequests": 0,
+  "successPercent": 100,
+  "requestsPerSecond": 296.3372442406867,
+  "latencyMs": {
+    "mean": 530.9565312623898,
+    "p50": 450.82369999999355,
+    "p95": 875.6814000000013,
+    "p99": 1238.815699999992,
+    "max": 1292.1557999999932
+  },
+  "passed": true,
+  "statuses": {
+    "200": 4539
+  },
+  "byRoute": {
+    "/api/stations/overview": {
+      "requests": 751,
+      "successes": 751,
+      "errors": 0,
+      "rateLimited": 0,
+      "timeouts": 0,
+      "slowRequests": 0,
+      "successPercent": 100,
+      "requestsPerSecond": 49.03046275055204,
+      "latencyMs": {
+        "mean": 459.1973781624498,
+        "p50": 422.82360000000335,
+        "p95": 793.0256999999983,
+        "p99": 1037.3772999999928,
+        "max": 1071.1588000000047
+      },
+      "passed": true,
+      "statuses": {
+        "200": 751
+      }
+    },
+    "/api/stations/current": {
+      "requests": 759,
+      "successes": 759,
+      "errors": 0,
+      "rateLimited": 0,
+      "timeouts": 0,
+      "slowRequests": 0,
+      "successPercent": 100,
+      "requestsPerSecond": 49.552757959612514,
+      "latencyMs": {
+        "mean": 449.80639156785264,
+        "p50": 424.2030000000086,
+        "p95": 695.255600000004,
+        "p99": 1028.8372999999992,
+        "max": 1069.3418000000092
+      },
+      "passed": true,
+      "statuses": {
+        "200": 759
+      }
+    },
+    "/api/stations/5/current": {
+      "requests": 763,
+      "successes": 763,
+      "errors": 0,
+      "rateLimited": 0,
+      "timeouts": 0,
+      "slowRequests": 0,
+      "successPercent": 100,
+      "requestsPerSecond": 49.81390556414275,
+      "latencyMs": {
+        "mean": 682.902416906947,
+        "p50": 634.2919000000111,
+        "p95": 1053.5004999999946,
+        "p99": 1275.640699999989,
+        "max": 1291.9866000000038
+      },
+      "passed": true,
+      "statuses": {
+        "200": 763
+      }
+    },
+    "/api/stations/readings/series?hours=720&bucket_minutes=120": {
+      "requests": 758,
+      "successes": 758,
+      "errors": 0,
+      "rateLimited": 0,
+      "timeouts": 0,
+      "slowRequests": 0,
+      "successPercent": 100,
+      "requestsPerSecond": 49.487471058479954,
+      "latencyMs": {
+        "mean": 456.7717076517146,
+        "p50": 421.4776000000129,
+        "p95": 798.9668999999994,
+        "p99": 1051.7767000000022,
+        "max": 1069.6128999999928
+      },
+      "passed": true,
+      "statuses": {
+        "200": 758
+      }
+    },
+    "/api/readings?station_id=5&limit=100&start_unix_time=1790211699&end_unix_time=1792803699": {
+      "requests": 760,
+      "successes": 760,
+      "errors": 0,
+      "rateLimited": 0,
+      "timeouts": 0,
+      "slowRequests": 0,
+      "successPercent": 100,
+      "requestsPerSecond": 49.61804486074507,
+      "latencyMs": {
+        "mean": 675.3425639473683,
+        "p50": 626.045100000003,
+        "p95": 1047.3637000000017,
+        "p99": 1281.892799999987,
+        "max": 1292.1557999999932
+      },
+      "passed": true,
+      "statuses": {
+        "200": 760
+      }
+    },
+    "/api/stations/statistics": {
+      "requests": 748,
+      "successes": 748,
+      "errors": 0,
+      "rateLimited": 0,
+      "timeouts": 0,
+      "slowRequests": 0,
+      "successPercent": 100,
+      "requestsPerSecond": 48.83460204715436,
+      "latencyMs": {
+        "mean": 458.8282969251336,
+        "p50": 422.825800000006,
+        "p95": 790.0213999999978,
+        "p99": 1049.442200000005,
+        "max": 1072.8003000000026
+      },
+      "passed": true,
+      "statuses": {
+        "200": 748
+      }
+    }
+  },
+  "resourceSamples": [
+    {
+      "status": "DEGRADED",
+      "timestamp": "2026-10-24T01:03:19.494Z",
+      "uptimeSeconds": 101,
+      "resources": {
+        "memory": {
+          "heapUsedBytes": 40561648,
+          "heapTotalBytes": 103100416,
+          "rssBytes": 166371328,
+          "externalBytes": 6793942,
+          "heapUsedMb": 38.68,
+          "heapTotalMb": 98.32,
+          "rssMb": 158.66,
+          "heapUsagePercent": 39.34
+        },
+        "cpu": {
+          "userMicroseconds": 34750000,
+          "systemMicroseconds": 11718000,
+          "cpuPercent": 8.12
+        },
+        "eventLoop": {
+          "lagMs": 22.94,
+          "status": "NORMAL"
+        },
+        "databasePool": {
+          "totalConnections": 10,
+          "idleConnections": 10,
+          "activeConnections": 0,
+          "waitingClients": 0
+        },
+        "system": {
+          "totalMemoryBytes": 16844550144,
+          "freeMemoryBytes": 1714470912,
+          "usedMemoryBytes": 15130079232,
+          "memoryUsagePercent": 89.82,
+          "cpuCores": 8,
+          "loadAverage1m": 0
+        }
+      },
+      "bottlenecks": []
+    },
+    {
+      "status": "DEGRADED",
+      "timestamp": "2026-10-24T01:03:21.803Z",
+      "uptimeSeconds": 103,
+      "resources": {
+        "memory": {
+          "heapUsedBytes": 44318144,
+          "heapTotalBytes": 103624704,
+          "rssBytes": 167157760,
+          "externalBytes": 6994272,
+          "heapUsedMb": 42.27,
+          "heapTotalMb": 98.82,
+          "rssMb": 159.41,
+          "heapUsagePercent": 42.77
+        },
+        "cpu": {
+          "userMicroseconds": 35296000,
+          "systemMicroseconds": 11937000,
+          "cpuPercent": 33.1
+        },
+        "eventLoop": {
+          "lagMs": 23.02,
+          "status": "NORMAL"
+        },
+        "databasePool": {
+          "totalConnections": 10,
+          "idleConnections": 0,
+          "activeConnections": 10,
+          "waitingClients": 150
+        },
+        "system": {
+          "totalMemoryBytes": 16844550144,
+          "freeMemoryBytes": 1816358912,
+          "usedMemoryBytes": 15028191232,
+          "memoryUsagePercent": 89.22,
+          "cpuCores": 8,
+          "loadAverage1m": 0
+        }
+      },
+      "bottlenecks": [
+        {
+          "type": "DB_POOL_SATURATION",
+          "severity": "CRITICAL",
+          "resource": "PostgreSQL Connection Pool",
+          "message": "Pool de conexões saturado (150 clientes em espera, 10 ativas)",
+          "currentValue": "150 em espera",
+          "threshold": "0 clientes em espera",
+          "mitigation": "Aumentar o limite de conexões no pool do banco ou otimizar consultas que mantêm conexões abertas por tempo prolongado.",
+          "timestamp": "2026-10-24T01:03:21.798Z"
+        }
+      ]
+    },
+    {
+      "status": "DEGRADED",
+      "timestamp": "2026-10-24T01:03:24.020Z",
+      "uptimeSeconds": 106,
+      "resources": {
+        "memory": {
+          "heapUsedBytes": 60706224,
+          "heapTotalBytes": 103886848,
+          "rssBytes": 169938944,
+          "externalBytes": 9116540,
+          "heapUsedMb": 57.89,
+          "heapTotalMb": 99.07,
+          "rssMb": 162.07,
+          "heapUsagePercent": 58.43
+        },
+        "cpu": {
+          "userMicroseconds": 36140000,
+          "systemMicroseconds": 12187000,
+          "cpuPercent": 49.42
+        },
+        "eventLoop": {
+          "lagMs": 23,
+          "status": "NORMAL"
+        },
+        "databasePool": {
+          "totalConnections": 10,
+          "idleConnections": 0,
+          "activeConnections": 10,
+          "waitingClients": 149
+        },
+        "system": {
+          "totalMemoryBytes": 16844550144,
+          "freeMemoryBytes": 1822220288,
+          "usedMemoryBytes": 15022329856,
+          "memoryUsagePercent": 89.18,
+          "cpuCores": 8,
+          "loadAverage1m": 0
+        }
+      },
+      "bottlenecks": [
+        {
+          "type": "DB_POOL_SATURATION",
+          "severity": "CRITICAL",
+          "resource": "PostgreSQL Connection Pool",
+          "message": "Pool de conexões saturado (149 clientes em espera, 10 ativas)",
+          "currentValue": "149 em espera",
+          "threshold": "0 clientes em espera",
+          "mitigation": "Aumentar o limite de conexões no pool do banco ou otimizar consultas que mantêm conexões abertas por tempo prolongado.",
+          "timestamp": "2026-10-24T01:03:24.013Z"
+        },
+        {
+          "type": "HIGH_LATENCY",
+          "severity": "CRITICAL",
+          "resource": "Application HTTP Latency",
+          "message": "Latência p95 global de 690.31 ms acima do limiar crítico (500 ms)",
+          "currentValue": "690.31 ms",
+          "threshold": "500 ms",
+          "mitigation": "Avaliar endpoints com status DEGRADED e habilitar cache ou otimização de consultas.",
+          "timestamp": "2026-10-24T01:03:24.013Z"
+        }
+      ]
+    },
+    {
+      "status": "DEGRADED",
+      "timestamp": "2026-10-24T01:03:26.354Z",
+      "uptimeSeconds": 108,
+      "resources": {
+        "memory": {
+          "heapUsedBytes": 39152928,
+          "heapTotalBytes": 104148992,
+          "rssBytes": 170803200,
+          "externalBytes": 6327458,
+          "heapUsedMb": 37.34,
+          "heapTotalMb": 99.32,
+          "rssMb": 162.89,
+          "heapUsagePercent": 37.59
+        },
+        "cpu": {
+          "userMicroseconds": 36953000,
+          "systemMicroseconds": 12500000,
+          "cpuPercent": 48.34
+        },
+        "eventLoop": {
+          "lagMs": 23.02,
+          "status": "NORMAL"
+        },
+        "databasePool": {
+          "totalConnections": 10,
+          "idleConnections": 0,
+          "activeConnections": 10,
+          "waitingClients": 150
+        },
+        "system": {
+          "totalMemoryBytes": 16844550144,
+          "freeMemoryBytes": 1573236736,
+          "usedMemoryBytes": 15271313408,
+          "memoryUsagePercent": 90.66,
+          "cpuCores": 8,
+          "loadAverage1m": 0
+        }
+      },
+      "bottlenecks": [
+        {
+          "type": "DB_POOL_SATURATION",
+          "severity": "CRITICAL",
+          "resource": "PostgreSQL Connection Pool",
+          "message": "Pool de conexões saturado (150 clientes em espera, 10 ativas)",
+          "currentValue": "150 em espera",
+          "threshold": "0 clientes em espera",
+          "mitigation": "Aumentar o limite de conexões no pool do banco ou otimizar consultas que mantêm conexões abertas por tempo prolongado.",
+          "timestamp": "2026-10-24T01:03:26.343Z"
+        },
+        {
+          "type": "HIGH_LATENCY",
+          "severity": "CRITICAL",
+          "resource": "Application HTTP Latency",
+          "message": "Latência p95 global de 754.66 ms acima do limiar crítico (500 ms)",
+          "currentValue": "754.66 ms",
+          "threshold": "500 ms",
+          "mitigation": "Avaliar endpoints com status DEGRADED e habilitar cache ou otimização de consultas.",
+          "timestamp": "2026-10-24T01:03:26.343Z"
+        }
+      ]
+    },
+    {
+      "status": "DEGRADED",
+      "timestamp": "2026-10-24T01:03:28.571Z",
+      "uptimeSeconds": 110,
+      "resources": {
+        "memory": {
+          "heapUsedBytes": 52164288,
+          "heapTotalBytes": 104148992,
+          "rssBytes": 171139072,
+          "externalBytes": 7791042,
+          "heapUsedMb": 49.75,
+          "heapTotalMb": 99.32,
+          "rssMb": 163.21,
+          "heapUsagePercent": 50.09
+        },
+        "cpu": {
+          "userMicroseconds": 37890000,
+          "systemMicroseconds": 12781000,
+          "cpuPercent": 54.78
+        },
+        "eventLoop": {
+          "lagMs": 23.02,
+          "status": "NORMAL"
+        },
+        "databasePool": {
+          "totalConnections": 10,
+          "idleConnections": 0,
+          "activeConnections": 10,
+          "waitingClients": 149
+        },
+        "system": {
+          "totalMemoryBytes": 16844550144,
+          "freeMemoryBytes": 1367584768,
+          "usedMemoryBytes": 15476965376,
+          "memoryUsagePercent": 91.88,
+          "cpuCores": 8,
+          "loadAverage1m": 0
+        }
+      },
+      "bottlenecks": [
+        {
+          "type": "DB_POOL_SATURATION",
+          "severity": "CRITICAL",
+          "resource": "PostgreSQL Connection Pool",
+          "message": "Pool de conexões saturado (149 clientes em espera, 10 ativas)",
+          "currentValue": "149 em espera",
+          "threshold": "0 clientes em espera",
+          "mitigation": "Aumentar o limite de conexões no pool do banco ou otimizar consultas que mantêm conexões abertas por tempo prolongado.",
+          "timestamp": "2026-10-24T01:03:28.565Z"
+        },
+        {
+          "type": "HIGH_LATENCY",
+          "severity": "CRITICAL",
+          "resource": "Application HTTP Latency",
+          "message": "Latência p95 global de 835.57 ms acima do limiar crítico (500 ms)",
+          "currentValue": "835.57 ms",
+          "threshold": "500 ms",
+          "mitigation": "Avaliar endpoints com status DEGRADED e habilitar cache ou otimização de consultas.",
+          "timestamp": "2026-10-24T01:03:28.565Z"
+        }
+      ]
+    },
+    {
+      "status": "DEGRADED",
+      "timestamp": "2026-10-24T01:03:30.818Z",
+      "uptimeSeconds": 112,
+      "resources": {
+        "memory": {
+          "heapUsedBytes": 46088272,
+          "heapTotalBytes": 172044288,
+          "rssBytes": 198258688,
+          "externalBytes": 7230759,
+          "heapUsedMb": 43.95,
+          "heapTotalMb": 164.07,
+          "rssMb": 189.07,
+          "heapUsagePercent": 26.79
+        },
+        "cpu": {
+          "userMicroseconds": 38843000,
+          "systemMicroseconds": 13046000,
+          "cpuPercent": 54.47
+        },
+        "eventLoop": {
+          "lagMs": 22.97,
+          "status": "NORMAL"
+        },
+        "databasePool": {
+          "totalConnections": 10,
+          "idleConnections": 0,
+          "activeConnections": 10,
+          "waitingClients": 147
+        },
+        "system": {
+          "totalMemoryBytes": 16844550144,
+          "freeMemoryBytes": 1285885952,
+          "usedMemoryBytes": 15558664192,
+          "memoryUsagePercent": 92.37,
+          "cpuCores": 8,
+          "loadAverage1m": 0
+        }
+      },
+      "bottlenecks": [
+        {
+          "type": "DB_POOL_SATURATION",
+          "severity": "CRITICAL",
+          "resource": "PostgreSQL Connection Pool",
+          "message": "Pool de conexões saturado (147 clientes em espera, 10 ativas)",
+          "currentValue": "147 em espera",
+          "threshold": "0 clientes em espera",
+          "mitigation": "Aumentar o limite de conexões no pool do banco ou otimizar consultas que mantêm conexões abertas por tempo prolongado.",
+          "timestamp": "2026-10-24T01:03:30.801Z"
+        },
+        {
+          "type": "HIGH_LATENCY",
+          "severity": "CRITICAL",
+          "resource": "Application HTTP Latency",
+          "message": "Latência p95 global de 835.57 ms acima do limiar crítico (500 ms)",
+          "currentValue": "835.57 ms",
+          "threshold": "500 ms",
+          "mitigation": "Avaliar endpoints com status DEGRADED e habilitar cache ou otimização de consultas.",
+          "timestamp": "2026-10-24T01:03:30.801Z"
+        }
+      ]
+    },
+    {
+      "status": "DEGRADED",
+      "timestamp": "2026-10-24T01:03:33.020Z",
+      "uptimeSeconds": 115,
+      "resources": {
+        "memory": {
+          "heapUsedBytes": 69971448,
+          "heapTotalBytes": 172044288,
+          "rssBytes": 226627584,
+          "externalBytes": 9917708,
+          "heapUsedMb": 66.73,
+          "heapTotalMb": 164.07,
+          "rssMb": 216.13,
+          "heapUsagePercent": 40.67
+        },
+        "cpu": {
+          "userMicroseconds": 39859000,
+          "systemMicroseconds": 13468000,
+          "cpuPercent": 65.07
+        },
+        "eventLoop": {
+          "lagMs": 22.94,
+          "status": "NORMAL"
+        },
+        "databasePool": {
+          "totalConnections": 10,
+          "idleConnections": 0,
+          "activeConnections": 10,
+          "waitingClients": 150
+        },
+        "system": {
+          "totalMemoryBytes": 16844550144,
+          "freeMemoryBytes": 1163456512,
+          "usedMemoryBytes": 15681093632,
+          "memoryUsagePercent": 93.09,
+          "cpuCores": 8,
+          "loadAverage1m": 0
+        }
+      },
+      "bottlenecks": [
+        {
+          "type": "DB_POOL_SATURATION",
+          "severity": "CRITICAL",
+          "resource": "PostgreSQL Connection Pool",
+          "message": "Pool de conexões saturado (150 clientes em espera, 10 ativas)",
+          "currentValue": "150 em espera",
+          "threshold": "0 clientes em espera",
+          "mitigation": "Aumentar o limite de conexões no pool do banco ou otimizar consultas que mantêm conexões abertas por tempo prolongado.",
+          "timestamp": "2026-10-24T01:03:33.012Z"
+        },
+        {
+          "type": "HIGH_LATENCY",
+          "severity": "CRITICAL",
+          "resource": "Application HTTP Latency",
+          "message": "Latência p95 global de 835.57 ms acima do limiar crítico (500 ms)",
+          "currentValue": "835.57 ms",
+          "threshold": "500 ms",
+          "mitigation": "Avaliar endpoints com status DEGRADED e habilitar cache ou otimização de consultas.",
+          "timestamp": "2026-10-24T01:03:33.012Z"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{"route":"/api/stations/overview","status":200,"durationMs":35.281700000021374,"bytes":11402,"valid":true,"startedAt":"2026-10-24T01:05:18.641Z"}
+{"route":"/api/stations/current","status":200,"durationMs":25.173099999985425,"bytes":9698,"valid":true,"startedAt":"2026-10-24T01:05:19.677Z"}
+{"route":"/api/stations/5/current","status":200,"durationMs":33.73009999998612,"bytes":387,"valid":true,"startedAt":"2026-10-24T01:05:20.705Z"}
+{"route":"/api/stations/readings/series?hours=720&bucket_minutes=120","status":200,"durationMs":28.386200000008103,"bytes":732,"valid":true,"startedAt":"2026-10-24T01:05:21.752Z"}
+{"route":"/api/readings?station_id=5&limit=100&start_unix_time=1790211699&end_unix_time=1792803699","status":200,"durationMs":32.095000000001164,"bytes":71,"valid":true,"startedAt":"2026-10-24T01:05:22.791Z"}
+{"route":"/api/stations/statistics","status":200,"durationMs":22.567699999985052,"bytes":141,"valid":true,"startedAt":"2026-10-24T01:05:23.833Z"}
+{"route":"/api/stations/overview","status":200,"durationMs":26.104699999996228,"bytes":11402,"valid":true,"startedAt":"2026-10-24T01:05:24.862Z"}
+{"route":"/api/stations/current","status":200,"durationMs":24.120699999999488,"bytes":9698,"valid":true,"startedAt":"2026-10-24T01:05:25.896Z"}
+{"route":"/api/stations/5/current","status":200,"durationMs":32.18869999999879,"bytes":387,"valid":true,"startedAt":"2026-10-24T01:05:26.935Z"}
+{"route":"/api/stations/readings/series?hours=720&bucket_minutes=120","status":200,"durationMs":26.15529999998398,"bytes":732,"valid":true,"startedAt":"2026-10-24T01:05:27.975Z"}
+{"route":"/api/readings?station_id=5&limit=100&start_unix_time=1790211699&end_unix_time=1792803699","status":200,"durationMs":30.629199999995762,"bytes":71,"valid":true,"startedAt":"2026-10-24T01:05:29.014Z"}
+{"route":"/api/stations/statistics","status":200,"durationMs":22.84110000001965,"bytes":141,"valid":true,"startedAt":"2026-10-24T01:05:30.059Z"}
+{"route":"/api/stations/overview","status":200,"durationMs":24.553899999998976,"bytes":11402,"valid":true,"startedAt":"2026-10-24T01:05:31.095Z"}
+{"route":"/api/stations/current","status":200,"durationMs":26.470200000010664,"bytes":9698,"valid":true,"startedAt":"2026-10-24T01:05:32.119Z"}
+{"route":"/api/stations/5/current","status":200,"durationMs":32.639400000014575,"bytes":387,"valid":true,"startedAt":"2026-10-24T01:05:33.148Z"}
