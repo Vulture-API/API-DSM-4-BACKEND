@@ -1,1 +1,169 @@
-# typescript-service-template
+# AgriTech — Backend
+
+Backend monolítico modular que reúne usuários, parâmetros/sensores, estações/monitoramento e alertas/motor de regras. Uma aplicação Fastify, um processo Node 24 e um pool PostgreSQL atendem todos os domínios.
+
+O frontend Next.js, a recepção Python, MQTT, Redis e o repositório BANCO permanecem separados. A migração não altera o schema de produção nem o protocolo do datalogger.
+
+## Executar localmente
+
+Requisitos: Node 24 e PostgreSQL com o schema existente do API-DSM-4-BANCO.
+
+```bash
+npm ci
+cp .env.example .env
+# Configure DATABASE_URL em .env.
+npm run dev
+```
+
+Para executar o artefato compilado:
+
+```bash
+npm run build
+npm start
+```
+
+A API escuta em `http://localhost:3000`. `/health`, `/api/health` e `/api/v1/health` retornam `{"status":"ok","rules_engine":false}` quando o motor está desligado. `/` identifica o backend.
+
+## Organização
+
+```text
+src/
+  app.ts                  composição dos módulos e buildApp(options)
+  index.ts                inicialização HTTP e motor de regras
+  lifecycle.ts            encerramento HTTP → motor → pool
+  config/                 ambiente, pool PostgreSQL e Zod
+  errors/                 erro comum e handlers por contrato
+  shared/                 schemas de paginação e tipos compartilhados
+  modules/
+    users/                usuários, credenciais e hashes de senha
+    roles/                cargos
+    sensor-types/         tipos de sensor e calibração
+    sensors/              sensores vinculados às estações
+    stations/             estações, propriedades e status
+    monitoring/           visão geral e séries de leituras
+    alerts/               regras e reconhecimento de alertas
+    rules-engine/         avaliação de leituras e checkpoint
+```
+
+Cada módulo mantém controllers, schemas, serviços e repositórios próprios. `buildApp(options)` aceita repositórios, relógio, motor e pool para testes. Com um pool explicitamente fornecido, os repositórios padrão usam esse pool; sem ele, os módulos de parâmetros mantêm seus repositórios em memória no ambiente `test`. O bootstrap inicia o motor; construir uma aplicação em teste não inicia processamento automático.
+
+## APIs e compatibilidade
+
+| Recurso                 | Rotas                                                                                                                      |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| Usuários e cargos       | `/api/users`, `/api/roles`                                                                                                 |
+| Tipos e sensores        | `/api/sensor-types`, `/api/sensors`                                                                                        |
+| Estações e propriedades | `/api/stations`, `/api/stations/properties`, `/api/properties`                                                             |
+| Status e monitoramento  | `/api/stations/:id/status`, `/api/stations/overview`, `/api/stations/readings/series`, `/api/stations/:id/readings/series` |
+| Dados atuais            | `/api/stations/current`, `/api/stations/:id/current`, WebSocket `/api/stations/current/ws`                                 |
+| Estatísticas e previsão | `/api/stations/statistics`, `/api/stations/:id/statistics`, `/api/stations/:id/forecast`                                   |
+| Configurações e alertas | `/api/alerts/config`, `/api/alerts/triggered`, `/api/alerts/triggered/:id/acknowledge`                                     |
+| Ocorrências de falhas   | `/api/occurrences`, `/api/occurrences/:id`, `PATCH /api/occurrences/:id/resolve`                                           |
+| Operação do motor       | `POST /internal/rules-engine/run`, `POST /internal/occurrences/run`                                                        |
+| Auditoria e DevOps      | `/api/devops/audit-logs`, `/api/devops/metrics`, `/api/devops/resources`, `/api/devops/outages`, `/api/devops/sla`         |
+
+CRUD, métodos, payloads, paginação e erros de negócio continuam iguais aos serviços de origem. As recusas de autenticação/autorização (401/403) usam o contrato comum descrito abaixo. Tipos e sensores também aceitam os aliases sem prefixo, com `/v1` e com `/api/v1`. O CORS desses recursos permanece encapsulado no módulo de parâmetros.
+
+Perfis de acesso (`roles`) oferecem listagem e criação em `/api/roles`, além de consulta, edição e exclusão em `/api/roles/:id`. O nome é obrigatório e único; a exclusão retorna 409 enquanto houver usuários vinculados, inclusive inativos. No `PUT`, descrição omitida é gravada como `null`. Veja o [contrato e as evidências da SCRUM-431](docs/perfis-acesso.md).
+
+Os perfis retornam também `permissions`, uma lista ordenada de códigos. O catálogo está em `GET /api/permissions`, e a associação é consultada ou substituída em `/api/roles/:id/permissions`. Essas novas rotas sempre exigem JWT e a permissão correspondente. `POST /api/auth/login` utiliza as credenciais scrypt existentes; `GET /api/auth/me` retorna o usuário e suas permissões atuais. Configure `JWT_SECRET` para utilizar esses recursos. A proteção das APIs anteriores permanece desligada até `ACCESS_CONTROL_ENABLED=true`, permitindo a integração posterior do frontend. Veja o [contrato e a ativação da SCRUM-432](docs/permissoes.md).
+
+`PATCH /api/users/:id/access` altera apenas o acesso do usuário: `{ "active": false }` bloqueia e `{ "active": true }` desbloqueia. A rota sempre exige JWT e `users.update`. O estado usa o campo existente `users.active`, preservando cadastro, credenciais e permissões; usuários bloqueados recebem 401 no login e nas rotas protegidas, e seus WebSockets protegidos são encerrados no próximo ciclo de autorização. Veja o [contrato e as evidências da SCRUM-433](docs/bloqueio-usuarios.md).
+
+As respostas 401/403 são padronizadas em todos os módulos como `{ code: 401 | 403, message, details: [] }`, sem detalhes internos. O registro rejeita rotas sem política válida, incluindo políticas vazias, contraditórias ou com permissões desconhecidas. A flag de ativação e as permissões existentes permanecem preservadas. Veja a [matriz, o contrato e as evidências da SCRUM-434](docs/autorizacao.md).
+
+A API limita requisições antes de autenticar ou acessar o banco: por padrão, 300 por minuto por IP, compartilhadas entre rotas, métodos e aliases. O login possui um orçamento separado de 10 por minuto. O excesso recebe 429 com `Retry-After`; identificação do backend, healthchecks e preflight são isentos. Os limites permanecem ativos com `ACCESS_CONTROL_ENABLED=false`.
+
+Os healthchecks foram unificados e as portas antigas 3001, 3002 e 3005 deixaram de existir. O frontend continua chamando URLs relativas; o INFRA aponta seus quatro destinos de build para o mesmo backend, sem modificar seu código.
+
+## Variáveis de ambiente
+
+| Variável                            | Padrão                     | Uso                                                                                            |
+| ----------------------------------- | -------------------------- | ---------------------------------------------------------------------------------------------- |
+| `NODE_ENV`                          | `development`              | Ambiente da aplicação                                                                          |
+| `LOG_LEVEL`                         | `info` / `silent` em teste | Nível mínimo de log estruturado (`fatal`, `error`, `warn`, `info`, `debug`, `trace`, `silent`) |
+| `PORT`                              | `3000`                     | Porta HTTP                                                                                     |
+| `DATABASE_URL`                      | obrigatório                | Única conexão PostgreSQL                                                                       |
+| `JWT_SECRET`                        | sem padrão                 | Segredo de ao menos 32 caracteres para login e JWT; obrigatório com controle ativo             |
+| `ACCESS_CONTROL_ENABLED`            | `false`                    | Ativa autorização das rotas existentes e do WebSocket                                          |
+| `RATE_LIMIT_MAX`                    | `300`                      | Requisições por IP no orçamento compartilhado da API                                           |
+| `LOGIN_RATE_LIMIT_MAX`              | `10`                       | Requisições de login por IP, em orçamento separado                                             |
+| `RATE_LIMIT_WINDOW_MS`              | `60000`                    | Janela de contagem dos limites de requisição                                                   |
+| `STATION_OFFLINE_THRESHOLD_MINUTES` | `10`                       | Limite para estação Offline                                                                    |
+| `RULES_ENGINE_ENABLED`              | `false`                    | Ativa o agendamento do motor                                                                   |
+| `RULES_ENGINE_INTERVAL_MS`          | `15000`                    | Intervalo entre ciclos                                                                         |
+| `RULES_ENGINE_BATCH_SIZE`           | `500`                      | Leituras por lote, máximo 5000                                                                 |
+| `CURRENT_READINGS_POLL_MS`          | `3000`                     | Intervalo do WebSocket de leituras                                                             |
+| `CURRENT_READINGS_MAX_CONNECTIONS`  | `200`                      | Conexões simultâneas no WebSocket                                                              |
+| `OCCURRENCES_ENABLED`               | `false`                    | Ativa a verificação periódica de ocorrências                                                   |
+| `OCCURRENCES_INTERVAL_MS`           | `60000`                    | Intervalo entre verificações                                                                   |
+| `OCCURRENCES_BATCH_SIZE`            | `500`                      | Leituras validadas por ciclo, máximo 5000                                                      |
+| `FORECAST_API_URL`                  | Open-Meteo                 | Endpoint de previsão                                                                           |
+| `FORECAST_TIMEOUT_MS`               | `5000`                     | Tempo máximo da chamada externa                                                                |
+| `FORECAST_CACHE_TTL_MINUTES`        | `30`                       | Cache da previsão por posição                                                                  |
+
+O motor fica desligado por padrão para não avançar o checkpoint do banco compartilhado durante desenvolvimento. O Compose o habilita e usa intervalo de 5000 ms. A rota manual permanece disponível quando um motor está anexado, mesmo sem agendamento, e retorna 409 durante um ciclo concorrente.
+
+O pool preserva timestamps sem fuso como UTC, IDs bigint numéricos e o listener de falhas de conexões ociosas. Transações, checkpoint e índices de prevenção de duplicidade continuam seguindo o modelo existente. Redis e MQTT são utilizados pelos processos Python; o backend lê o PostgreSQL e não cria clientes adicionais para esses serviços.
+
+## Dados atuais em tempo real
+
+`GET /api/stations/current` devolve, por estação, a última leitura consistente de cada sensor, o status e `last_update`. Aceita `station_id` e `property_id`. Sensores sem leitura aparecem com `value` e `unix_time` nulos.
+
+O WebSocket `/api/stations/current/ws` envia `{"type":"reading", ...}` a cada leitura nova gravada pelo persistidor. Use `?station_id=` para receber só uma estação. O backend só consulta o banco enquanto houver cliente conectado e não usa o checkpoint do motor de regras. Acima de `CURRENT_READINGS_MAX_CONNECTIONS` conexões, a abertura recebe 503 `TOO_MANY_CONNECTIONS`. O servidor manda ping a cada 30 s e derruba a conexão que não responde até o ping seguinte, além de clientes com mais de 1 MiB pendente. Atrás do Nginx, a rota precisa repassar os cabeçalhos `Upgrade` e `Connection`.
+
+## Ocorrências de falhas (US09)
+
+Requer a migration `016_occurrences.sql` do API-DSM-4-BANCO. A cada `OCCURRENCES_INTERVAL_MS` (com `OCCURRENCES_ENABLED=true`) ou em `POST /internal/occurrences/run`, o backend:
+
+- **Estações sem comunicação (SCRUM-423):** abre uma ocorrência `COMMUNICATION_FAILURE` para a estação sem comunicação há mais de `STATION_OFFLINE_THRESHOLD_MINUTES` (o mesmo limite do status Offline). Estação que nunca comunicou conta a partir do cadastro. Quando ela volta a comunicar, a ocorrência é resolvida sozinha.
+- **Limites dos sensores (SCRUM-424):** sensores aceitam `min_value` e `max_value` (opcionais, inclusivos; `null` remove o limite; omitidos no `PUT` mantêm o atual; mínimo acima do máximo devolve 400). Cada leitura nova fora da faixa é marcada `data_consistent = false` — some de dados atuais, séries e estatísticas — e abre uma ocorrência `OUT_OF_RANGE` para o sensor. Sem limite configurado, a leitura é aceita. A validação usa checkpoint próprio (`occurrences_last_reading_id`), separado do motor de regras.
+
+Há no máximo uma ocorrência aberta por estação (comunicação) e por sensor (fora do limite); enquanto ela estiver aberta, novas leituras fora da faixa continuam sendo marcadas, sem nova ocorrência.
+
+**Consulta (SCRUM-425):** `GET /api/occurrences` pagina (`page`, `limit`) do mais recente para o mais antigo e filtra por `station_id`, `sensor_id`, `type` (`COMMUNICATION_FAILURE`, `OUT_OF_RANGE`), `status` (`OPEN`, `RESOLVED`), `from` e `to` (data-hora com fuso; `from` depois de `to` devolve 400 `INVALID_PERIOD`). Cada item traz estação, sensor e tipo de sensor, leitura e valor, descrição, `detected_at` e `resolved_at`. `PATCH /api/occurrences/:id/resolve` resolve manualmente (404 `OCCURRENCE_NOT_FOUND`, 409 `OCCURRENCE_ALREADY_RESOLVED`). Permissões: `occurrences.read`, `occurrences.resolve` e `occurrences.run`.
+
+## Estatísticas e previsão
+
+`GET /api/stations/statistics` calcula, por tipo de sensor, contagem, média, mínimo, máximo e desvio padrão das leituras consistentes do período. `from` e `to` aceitam data (`2026-09-01`, em UTC) ou data-hora com fuso (`2026-09-01T00:00:00-03:00`); data-hora sem fuso é recusada. Na URL, o `+` de um fuso positivo vai como `%2B`. Uma data pura em `to` inclui o dia inteiro. Sem período, vale os últimos 7 dias. Filtra por `property_id`, ou por estação em `/api/stations/:id/statistics`. O período vai até 366 dias com estação ou propriedade e até 31 dias para todas as estações; fora disso, ou com `from` depois de `to`, a resposta é 400 `INVALID_PERIOD`. Com menos de duas leituras, `stddev` vem nulo.
+
+`GET /api/stations/:id/forecast?days=1..7` devolve a previsão diária (temperatura máxima e mínima, chuva, probabilidade de chuva, vento e código WMO) para a latitude e longitude da estação. A fonte é o [Open-Meteo](https://open-meteo.com), que é gratuito e não exige chave. A previsão de 7 dias fica em cache por 30 minutos por posição (até 500 posições), e chamadas simultâneas para a mesma posição compartilham uma consulta. Estação sem coordenadas devolve 422 `STATION_WITHOUT_COORDINATES`. Falha, timeout ou resposta fora do formato do provedor devolve 503 `FORECAST_UNAVAILABLE`.
+
+As três rotas exigem `monitoring.read` quando `ACCESS_CONTROL_ENABLED=true`.
+
+## Verificação
+
+```bash
+npm run lint
+npm run format
+npm run typecheck
+npm test
+npm run build
+```
+
+As integrações SQL só executam quando `TEST_DATABASE_URL` está definida e usam schemas temporários. Aponte exclusivamente para um PostgreSQL descartável:
+
+```bash
+TEST_DATABASE_URL=postgresql://postgres:postgres@localhost:5433/agritech_test npm run test:coverage
+```
+
+No CI, PostgreSQL 16 é criado para essa finalidade. O gate exige no mínimo 80% de linhas, incluindo os repositórios PostgreSQL. O pipeline também audita vulnerabilidades críticas e compila a imagem Docker, sem push ou deploy.
+
+Os cenários de aceite de perfis, permissões, bloqueio/desbloqueio e autorização, com instruções de reprodução e evidências, estão em [QA — SCRUM-438](docs/qa-scrum-438.md).
+
+## Docker e implantação
+
+A implantação completa e o teste MQTT estão no [API-DSM-4-INFRA](https://github.com/Vulture-API/API-DSM-4-INFRA). O Dockerfile deste repositório compila o backend e instala somente dependências de produção na imagem final, executando como usuário `node`.
+
+Publique os commits do BACKEND antes de publicar o gitlink correspondente do INFRA. O deploy e a reversão são manuais pelo Compose; não há configuração de Render.
+
+- [Inventário dos serviços e contratos](docs/mapa-migracao.md)
+- [Arquitetura e decisões](docs/arquitetura.md)
+- [Verificação e aceite](docs/validacao.md)
+- [Perfis de acesso — SCRUM-431](docs/perfis-acesso.md)
+- [Permissões e autenticação — SCRUM-432](docs/permissoes.md)
+- [Bloqueio e desbloqueio de usuários — SCRUM-433](docs/bloqueio-usuarios.md)
+- [Autorização das funcionalidades — SCRUM-434](docs/autorizacao.md)
+- [Logging Estruturado e Auditoria — SCRUM-542](docs/logging-e-auditoria.md)
+
+A pasta local `confluence/` contém material para publicação e validação pelo time. Ela está ignorada pelo Git e pelo contexto Docker; sua publicação e o aceite do time são etapas externas.

@@ -6,13 +6,18 @@ import {
 
 import { env } from "@/config/environment.js";
 import { ApplicationError } from "@/errors/application.error.js";
+import { authorizationErrorBody } from "@/errors/handlers/authorization.js";
+import { logHttpError } from "@/modules/logging/http-logger.js";
 
 export function handleError(
   error: FastifyError,
   request: FastifyRequest,
   reply: FastifyReply,
 ) {
-  request.log.error(error);
+  logHttpError(error, request, reply);
+
+  const denial = authorizationErrorBody(error);
+  if (denial) return reply.status(denial.code).send(denial);
 
   const developmentDetails =
     env.NODE_ENV === "development" ? { developmentError: error } : {};
