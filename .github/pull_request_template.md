@@ -12,11 +12,28 @@ Closes SCRUM-
 
 1.
 
+## Testes
+
+<!-- Card de teste vinculado (ex.: SCRUM-588) ou "testes neste PR" quando a regra for pequena -->
+
+Card de teste: SCRUM-
+
+- [ ] Regra nova ou alterada tem teste
+- [ ] Commit da feature separado do commit de teste
+- [ ] Card de teste com o mesmo responsável da feature (ou testes neste PR)
+- [ ] Regra de negócio em função pura, fora da rota
+- [ ] Teste unitário não acessa banco, rede nem sobe rota HTTP
+- [ ] Nome do teste descreve o comportamento esperado
+- [ ] Casos de quina cobertos (vazio, limite, inválido, ausente)
+- [ ] Testes não dependem de ordem, da hora atual nem de dados persistidos
+- [ ] Teste de integração com sufixo `.route.test.ts` ou `.integration.test.ts`
+- [ ] Nenhum warning novo na saída dos testes
+- [ ] Cobertura não caiu
+
 ## Checklist (DoD)
 
 - [ ] A branch contém a chave `SCRUM-XX`
 - [ ] Commits com a chave do Jira na mensagem
-- [ ] Testes unitários escritos/atualizados
-- [ ] Pipeline de CI verde (lint, tipos, testes com cobertura ≥ 80% e build)
+- [ ] Pipeline de CI verde (lint, tipos, testes unitários, integração, cobertura ≥ 80% e build)
 - [ ] Documentação atualizada, se aplicável
 - [ ] Code Review solicitado a outro Developer
