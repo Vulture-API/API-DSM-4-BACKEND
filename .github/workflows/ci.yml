@@ -51,7 +51,11 @@ jobs:
         run: npm run format
       - name: Tipos
         run: npm run typecheck
-      - name: Testes e cobertura mínima de 80% de linhas
+      - name: Testes unitários
+        run: npm run test:unit
+      - name: Testes de integração (PostgreSQL)
+        run: npm run test:integration
+      - name: Cobertura total de testes (DoD 80%)
         run: npm run test:coverage
       - name: Resumo da cobertura
         id: coverage
