@@ -53,8 +53,16 @@ jobs:
         run: npm run typecheck
       - name: Testes unitários
         run: npm run test:unit
-      - name: Testes de integração (PostgreSQL)
-        run: npm run test:integration
+      - name: Testes de integração (rotas e PostgreSQL)
+        run: npm run test:int -- --reporter=default --reporter=json --outputFile="$RUNNER_TEMP/integracao.json"
+      - name: Nenhum teste de integração pulado
+        run: |
+          node -e "
+            const r = require(process.env.RUNNER_TEMP + '/integracao.json');
+            const pulados = r.numPendingTests + r.numTodoTests;
+            console.log('Integração: ' + r.numTotalTests + ' testes, ' + pulados + ' pulados');
+            if (pulados > 0) process.exit(1);
+          "
       - name: Cobertura total de testes (DoD 80%)
         run: npm run test:coverage
       - name: Resumo da cobertura
