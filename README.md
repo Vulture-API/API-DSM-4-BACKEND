@@ -140,9 +140,12 @@ As três rotas exigem `monitoring.read` quando `ACCESS_CONTROL_ENABLED=true`.
 npm run lint
 npm run format
 npm run typecheck
-npm test
+npm run test:unit
+npm run test:int
 npm run build
 ```
+
+`test:unit` roda só os testes unitários, sem banco, rede nem aplicação montada. `test:int` roda os arquivos `*.route.test.ts` (rotas com `app.inject`) e `*.integration.test.ts` (aplicação montada, PostgreSQL). Teste novo que sobe a aplicação ou acessa banco precisa de um desses sufixos.
 
 As integrações SQL só executam quando `TEST_DATABASE_URL` está definida e usam schemas temporários. Aponte exclusivamente para um PostgreSQL descartável:
 
