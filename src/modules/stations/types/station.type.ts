@@ -30,6 +30,19 @@ export type PaginatedStations = {
   total_records: number;
 };
 
+export type StationCollectionInterval = {
+  mac_address: string;
+  collection_interval_seconds: number;
+};
+
+export type StationCollectionSettings = {
+  station_id: number;
+  mac_address: string;
+  collection_interval_seconds: number;
+  min_interval_seconds: number;
+  max_interval_seconds: number;
+};
+
 export type StationCommunicationStatus = "Online" | "Offline";
 
 export type StationStatus = {

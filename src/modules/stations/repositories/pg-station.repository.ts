@@ -7,6 +7,7 @@ import type {
   ListStationsFilters,
   PaginatedStations,
   Station,
+  StationCollectionInterval,
   UpdateStationData,
 } from "@/modules/stations/types/station.type.js";
 
@@ -131,6 +132,33 @@ export class PgStationRepository implements StationRepository {
         ],
       )
       .catch(rethrowUniqueViolation);
+
+    return result.rows[0] ?? null;
+  }
+
+  async findCollectionInterval(
+    id: number,
+  ): Promise<StationCollectionInterval | null> {
+    const result = await this.database.query<StationCollectionInterval>(
+      "SELECT mac_address, collection_interval_seconds FROM stations WHERE id = $1",
+      [id],
+    );
+
+    return result.rows[0] ?? null;
+  }
+
+  async updateCollectionInterval(
+    id: number,
+    seconds: number,
+  ): Promise<StationCollectionInterval | null> {
+    const result = await this.database.query<StationCollectionInterval>(
+      `
+        UPDATE stations SET collection_interval_seconds = $2
+        WHERE id = $1
+        RETURNING mac_address, collection_interval_seconds
+      `,
+      [id, seconds],
+    );
 
     return result.rows[0] ?? null;
   }
