@@ -1,6 +1,11 @@
 import { fileURLToPath } from "node:url";
 
-import { defineConfig } from "vitest/config";
+import { configDefaults, defineConfig } from "vitest/config";
+
+const integrationFiles = [
+  "src/**/*.route.test.ts",
+  "src/**/*.integration.test.ts",
+];
 
 export default defineConfig({
   test: {
@@ -22,6 +27,20 @@ export default defineConfig({
       ],
       thresholds: { lines: 80 },
     },
+    projects: [
+      {
+        extends: true,
+        test: {
+          name: "unit",
+          include: ["src/**/*.test.ts", "scripts/**/*.test.ts"],
+          exclude: [...configDefaults.exclude, ...integrationFiles],
+        },
+      },
+      {
+        extends: true,
+        test: { name: "integration", include: integrationFiles },
+      },
+    ],
   },
   resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
 });

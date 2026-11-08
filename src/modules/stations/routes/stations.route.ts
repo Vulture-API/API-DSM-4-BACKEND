@@ -1,17 +1,21 @@
 import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 
+import { CollectionSettingsController } from "@/modules/stations/controllers/collection-settings.controller.js";
 import { StationController } from "@/modules/stations/controllers/station.controller.js";
 import type { StationRepository } from "@/modules/stations/repositories/station.repository.js";
 import {
+  collectionSettingsBodySchema,
   listStationsQuerySchema,
   stationBodySchema,
   stationIdParamSchema,
 } from "@/modules/stations/schemas/station.schema.js";
 import { CreateStationService } from "@/modules/stations/services/create-station.service.js";
 import { DeleteStationService } from "@/modules/stations/services/delete-station.service.js";
+import { GetCollectionSettingsService } from "@/modules/stations/services/get-collection-settings.service.js";
 import { GetStationService } from "@/modules/stations/services/get-station.service.js";
 import { GetStationStatusService } from "@/modules/stations/services/get-station-status.service.js";
 import { ListStationsService } from "@/modules/stations/services/list-stations.service.js";
+import { UpdateCollectionSettingsService } from "@/modules/stations/services/update-collection-settings.service.js";
 import { UpdateStationService } from "@/modules/stations/services/update-station.service.js";
 
 export function buildStationRoutes(
@@ -31,6 +35,16 @@ export function buildStationRoutes(
       ),
       new UpdateStationService(stationRepository),
       new DeleteStationService(stationRepository),
+    );
+    const collectionSettings = new CollectionSettingsController(
+      new GetCollectionSettingsService(
+        stationRepository,
+        offlineThresholdMinutes,
+      ),
+      new UpdateCollectionSettingsService(
+        stationRepository,
+        offlineThresholdMinutes,
+      ),
     );
 
     app.post(
@@ -67,6 +81,27 @@ export function buildStationRoutes(
         schema: { params: stationIdParamSchema },
       },
       controller.getStatus,
+    );
+
+    app.get(
+      "/:id/collection",
+      {
+        config: { access: { permission: "stations.read" } },
+        schema: { params: stationIdParamSchema },
+      },
+      collectionSettings.get,
+    );
+
+    app.put(
+      "/:id/collection",
+      {
+        config: { access: { permission: "stations.update" } },
+        schema: {
+          params: stationIdParamSchema,
+          body: collectionSettingsBodySchema,
+        },
+      },
+      collectionSettings.update,
     );
 
     app.get(
