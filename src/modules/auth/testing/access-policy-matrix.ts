@@ -89,6 +89,8 @@ export function expectedAccessPolicies() {
   }
   add("GET", "/api/stations/properties", { permission: "properties.read" });
   add("GET", "/api/stations/:id/status", { permission: "stations.read" });
+  add("GET", "/api/stations/:id/collection", { permission: "stations.read" });
+  add("PUT", "/api/stations/:id/collection", { permission: "stations.update" });
   for (const path of [
     "/api/stations/overview",
     "/api/stations/current",

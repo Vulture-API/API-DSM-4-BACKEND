@@ -3,6 +3,7 @@ import type {
   ListStationsFilters,
   PaginatedStations,
   Station,
+  StationCollectionInterval,
   UpdateStationData,
 } from "@/modules/stations/types/station.type.js";
 
@@ -19,6 +20,11 @@ export interface StationRepository {
     stationId: number,
     propertyId: number,
   ): Promise<Station | null>;
+  findCollectionInterval(id: number): Promise<StationCollectionInterval | null>;
+  updateCollectionInterval(
+    id: number,
+    seconds: number,
+  ): Promise<StationCollectionInterval | null>;
   listProperties?(): Promise<
     Array<{ id: number; name: string; location: string | null }>
   >;

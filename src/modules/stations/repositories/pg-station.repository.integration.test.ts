@@ -40,6 +40,7 @@ describe.skipIf(!TEST_DATABASE_URL)(
         longitude decimal(11,8) NULL,
         last_communication_at timestamp NULL,
         created_at timestamp NOT NULL DEFAULT current_timestamp,
+        collection_interval_seconds integer NOT NULL DEFAULT 60,
         CONSTRAINT stations_mac_address_unique UNIQUE (mac_address)
       );
     `);
@@ -59,6 +60,40 @@ describe.skipIf(!TEST_DATABASE_URL)(
     afterAll(async () => {
       await pool?.query(`DROP SCHEMA IF EXISTS ${SCHEMA} CASCADE`);
       await pool?.end();
+    });
+
+    it("should_read_the_default_collection_interval_of_a_new_station", async () => {
+      const created = await repository.create(station(1));
+
+      await expect(
+        repository.findCollectionInterval(created.id),
+      ).resolves.toEqual({
+        mac_address: "AA:BB:CC:DD:EE:01",
+        collection_interval_seconds: 60,
+      });
+    });
+
+    it("should_update_the_collection_interval_of_only_one_station", async () => {
+      await repository.create(station(1));
+      await repository.create(station(2));
+
+      const updated = await repository.updateCollectionInterval(2, 30);
+
+      expect(updated).toEqual({
+        mac_address: "AA:BB:CC:DD:EE:02",
+        collection_interval_seconds: 30,
+      });
+      expect(
+        (await repository.findCollectionInterval(1))
+          ?.collection_interval_seconds,
+      ).toBe(60);
+    });
+
+    it("should_return_null_for_the_collection_interval_of_a_missing_station", async () => {
+      await expect(repository.findCollectionInterval(999)).resolves.toBeNull();
+      await expect(
+        repository.updateCollectionInterval(999, 30),
+      ).resolves.toBeNull();
     });
 
     it("should_keep_the_real_total_when_page_is_beyond_the_last", async () => {

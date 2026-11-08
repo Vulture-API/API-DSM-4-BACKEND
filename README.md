@@ -56,11 +56,14 @@ Cada módulo mantém controllers, schemas, serviços e repositórios próprios. 
 | Estações e propriedades | `/api/stations`, `/api/stations/properties`, `/api/properties`                                                             |
 | Status e monitoramento  | `/api/stations/:id/status`, `/api/stations/overview`, `/api/stations/readings/series`, `/api/stations/:id/readings/series` |
 | Dados atuais            | `/api/stations/current`, `/api/stations/:id/current`, WebSocket `/api/stations/current/ws`                                 |
+| Coleta do datalogger    | `GET /api/stations/:id/collection`, `PUT /api/stations/:id/collection`                                                     |
 | Estatísticas e previsão | `/api/stations/statistics`, `/api/stations/:id/statistics`, `/api/stations/:id/forecast`                                   |
 | Configurações e alertas | `/api/alerts/config`, `/api/alerts/triggered`, `/api/alerts/triggered/:id/acknowledge`                                     |
 | Ocorrências de falhas   | `/api/occurrences`, `/api/occurrences/:id`, `PATCH /api/occurrences/:id/resolve`                                           |
 | Operação do motor       | `POST /internal/rules-engine/run`, `POST /internal/occurrences/run`                                                        |
 | Auditoria e DevOps      | `/api/devops/audit-logs`, `/api/devops/metrics`, `/api/devops/resources`, `/api/devops/outages`, `/api/devops/sla`         |
+
+`collection_interval_seconds` é o intervalo entre coletas do datalogger, em segundos. Padrão 60 s, mínimo 10 s e máximo de metade de `STATION_OFFLINE_THRESHOLD_MINUTES` (300 s com o padrão de 10 min), para que uma leitura perdida não deixe a estação offline. A coluna vem da migration 020 do API-DSM-4-BANCO.
 
 CRUD, métodos, payloads, paginação e erros de negócio continuam iguais aos serviços de origem. As recusas de autenticação/autorização (401/403) usam o contrato comum descrito abaixo. Tipos e sensores também aceitam os aliases sem prefixo, com `/v1` e com `/api/v1`. O CORS desses recursos permanece encapsulado no módulo de parâmetros.
 

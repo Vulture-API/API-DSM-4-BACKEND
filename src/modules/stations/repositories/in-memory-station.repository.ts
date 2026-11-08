@@ -4,6 +4,7 @@ import type {
   ListStationsFilters,
   PaginatedStations,
   Station,
+  StationCollectionInterval,
   UpdateStationData,
 } from "@/modules/stations/types/station.type.js";
 
@@ -11,6 +12,8 @@ import type {
 export class InMemoryStationRepository implements StationRepository {
   public readonly stations: Station[] = [];
   public readonly propertyIds = new Set<number>([1, 2, 3]);
+
+  public readonly collectionIntervals = new Map<number, number>();
 
   private nextId = 1;
 
@@ -69,6 +72,34 @@ export class InMemoryStationRepository implements StationRepository {
     station.longitude = data.longitude;
 
     return station;
+  }
+
+  async findCollectionInterval(
+    id: number,
+  ): Promise<StationCollectionInterval | null> {
+    const station = await this.findById(id);
+
+    if (!station) {
+      return null;
+    }
+
+    return {
+      mac_address: station.mac_address,
+      collection_interval_seconds: this.collectionIntervals.get(id) ?? 60,
+    };
+  }
+
+  async updateCollectionInterval(
+    id: number,
+    seconds: number,
+  ): Promise<StationCollectionInterval | null> {
+    if (!(await this.findById(id))) {
+      return null;
+    }
+
+    this.collectionIntervals.set(id, seconds);
+
+    return this.findCollectionInterval(id);
   }
 
   async delete(id: number): Promise<boolean> {
