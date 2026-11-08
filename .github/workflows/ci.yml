@@ -1,17 +1,22 @@
 name: CI Backend
 
+# A suíte completa roda no PR para a dev: é a pipeline da feature. No push da
+# dev, o job de procedência confere que entrou o mesmo conteúdo testado no PR e,
+# confirmado, não repete a suíte; sem prova, roda tudo. A main não tem gatilho:
+# a promoção usa o que ficou registrado no commit da dev.
 on:
   pull_request:
-    branches: [dev, develop, main]
+    branches: [dev]
   push:
-    branches: [dev, develop, main]
+    branches: [dev]
   workflow_dispatch:
 
 permissions:
   contents: read
 
+# Em PR, commit novo cancela a execução antiga; na dev, cada merge tem a sua.
 concurrency:
-  group: ci-backend-${{ github.ref }}
+  group: ci-backend-${{ github.event_name }}-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
 jobs:
