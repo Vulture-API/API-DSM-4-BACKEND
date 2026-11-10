@@ -122,10 +122,16 @@ jobs:
         run: npm run format
       - name: Tipos
         run: npm run typecheck
+      # Cada nível roda uma vez e guarda a sua cobertura; o passo de cobertura
+      # só junta os dois relatórios e cobra os 80%, sem rodar os testes de novo.
       - name: Testes unitários
-        run: npm run test:unit
+        env:
+          COBERTURA_PARCIAL: "1"
+        run: npm run test:ci:unit
       - name: Testes de integração (rotas e PostgreSQL)
-        run: npm run test:int -- --reporter=default --reporter=json --outputFile="$RUNNER_TEMP/integracao.json"
+        env:
+          COBERTURA_PARCIAL: "1"
+        run: npm run test:ci:int -- --reporter=json --outputFile.json="$RUNNER_TEMP/integracao.json"
       - name: Nenhum teste de integração pulado
         run: |
           node -e "
@@ -135,7 +141,7 @@ jobs:
             if (pulados > 0) process.exit(1);
           "
       - name: Cobertura total de testes (DoD 80%)
-        run: npm run test:coverage
+        run: npm run test:ci:coverage
       - name: Resumo da cobertura
         id: coverage
         if: always()

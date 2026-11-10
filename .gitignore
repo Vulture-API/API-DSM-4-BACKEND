@@ -22,6 +22,9 @@ lib-cov
 coverage
 *.lcov
 
+# Relatórios parciais do Vitest (um por nível de teste, juntados no CI)
+.vitest-reports
+
 # Cobertura de testes do nyc
 .nyc_output
 
