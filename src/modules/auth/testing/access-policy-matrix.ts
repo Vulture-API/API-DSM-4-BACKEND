@@ -101,6 +101,7 @@ export function expectedAccessPolicies() {
     "/api/stations/:id/statistics",
     "/api/stations/:id/forecast",
     "/api/readings",
+    "/api/meteorological-data",
     "/readings",
     "/api/v1/readings",
   ])
