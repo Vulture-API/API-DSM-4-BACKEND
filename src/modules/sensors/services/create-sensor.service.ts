@@ -4,6 +4,7 @@ import { SensorReferenceNotFoundError } from "@/modules/sensors/errors/sensor-re
 import type { SensorRepository } from "@/modules/sensors/repositories/sensor.repository.js";
 import type { SensorInput } from "@/modules/sensors/schemas/sensor-input.schema.js";
 import type { Sensor } from "@/modules/sensors/types/sensor.type.js";
+import { assertValidCalibration } from "@/shared/errors/invalid-calibration.error.js";
 
 export class CreateSensorService {
   constructor(private readonly sensorRepository: SensorRepository) {}
@@ -30,6 +31,7 @@ export class CreateSensorService {
     const minValue = input.min_value ?? null;
     const maxValue = input.max_value ?? null;
     assertValidLimits(minValue, maxValue);
+    assertValidCalibration(input);
 
     return this.sensorRepository.create({
       station_id: input.station_id,
@@ -38,6 +40,9 @@ export class CreateSensorService {
       operational_status: input.operational_status,
       min_value: minValue,
       max_value: maxValue,
+      gain: input.gain ?? null,
+      offset_value: input.offset_value ?? null,
+      model: input.model ?? null,
     });
   }
 }

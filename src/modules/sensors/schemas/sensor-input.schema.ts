@@ -12,6 +12,11 @@ export const sensorInputSchema = z
     // Omitido no PUT = mantém o valor atual; null = remove o limite.
     min_value: limitSchema,
     max_value: limitSchema,
+    // Calibração deste sensor (SCRUM-600): vale no lugar da do tipo. Mesma
+    // regra de omitido/null dos limites. Ganho zero é recusado no serviço.
+    gain: z.number().nullable().optional(),
+    offset_value: z.number().nullable().optional(),
+    model: z.string().trim().min(1).max(100).nullable().optional(),
   })
   .refine(
     (value) =>

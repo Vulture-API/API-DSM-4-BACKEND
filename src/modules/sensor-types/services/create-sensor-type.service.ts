@@ -2,6 +2,7 @@ import { SensorTypeConflictError } from "@/modules/sensor-types/errors/sensor-ty
 import type { SensorTypeRepository } from "@/modules/sensor-types/repositories/sensor-type.repository.js";
 import type { SensorTypeInput } from "@/modules/sensor-types/schemas/sensor-type-input.schema.js";
 import type { SensorType } from "@/modules/sensor-types/types/sensor-type.type.js";
+import { assertValidCalibration } from "@/shared/errors/invalid-calibration.error.js";
 
 export class CreateSensorTypeService {
   constructor(private readonly sensorTypeRepository: SensorTypeRepository) {}
@@ -11,6 +12,8 @@ export class CreateSensorTypeService {
     if (existing) {
       throw new SensorTypeConflictError();
     }
+
+    assertValidCalibration(input);
 
     return this.sensorTypeRepository.create(input);
   }
