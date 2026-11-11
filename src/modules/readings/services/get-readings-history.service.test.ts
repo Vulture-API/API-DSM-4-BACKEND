@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { ApplicationError } from "@/errors/application.error.js";
 import { InMemoryReadingRepository } from "@/modules/readings/repositories/in-memory-reading.repository.js";
@@ -309,4 +309,90 @@ describe("GetReadingsHistoryService", () => {
 
     await expect(act).rejects.toThrow(ApplicationError);
   });
+
+  it("inclui os limites exatos e desempata por id antes de paginar", async () => {
+    repository.readings.push({ ...repository.readings[0]!, id: 4 });
+    const result = await service.execute({
+      page: 1,
+      limit: 1,
+      station_id: 1,
+      start_unix_time: 1728000000,
+      end_unix_time: 1728000000,
+    });
+    expect(result.data.map((r) => r.id)).toEqual([4]);
+    expect(result.meta).toEqual({
+      total_records: 2,
+      total_pages: 2,
+      current_page: 1,
+    });
+    expect(
+      (
+        await service.execute({
+          page: 2,
+          limit: 1,
+          station_id: 1,
+          start_unix_time: 1728000000,
+          end_unix_time: 1728000000,
+        })
+      ).data.map((r) => r.id),
+    ).toEqual([1]);
+  });
+
+  it("encaminha os filtros normalizados ao fake sem alterar o input", async () => {
+    const find = vi.spyOn(repository, "findMany");
+    const input = Object.freeze({
+      page: 1,
+      limit: 20,
+      station_id: 1,
+      sensor_id: 10,
+      start_date: "2024-10-04",
+      end_date: "2024-10-04",
+    });
+    await service.execute(input);
+    expect(find).toHaveBeenCalledExactlyOnceWith({
+      ...input,
+      start_unix_time: 1728000000,
+      end_unix_time: 1728086399,
+    });
+    expect(input).not.toHaveProperty("start_unix_time");
+  });
+
+  it("não consulta o fake quando o período é inválido", async () => {
+    const find = vi.spyOn(repository, "findMany");
+    await expect(
+      service.execute({ page: 1, limit: 20, start_date: "2024-02-30" }),
+    ).rejects.toMatchObject({ code: "INVALID_DATE" });
+    expect(find).not.toHaveBeenCalled();
+  });
+
+  it("não confunde estação inexistente com estação válida sem resultados", async () => {
+    repository.knownStationIds = new Set([1, 2, 3]);
+    const find = vi.spyOn(repository, "findMany");
+    await expect(
+      service.execute({ page: 1, limit: 20, station_id: 4 }),
+    ).rejects.toMatchObject({ statusCode: 404 });
+    expect(find).not.toHaveBeenCalled();
+    expect(
+      (await service.execute({ page: 1, limit: 20, station_id: 3 })).data,
+    ).toEqual([]);
+  });
+
+  it("mantém o total quando a página solicitada está além dos resultados", async () => {
+    const result = await service.execute({ page: 4, limit: 2 });
+    expect(result).toEqual({
+      data: [],
+      meta: { total_records: 3, total_pages: 2, current_page: 4 },
+    });
+  });
+
+  it.each(["findMany", "stationExists"] as const)(
+    "propaga falha do fake em %s",
+    async (method) => {
+      const error = new Error("Falha simulada");
+      vi.spyOn(repository, method).mockRejectedValueOnce(error);
+      await expect(
+        service.execute({ page: 1, limit: 20, station_id: 1 }),
+      ).rejects.toBe(error);
+    },
+  );
 });

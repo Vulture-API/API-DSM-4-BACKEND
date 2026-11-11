@@ -173,3 +173,33 @@ Publique os commits do BACKEND antes de publicar o gitlink correspondente do INF
 - [Logging Estruturado e Auditoria — SCRUM-542](docs/logging-e-auditoria.md)
 
 A pasta local `confluence/` contém material para publicação e validação pelo time. Ela está ignorada pelo Git e pelo contexto Docker; sua publicação e o aceite do time são etapas externas.
+
+## Consulta de dados meteorológicos — SCRUM-570
+
+`GET /api/meteorological-data` disponibiliza o histórico completo paginado ao Cliente
+com a permissão `monitoring.read`. Reutiliza o serviço de histórico e o mesmo
+contrato de `/api/readings`: `{ data, meta }`, com
+`meta.total_records`, `meta.total_pages` e `meta.current_page`. Cada leitura contém
+`id`, `sensor_id`, `value`, `unix_time`, `data_consistent` e `created_at`.
+A ordenação é `unix_time DESC, id DESC`; a consulta mantém a semântica do histórico,
+inclusive o indicador de consistência de cada registro.
+
+Parâmetros opcionais: `station_id`, `sensor_id`, `start_date`, `end_date`,
+`start_unix_time`, `end_unix_time`, `page` (padrão 1) e `limit` (padrão 20, máximo 100).
+Os aliases `initial_date` e `final_date` continuam aceitos. Datas admitem
+`YYYY-MM-DD` ou datetime ISO 8601; sem fuso explícito, são interpretadas em UTC.
+Os limites são inclusivos, e data final sem horário inclui o dia inteiro.
+É possível informar apenas um dos limites. Unix time tem precedência sobre datas;
+`start_date`/`end_date` têm precedência sobre seus aliases.
+
+```text
+GET /api/meteorological-data?station_id=1
+GET /api/meteorological-data?start_date=2026-11-01&end_date=2026-11-10
+GET /api/meteorological-data?station_id=1&start_date=2026-11-01&end_date=2026-11-10&page=2&limit=20
+```
+
+Período ou parâmetros inválidos retornam 400; estação inexistente retorna 404.
+Estação existente sem medições ou período sem resultados retorna 200, `data: []`
+e metadados de paginação. Os endpoints de dados atuais mantêm seu contrato.
+A validação e normalização do período ficam em função pura compartilhada pelo
+serviço de histórico, permitindo testes com repositório fake sem banco ou rede.

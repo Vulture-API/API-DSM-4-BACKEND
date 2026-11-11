@@ -553,7 +553,12 @@ export function buildApp(options: BuildAppOptions = {}) {
         (process.env.NODE_ENV === "test" && !options.database
           ? new InMemoryReadingRepository()
           : new PgReadingRepository(pool));
-      for (const prefix of ["/api/readings", "/readings", "/api/v1/readings"]) {
+      for (const prefix of [
+        "/api/readings",
+        "/readings",
+        "/api/v1/readings",
+        "/api/meteorological-data",
+      ]) {
         readings.register(buildReadingRoutes(repository), { prefix });
       }
     });
