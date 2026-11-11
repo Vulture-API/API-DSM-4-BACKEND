@@ -40,6 +40,9 @@ describe.skipIf(!TEST_DATABASE_URL)(
         operational_status boolean NOT NULL DEFAULT true,
         min_value decimal(10,2) NULL,
         max_value decimal(10,2) NULL,
+        gain numeric NULL,
+        offset_value numeric NULL,
+        model varchar(100) NULL,
         created_at timestamp NOT NULL DEFAULT current_timestamp,
         CONSTRAINT sensors_station_identifier_unique UNIQUE (station_id, local_identifier)
       );
@@ -112,6 +115,48 @@ describe.skipIf(!TEST_DATABASE_URL)(
       expect(cleared).toMatchObject({ min_value: null, max_value: 60 });
       expect(await repository.findById(created.id)).toEqual(cleared);
       await repository.delete(created.id);
+    });
+
+    it("should_store_keep_and_remove_the_calibration", async () => {
+      const semCalibracao = await repository.create(sensor("RAW"));
+      expect(semCalibracao).toMatchObject({
+        gain: null,
+        offset_value: null,
+        model: null,
+      });
+
+      const created = await repository.create({
+        ...sensor("LUX"),
+        gain: 0.000805860805,
+        offset_value: -0.125,
+        model: "LDR GL5528",
+      });
+      expect(created).toMatchObject({
+        gain: 0.000805860805,
+        offset_value: -0.125,
+        model: "LDR GL5528",
+      });
+
+      const kept = await repository.update(created.id, {
+        local_identifier: "LUX2",
+      });
+      expect(kept).toMatchObject({
+        gain: 0.000805860805,
+        offset_value: -0.125,
+        model: "LDR GL5528",
+      });
+
+      const changed = await repository.update(created.id, {
+        gain: 2,
+        offset_value: null,
+        model: null,
+      });
+      expect(changed).toMatchObject({
+        gain: 2,
+        offset_value: null,
+        model: null,
+      });
+      expect(await repository.findById(created.id)).toEqual(changed);
     });
 
     it("pagina e filtra por estação", async () => {

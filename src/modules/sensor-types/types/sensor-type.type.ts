@@ -4,4 +4,5 @@ export interface SensorType {
   unit_of_measure: string;
   factor?: number | null | undefined;
   gain?: number | null | undefined;
+  offset_value?: number | null | undefined;
 }
