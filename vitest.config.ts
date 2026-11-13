@@ -7,6 +7,10 @@ const integrationFiles = [
   "src/**/*.integration.test.ts",
 ];
 
+// No CI, cada nível roda uma vez e guarda a cobertura parcial; o mínimo de 80%
+// é cobrado depois, na junção dos dois níveis (npm run test:ci:coverage).
+const coberturaParcial = process.env.COBERTURA_PARCIAL === "1";
+
 export default defineConfig({
   test: {
     env: {
@@ -17,7 +21,7 @@ export default defineConfig({
     },
     coverage: {
       provider: "v8",
-      reporter: ["text", "lcov", "json-summary"],
+      reporter: coberturaParcial ? [] : ["text", "lcov", "json-summary"],
       include: ["src/**/*.ts"],
       exclude: [
         "src/index.ts",
@@ -25,7 +29,7 @@ export default defineConfig({
         "src/**/types/**",
         "src/**/testing/**",
       ],
-      thresholds: { lines: 80 },
+      thresholds: coberturaParcial ? {} : { lines: 80 },
     },
     projects: [
       {
