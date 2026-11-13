@@ -1,3 +1,8 @@
+import {
+  filterReportAlerts,
+  filterReportReadings,
+} from "@/modules/reports/utils/report-filter.rules.js";
+
 export type ReportStationInfo = {
   id: number;
   name: string;
@@ -99,35 +104,11 @@ export class InMemoryReportRepository implements ReportRepository {
   }
 
   async getReadings(filters: ReportQueryFilters): Promise<ReportReadingRow[]> {
-    return this.readings.filter((r) => {
-      if (r.unix_time < filters.from_unix || r.unix_time > filters.to_unix) {
-        return false;
-      }
-      if (
-        filters.station_id !== undefined &&
-        r.station_id !== undefined &&
-        r.station_id !== filters.station_id
-      ) {
-        return false;
-      }
-      return true;
-    });
+    return filterReportReadings(this.readings, filters, this.stations);
   }
 
   async getAlerts(filters: ReportAlertFilters): Promise<ReportAlertRow[]> {
-    const fromTime = filters.from_date.getTime();
-    const toTime = filters.to_date.getTime();
-    return this.alerts.filter((a) => {
-      const alertTime = new Date(a.triggered_at).getTime();
-      if (alertTime < fromTime || alertTime > toTime) return false;
-      if (
-        filters.station_id !== undefined &&
-        a.station_id !== filters.station_id
-      ) {
-        return false;
-      }
-      return true;
-    });
+    return filterReportAlerts(this.alerts, filters, this.stations);
   }
 
   async getForecast(
