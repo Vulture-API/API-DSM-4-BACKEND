@@ -675,4 +675,195 @@ describe("GenerateReportService", () => {
       ).toBe("Tempo instável");
     });
   });
+
+  describe("6. Filtros combinados por período, estação e propriedade", () => {
+    it("suporta mesmo dia YYYY-MM-DD em history sem vazar 00:00:00Z do dia seguinte", async () => {
+      repository.readings = [
+        {
+          id: 1,
+          station_id: 1,
+          sensor_id: 101,
+          sensor_type_id: 1,
+          sensor_type: "Temperatura",
+          unit_of_measure: "°C",
+          value: 24.5,
+          unix_time: Math.floor(Date.parse("2026-10-28T23:59:59.000Z") / 1000),
+          data_consistent: true,
+        },
+        {
+          id: 2,
+          station_id: 1,
+          sensor_id: 101,
+          sensor_type_id: 1,
+          sensor_type: "Temperatura",
+          unit_of_measure: "°C",
+          value: 18.0,
+          unix_time: Math.floor(Date.parse("2026-10-29T00:00:00.000Z") / 1000),
+          data_consistent: true,
+        },
+      ];
+
+      const report = await service.execute({
+        type: "history",
+        station_id: 1,
+        from: "2026-10-28",
+        to: "2026-10-28",
+      });
+
+      if (report.report_type !== "history") {
+        throw new Error("Falha de tipo: payload não é relatório histórico");
+      }
+
+      expect(report.period).toEqual({
+        from: "2026-10-28T00:00:00.000Z",
+        to: "2026-10-28T23:59:59.999Z",
+      });
+      expect(report.readings.map((r) => r.id)).toEqual([1]);
+    });
+
+    it("rejeita datas com overflow de calendário no serviço e valida períodos em forecast", async () => {
+      await expect(
+        service.execute({
+          type: "history",
+          from: "2026-02-30",
+          to: "2026-03-02",
+        }),
+      ).rejects.toBeInstanceOf(InvalidReportPeriodError);
+
+      await expect(
+        service.execute({
+          type: "forecast",
+          station_id: 1,
+          from: "2026-11-05",
+          to: "2026-11-01",
+        }),
+      ).rejects.toBeInstanceOf(InvalidReportPeriodError);
+
+      await expect(
+        service.execute({
+          type: "forecast",
+          station_id: 1,
+          from: "2026-02-30",
+          to: "2026-03-05",
+        }),
+      ).rejects.toBeInstanceOf(InvalidReportPeriodError);
+
+      await expect(
+        service.execute({
+          type: "forecast",
+          station_id: 1,
+          days: 99,
+        }),
+      ).rejects.toBeInstanceOf(InvalidReportPeriodError);
+    });
+
+    it("aplica filtros por período, estação e ambos combinados em múltiplas estações", async () => {
+      repository.stations.push({
+        id: 3,
+        name: "Estação Sul",
+        latitude: -22.9,
+        longitude: -47.06,
+        property_id: 20,
+        property_name: "Fazenda Bela Vista",
+      });
+
+      repository.readings = [
+        {
+          id: 1,
+          station_id: 1,
+          sensor_id: 101,
+          sensor_type_id: 1,
+          sensor_type: "Temperatura",
+          unit_of_measure: "°C",
+          value: 20,
+          unix_time: Math.floor(Date.parse("2026-10-20T10:00:00.000Z") / 1000),
+          data_consistent: true,
+        },
+        {
+          id: 2,
+          station_id: 1,
+          sensor_id: 101,
+          sensor_type_id: 1,
+          sensor_type: "Temperatura",
+          unit_of_measure: "°C",
+          value: 26,
+          unix_time: Math.floor(Date.parse("2026-10-28T10:00:00.000Z") / 1000),
+          data_consistent: true,
+        },
+        {
+          id: 3,
+          station_id: 3,
+          sensor_id: 301,
+          sensor_type_id: 1,
+          sensor_type: "Temperatura",
+          unit_of_measure: "°C",
+          value: 29,
+          unix_time: Math.floor(Date.parse("2026-10-28T10:00:00.000Z") / 1000),
+          data_consistent: true,
+        },
+      ];
+
+      const onlyPeriod = await service.execute({
+        type: "history",
+        from: "2026-10-28",
+        to: "2026-10-28",
+      });
+      if (onlyPeriod.report_type !== "history") {
+        throw new Error("Esperado history");
+      }
+      expect(onlyPeriod.readings.map((r) => r.id)).toEqual([2, 3]);
+
+      const combined = await service.execute({
+        type: "history",
+        station_id: 1,
+        from: "2026-10-28",
+        to: "2026-10-28",
+      });
+      if (combined.report_type !== "history") {
+        throw new Error("Esperado history");
+      }
+      expect(combined.readings.map((r) => r.id)).toEqual([2]);
+      expect(combined.station).toEqual({ id: 1, name: "Estação Norte" });
+    });
+
+    it("valida property_id explícito mesmo quando station_id é informado", async () => {
+      await expect(
+        service.execute({
+          type: "history",
+          station_id: 1,
+          property_id: 999,
+        }),
+      ).rejects.toBeInstanceOf(ReportPropertyNotFoundError);
+
+      repository.readings = [
+        {
+          id: 1,
+          station_id: 1,
+          sensor_id: 101,
+          sensor_type_id: 1,
+          sensor_type: "Temperatura",
+          unit_of_measure: "°C",
+          value: 25,
+          unix_time: Math.floor(Date.parse("2026-10-28T10:00:00.000Z") / 1000),
+          data_consistent: true,
+        },
+      ];
+
+      const mismatched = await service.execute({
+        type: "history",
+        station_id: 1,
+        property_id: 20,
+        from: "2026-10-28",
+        to: "2026-10-28",
+      });
+      if (mismatched.report_type !== "history") {
+        throw new Error("Esperado history");
+      }
+      expect(mismatched.property).toEqual({
+        id: 20,
+        name: "Fazenda Bela Vista",
+      });
+      expect(mismatched.readings).toEqual([]);
+    });
+  });
 });
