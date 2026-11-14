@@ -26,8 +26,34 @@ function rethrowForeignKeyViolation(error: unknown): never {
 export class PgPropertyRepository implements PropertyRepository {
   constructor(private readonly pool: Pool) {}
 
-  async create(data: CreatePropertyInput): Promise<Property> {
-    const result = await this.pool
+  async create(
+    data: CreatePropertyInput,
+    creatorId?: number,
+  ): Promise<Property> {
+    if (creatorId === undefined) return this.insert(data, this.pool);
+    const client = await this.pool.connect();
+    try {
+      await client.query("BEGIN");
+      const property = await this.insert(data, client);
+      await client.query(
+        "INSERT INTO user_properties(user_id, property_id) VALUES($1,$2)",
+        [creatorId, property.id],
+      );
+      await client.query("COMMIT");
+      return property;
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      client.release();
+    }
+  }
+
+  private async insert(
+    data: CreatePropertyInput,
+    connection: Pick<Pool, "query">,
+  ): Promise<Property> {
+    const result = await connection
       .query<PropertyRow>(
         `
         INSERT INTO properties (name, owner_user_id, location, created_at)
