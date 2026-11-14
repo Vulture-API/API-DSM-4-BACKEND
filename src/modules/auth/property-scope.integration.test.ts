@@ -396,6 +396,198 @@ describe.skipIf(!url)(
         await legacy.close();
       }
     });
+    const concurrentOperations: {
+      method: "GET" | "PUT" | "POST" | "PATCH" | "DELETE";
+      url: string;
+      payload?: Record<string, unknown>;
+      statement?: string;
+    }[] = [
+      { method: "GET", url: "/api/stations/1" },
+      { method: "GET", url: "/api/sensors/1" },
+      { method: "GET", url: "/api/alerts/config/1" },
+      { method: "GET", url: "/api/occurrences/1" },
+      { method: "GET", url: "/api/stations/1/forecast" },
+      { method: "GET", url: "/api/reports?type=history&station_id=1" },
+      {
+        method: "DELETE",
+        url: "/api/stations/1",
+        statement: "DELETE FROM stations",
+      },
+      {
+        method: "DELETE",
+        url: "/api/sensors/1",
+        statement: "DELETE FROM sensors",
+      },
+      {
+        method: "DELETE",
+        url: "/api/alerts/config/1",
+        statement: "DELETE FROM alert_configs",
+      },
+      {
+        method: "PUT",
+        url: "/api/stations/1",
+        payload: {
+          property_id: 1,
+          mac_address: "02:00:00:00:00:01",
+          name: "Estação alterada",
+        },
+        statement: "UPDATE stations",
+      },
+      {
+        method: "PUT",
+        url: "/api/stations/1/collection",
+        payload: { collection_interval_seconds: 120 },
+        statement: "UPDATE stations",
+      },
+      {
+        method: "PUT",
+        url: "/api/sensors/1",
+        payload: {
+          station_id: 1,
+          sensor_type_id: 1,
+          local_identifier: "temp",
+          operational_status: false,
+        },
+        statement: "UPDATE sensors",
+      },
+      {
+        method: "PUT",
+        url: "/api/alerts/config/1",
+        payload: {
+          sensor_id: 1,
+          reference_value: 99,
+          comparison_operator: ">",
+          active: false,
+        },
+        statement: "UPDATE alert_configs",
+      },
+      {
+        method: "PUT",
+        url: "/api/alerts/triggered/1/acknowledge",
+        payload: {},
+        statement: "UPDATE triggered_alerts",
+      },
+      {
+        method: "PATCH",
+        url: "/api/occurrences/1/resolve",
+        statement: "UPDATE occurrences",
+      },
+      {
+        method: "PUT",
+        url: "/api/properties/1/stations/1",
+        statement: "UPDATE stations",
+      },
+      {
+        method: "POST",
+        url: "/api/sensors",
+        payload: {
+          station_id: 1,
+          sensor_type_id: 1,
+          local_identifier: "novo",
+          operational_status: true,
+        },
+        statement: "INSERT INTO sensors",
+      },
+      {
+        method: "POST",
+        url: "/api/alerts/config",
+        payload: {
+          sensor_id: 1,
+          reference_value: 99,
+          comparison_operator: ">",
+        },
+        statement: "INSERT INTO alert_configs",
+      },
+    ];
+    it.each(concurrentOperations)(
+      "nega $method $url se a estação mudar após o guard",
+      async (operation) => {
+        let moved = false;
+        const proxy = {
+          query: async (sql: string, values?: unknown[]) => {
+            const result = await pool.query(sql, values);
+            if (!moved && /^SELECT (?:st\.)?property_id FROM /.test(sql)) {
+              moved = true;
+              await pool.query("UPDATE stations SET property_id=2 WHERE id=1");
+            }
+            return result;
+          },
+          connect: () => pool.connect(),
+        } as unknown as Pool;
+        const raced = buildApp({
+          database: proxy,
+          accessControlEnabled: true,
+          jwtSecret: "scrum396-property-scope-acceptance-secret",
+        });
+        try {
+          const response = await raced.inject({
+            ...operation,
+            headers: headers(2),
+          });
+          expect(moved).toBe(true);
+          expect(response.statusCode, response.body).toBe(404);
+          expect(
+            (await pool.query("SELECT property_id FROM stations WHERE id=1"))
+              .rows[0].property_id,
+          ).toBe(2);
+        } finally {
+          await raced.close();
+        }
+      },
+    );
+    it.each(concurrentOperations.filter((operation) => operation.statement))(
+      "nega $method $url se a estação mudar imediatamente antes da escrita",
+      async (operation) => {
+        const before = await pool.query("SELECT * FROM sensors ORDER BY id");
+        let moved = false;
+        const proxy = {
+          query: async (sql: string, values?: unknown[]) => {
+            if (!moved && sql.trim().startsWith(operation.statement!)) {
+              moved = true;
+              await pool.query("UPDATE stations SET property_id=2 WHERE id=1");
+            }
+            return pool.query(sql, values);
+          },
+          connect: () => pool.connect(),
+        } as unknown as Pool;
+        const raced = buildApp({
+          database: proxy,
+          accessControlEnabled: true,
+          jwtSecret: "scrum396-property-scope-acceptance-secret",
+        });
+        try {
+          const response = await raced.inject({
+            ...operation,
+            headers: headers(2),
+          });
+          expect(moved).toBe(true);
+          expect(response.statusCode, response.body).toBe(404);
+          expect(
+            (await pool.query("SELECT * FROM sensors ORDER BY id")).rows,
+          ).toEqual(before.rows);
+          expect(
+            (
+              await pool.query(
+                "SELECT collection_interval_seconds FROM stations WHERE id=1",
+              )
+            ).rows[0].collection_interval_seconds,
+          ).toBe(60);
+          expect(
+            (
+              await pool.query(
+                "SELECT acknowledged_at FROM triggered_alerts WHERE id=1",
+              )
+            ).rows[0].acknowledged_at,
+          ).toBeNull();
+          expect(
+            (await pool.query("SELECT status FROM occurrences WHERE id=1"))
+              .rows[0].status,
+          ).toBe("OPEN");
+        } finally {
+          await raced.close();
+        }
+      },
+    );
     it("filtra WebSocket global e aplica revogação antes de novas mensagens", async () => {
       const broadcaster = new ReadingsBroadcaster(
         new PgMonitoringRepository(pool),
