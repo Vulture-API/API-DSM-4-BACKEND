@@ -39,7 +39,11 @@ export class OccurrenceQueryService {
       throw new OccurrenceAlreadyResolvedError();
     const resolved = await this.repository.resolve(id, this.clock());
     // Resolvida em paralelo entre a leitura e a gravação.
-    if (!resolved) throw new OccurrenceAlreadyResolvedError();
+    if (!resolved) {
+      if (!(await this.repository.findById(id)))
+        throw new OccurrenceNotFoundError();
+      throw new OccurrenceAlreadyResolvedError();
+    }
     return resolved;
   }
 }

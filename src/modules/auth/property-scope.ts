@@ -24,13 +24,17 @@ export function scopeCondition(column: string, values: unknown[]): string {
 export function scopedQuery(
   sql: string,
   values: unknown[],
-  column: string,
+  column: string | readonly string[],
 ): [string, unknown[]] {
-  if (!sql.includes("/* scope */"))
-    throw new Error("Missing property scope marker");
+  const columns = typeof column === "string" ? [column] : column;
+  if (sql.split("/* scope */").length - 1 !== columns.length)
+    throw new Error("Property scope marker count does not match columns");
   const parameters = [...values];
+  let index = 0;
   return [
-    sql.replace("/* scope */", scopeCondition(column, parameters)),
+    sql.replaceAll("/* scope */", () =>
+      scopeCondition(columns[index++]!, parameters),
+    ),
     parameters,
   ];
 }

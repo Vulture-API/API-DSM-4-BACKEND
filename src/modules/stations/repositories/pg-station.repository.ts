@@ -1,6 +1,7 @@
 import type { DatabaseError, Pool } from "pg";
 
 import { scopedQuery } from "@/modules/auth/property-scope.js";
+import { PropertyNotFoundError } from "@/modules/properties/errors/property.errors.js";
 import { DuplicateMacAddressError } from "@/modules/stations/errors/duplicate-mac-address.error.js";
 import type { StationRepository } from "@/modules/stations/repositories/station.repository.js";
 import type {
@@ -45,22 +46,26 @@ export class PgStationRepository implements StationRepository {
   async create(data: CreateStationData): Promise<Station> {
     const result = await this.database
       .query<Station>(
-        `
+        ...scopedQuery(
+          `
         INSERT INTO stations (property_id, mac_address, name, latitude, longitude, created_at)
-        VALUES ($1, $2, $3, $4, $5, current_timestamp)
+        SELECT $1, $2, $3, $4, $5, current_timestamp WHERE /* scope */
         RETURNING ${STATION_COLUMNS}
       `,
-        [
-          data.property_id,
-          data.mac_address,
-          data.name,
-          data.latitude,
-          data.longitude,
-        ],
+          [
+            data.property_id,
+            data.mac_address,
+            data.name,
+            data.latitude,
+            data.longitude,
+          ],
+          "$1",
+        ),
       )
       .catch(rethrowUniqueViolation);
 
-    return result.rows[0]!;
+    if (!result.rows[0]) throw new PropertyNotFoundError();
+    return result.rows[0];
   }
 
   async findMany(filters: ListStationsFilters): Promise<PaginatedStations> {
@@ -101,8 +106,11 @@ export class PgStationRepository implements StationRepository {
 
   async findById(id: number): Promise<Station | null> {
     const result = await this.database.query<Station>(
-      `SELECT ${STATION_COLUMNS} FROM stations WHERE id = $1`,
-      [id],
+      ...scopedQuery(
+        `SELECT ${STATION_COLUMNS} FROM stations WHERE id = $1 AND /* scope */`,
+        [id],
+        "property_id",
+      ),
     );
 
     return result.rows[0] ?? null;
@@ -110,8 +118,11 @@ export class PgStationRepository implements StationRepository {
 
   async findByMacAddress(macAddress: string): Promise<Station | null> {
     const result = await this.database.query<Station>(
-      `SELECT ${STATION_COLUMNS} FROM stations WHERE mac_address = $1`,
-      [macAddress],
+      ...scopedQuery(
+        `SELECT ${STATION_COLUMNS} FROM stations WHERE mac_address = $1 AND /* scope */`,
+        [macAddress],
+        "property_id",
+      ),
     );
 
     return result.rows[0] ?? null;
@@ -120,20 +131,23 @@ export class PgStationRepository implements StationRepository {
   async update(id: number, data: UpdateStationData): Promise<Station | null> {
     const result = await this.database
       .query<Station>(
-        `
+        ...scopedQuery(
+          `
         UPDATE stations
         SET property_id = $2, mac_address = $3, name = $4, latitude = $5, longitude = $6
-        WHERE id = $1
+        WHERE id = $1 AND /* scope */ AND /* scope */
         RETURNING ${STATION_COLUMNS}
       `,
-        [
-          id,
-          data.property_id,
-          data.mac_address,
-          data.name,
-          data.latitude,
-          data.longitude,
-        ],
+          [
+            id,
+            data.property_id,
+            data.mac_address,
+            data.name,
+            data.latitude,
+            data.longitude,
+          ],
+          ["property_id", "$2"],
+        ),
       )
       .catch(rethrowUniqueViolation);
 
@@ -144,8 +158,11 @@ export class PgStationRepository implements StationRepository {
     id: number,
   ): Promise<StationCollectionInterval | null> {
     const result = await this.database.query<StationCollectionInterval>(
-      "SELECT mac_address, collection_interval_seconds FROM stations WHERE id = $1",
-      [id],
+      ...scopedQuery(
+        "SELECT mac_address, collection_interval_seconds FROM stations WHERE id = $1 AND /* scope */",
+        [id],
+        "property_id",
+      ),
     );
 
     return result.rows[0] ?? null;
@@ -156,12 +173,15 @@ export class PgStationRepository implements StationRepository {
     seconds: number,
   ): Promise<StationCollectionInterval | null> {
     const result = await this.database.query<StationCollectionInterval>(
-      `
+      ...scopedQuery(
+        `
         UPDATE stations SET collection_interval_seconds = $2
-        WHERE id = $1
+        WHERE id = $1 AND /* scope */
         RETURNING mac_address, collection_interval_seconds
       `,
-      [id, seconds],
+        [id, seconds],
+        "property_id",
+      ),
     );
 
     return result.rows[0] ?? null;
@@ -169,8 +189,11 @@ export class PgStationRepository implements StationRepository {
 
   async delete(id: number): Promise<boolean> {
     const result = await this.database.query(
-      `DELETE FROM stations WHERE id = $1`,
-      [id],
+      ...scopedQuery(
+        `DELETE FROM stations WHERE id = $1 AND /* scope */`,
+        [id],
+        "property_id",
+      ),
     );
 
     return (result.rowCount ?? 0) > 0;
@@ -178,8 +201,11 @@ export class PgStationRepository implements StationRepository {
 
   async propertyExists(propertyId: number): Promise<boolean> {
     const result = await this.database.query(
-      `SELECT 1 FROM properties WHERE id = $1`,
-      [propertyId],
+      ...scopedQuery(
+        `SELECT 1 FROM properties WHERE id = $1 AND /* scope */`,
+        [propertyId],
+        "id",
+      ),
     );
 
     return (result.rowCount ?? 0) > 0;
@@ -202,13 +228,16 @@ export class PgStationRepository implements StationRepository {
     propertyId: number,
   ): Promise<Station | null> {
     const result = await this.database.query<Station>(
-      `
+      ...scopedQuery(
+        `
       UPDATE stations
       SET property_id = $2
-      WHERE id = $1
+      WHERE id = $1 AND /* scope */ AND /* scope */
       RETURNING ${STATION_COLUMNS}
       `,
-      [stationId, propertyId],
+        [stationId, propertyId],
+        ["property_id", "$2"],
+      ),
     );
 
     return result.rows[0] ?? null;

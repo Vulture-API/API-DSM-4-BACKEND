@@ -4,6 +4,7 @@ import { database } from "@/config/database.js";
 import { scopedQuery } from "@/modules/auth/property-scope.js";
 import { SensorConflictError } from "@/modules/sensors/errors/sensor-conflict.error.js";
 import type { Sensor } from "@/modules/sensors/types/sensor.type.js";
+import { StationNotFoundError } from "@/modules/stations/errors/station-not-found.error.js";
 import type { PaginatedResult } from "@/shared/schemas/pagination.schema.js";
 
 export interface SensorFilter {
@@ -221,22 +222,26 @@ export class PgSensorRepository implements SensorRepository {
   async create(data: SensorCreateData): Promise<Sensor> {
     try {
       const result = await this.pool.query<SensorRow>(
-        `INSERT INTO sensors (station_id, sensor_type_id, local_identifier, operational_status, min_value, max_value, gain, offset_value, model)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+        ...scopedQuery(
+          `INSERT INTO sensors (station_id, sensor_type_id, local_identifier, operational_status, min_value, max_value, gain, offset_value, model)
+         SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9 WHERE /* scope */
          RETURNING ${SENSOR_COLUMNS}`,
-        [
-          data.station_id,
-          data.sensor_type_id,
-          data.local_identifier,
-          data.operational_status,
-          data.min_value ?? null,
-          data.max_value ?? null,
-          data.gain ?? null,
-          data.offset_value ?? null,
-          data.model ?? null,
-        ],
+          [
+            data.station_id,
+            data.sensor_type_id,
+            data.local_identifier,
+            data.operational_status,
+            data.min_value ?? null,
+            data.max_value ?? null,
+            data.gain ?? null,
+            data.offset_value ?? null,
+            data.model ?? null,
+          ],
+          "(SELECT st.property_id FROM stations st WHERE st.id = $1)",
+        ),
       );
-      return mapSensor(result.rows[0]!);
+      if (!result.rows[0]) throw new StationNotFoundError();
+      return mapSensor(result.rows[0]);
     } catch (error) {
       // Corrida entre duas criações com o mesmo identificador na estação.
       if (isUniqueViolation(error)) throw new SensorConflictError();
@@ -286,8 +291,11 @@ export class PgSensorRepository implements SensorRepository {
 
   async findById(id: number): Promise<Sensor | null> {
     const result = await this.pool.query<SensorRow>(
-      `SELECT ${SENSOR_COLUMNS} FROM sensors WHERE id = $1`,
-      [id],
+      ...scopedQuery(
+        `SELECT ${SENSOR_COLUMNS} FROM sensors WHERE id = $1 AND /* scope */`,
+        [id],
+        "(SELECT st.property_id FROM stations st WHERE st.id = sensors.station_id)",
+      ),
     );
     return result.rows[0] ? mapSensor(result.rows[0]) : null;
   }
@@ -297,9 +305,12 @@ export class PgSensorRepository implements SensorRepository {
     localIdentifier: string,
   ): Promise<Sensor | null> {
     const result = await this.pool.query<SensorRow>(
-      `SELECT ${SENSOR_COLUMNS} FROM sensors
-       WHERE station_id = $1 AND lower(local_identifier) = lower($2)`,
-      [stationId, localIdentifier],
+      ...scopedQuery(
+        `SELECT ${SENSOR_COLUMNS} FROM sensors
+       WHERE station_id = $1 AND /* scope */ AND lower(local_identifier) = lower($2)`,
+        [stationId, localIdentifier],
+        "(SELECT st.property_id FROM stations st WHERE st.id = sensors.station_id)",
+      ),
     );
     return result.rows[0] ? mapSensor(result.rows[0]) : null;
   }
@@ -315,7 +326,8 @@ export class PgSensorRepository implements SensorRepository {
   async update(id: number, data: SensorUpdateData): Promise<Sensor | null> {
     try {
       const result = await this.pool.query<SensorRow>(
-        `UPDATE sensors SET
+        ...scopedQuery(
+          `UPDATE sensors SET
            station_id = COALESCE($2, station_id),
            sensor_type_id = COALESCE($3, sensor_type_id),
            local_identifier = COALESCE($4, local_identifier),
@@ -326,25 +338,30 @@ export class PgSensorRepository implements SensorRepository {
            gain = CASE WHEN $10 THEN $11::decimal ELSE gain END,
            offset_value = CASE WHEN $12 THEN $13::decimal ELSE offset_value END,
            model = CASE WHEN $14 THEN $15::varchar ELSE model END
-         WHERE id = $1
+         WHERE id = $1 AND /* scope */ AND /* scope */
          RETURNING ${SENSOR_COLUMNS}`,
-        [
-          id,
-          data.station_id ?? null,
-          data.sensor_type_id ?? null,
-          data.local_identifier ?? null,
-          data.operational_status ?? null,
-          data.min_value !== undefined,
-          data.min_value ?? null,
-          data.max_value !== undefined,
-          data.max_value ?? null,
-          data.gain !== undefined,
-          data.gain ?? null,
-          data.offset_value !== undefined,
-          data.offset_value ?? null,
-          data.model !== undefined,
-          data.model ?? null,
-        ],
+          [
+            id,
+            data.station_id ?? null,
+            data.sensor_type_id ?? null,
+            data.local_identifier ?? null,
+            data.operational_status ?? null,
+            data.min_value !== undefined,
+            data.min_value ?? null,
+            data.max_value !== undefined,
+            data.max_value ?? null,
+            data.gain !== undefined,
+            data.gain ?? null,
+            data.offset_value !== undefined,
+            data.offset_value ?? null,
+            data.model !== undefined,
+            data.model ?? null,
+          ],
+          [
+            "(SELECT st.property_id FROM stations st WHERE st.id = sensors.station_id)",
+            "(SELECT st.property_id FROM stations st WHERE st.id = COALESCE($2, sensors.station_id))",
+          ],
+        ),
       );
       return result.rows[0] ? mapSensor(result.rows[0]) : null;
     } catch (error) {
@@ -356,8 +373,11 @@ export class PgSensorRepository implements SensorRepository {
   async delete(id: number): Promise<boolean> {
     try {
       const result = await this.pool.query(
-        "DELETE FROM sensors WHERE id = $1",
-        [id],
+        ...scopedQuery(
+          "DELETE FROM sensors WHERE id = $1 AND /* scope */",
+          [id],
+          "(SELECT st.property_id FROM stations st WHERE st.id = sensors.station_id)",
+        ),
       );
       return (result.rowCount ?? 0) > 0;
     } catch (error) {

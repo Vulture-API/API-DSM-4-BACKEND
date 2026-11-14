@@ -19,7 +19,7 @@ describe("PgReadingRepository", () => {
 
     expect(result).toBe(true);
     expect(query).toHaveBeenCalledWith(
-      "SELECT 1 FROM stations WHERE id = $1",
+      expect.stringContaining("SELECT 1 FROM stations WHERE id = $1"),
       [1],
     );
   });
@@ -31,7 +31,7 @@ describe("PgReadingRepository", () => {
 
     expect(result).toBe(false);
     expect(query).toHaveBeenCalledWith(
-      "SELECT 1 FROM stations WHERE id = $1",
+      expect.stringContaining("SELECT 1 FROM stations WHERE id = $1"),
       [999],
     );
   });

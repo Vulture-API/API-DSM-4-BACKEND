@@ -9,6 +9,7 @@ export class DeleteSensorService {
     if (!existing) {
       throw new SensorNotFoundError();
     }
-    await this.sensorRepository.delete(id);
+    if (!(await this.sensorRepository.delete(id)))
+      throw new SensorNotFoundError();
   }
 }

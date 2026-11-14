@@ -1,5 +1,6 @@
 import type { Pool } from "pg";
 
+import { scopedQuery } from "@/modules/auth/property-scope.js";
 import { scopeCondition } from "@/modules/auth/property-scope.js";
 import type {
   ReadingRepository,
@@ -33,8 +34,11 @@ export class PgReadingRepository implements ReadingRepository {
 
   async stationExists(stationId: number): Promise<boolean> {
     const result = await this.database.query(
-      "SELECT 1 FROM stations WHERE id = $1",
-      [stationId],
+      ...scopedQuery(
+        "SELECT 1 FROM stations WHERE id = $1 AND /* scope */",
+        [stationId],
+        "property_id",
+      ),
     );
     return (result.rowCount ?? 0) > 0;
   }
