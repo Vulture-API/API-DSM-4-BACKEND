@@ -5,6 +5,10 @@ import {
   ForbiddenError,
   UnauthorizedError,
 } from "@/modules/auth/auth.errors.js";
+import {
+  propertyScopeContext,
+  resolveAccessibleProperties,
+} from "@/modules/auth/property-scope.js";
 import type { AuthRepositoryPort } from "@/modules/auth/repositories/auth.repository.js";
 import type { AuthUser } from "@/modules/auth/types.js";
 import {
@@ -98,6 +102,8 @@ export class AccessControl {
     const user = await this.repository.findUserById(Number(sub));
     if (!user?.active) throw new UnauthorizedError();
     request.actor = user;
+    const context = propertyScopeContext.getStore();
+    if (context) context.ids = resolveAccessibleProperties(user);
     return user;
   }
 

@@ -36,6 +36,7 @@ import {
   JWT_ISSUER,
   JWT_TTL_SECONDS,
 } from "@/modules/auth/access-control.js";
+import { propertyScopeContext } from "@/modules/auth/property-scope.js";
 import {
   type AuthRepositoryPort,
   PgAuthRepository,
@@ -191,6 +192,9 @@ export function buildApp(options: BuildAppOptions = {}) {
     assertAccessPolicy(route.config?.access, `${route.method} ${route.url}`);
   });
   app.decorateRequest("actor", null);
+  app.addHook("onRequest", (_request, _reply, done) => {
+    propertyScopeContext.run({ ids: null }, done);
+  });
   app.decorateRequest("metricsStartTime", 0);
 
   const auditService = options.auditService ?? AuditService.getInstance();
