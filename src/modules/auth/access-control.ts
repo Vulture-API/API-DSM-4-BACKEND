@@ -114,5 +114,11 @@ export class AccessControl {
     const user = await this.authenticate(request);
     if (policy.permission && !user.permissions.includes(policy.permission))
       throw new ForbiddenError();
+    if (
+      user.role_name === "Cliente" &&
+      policy.permission &&
+      !policy.permission.endsWith(".read")
+    )
+      throw new ForbiddenError();
   }
 }

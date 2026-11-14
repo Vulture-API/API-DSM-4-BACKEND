@@ -2,6 +2,8 @@ import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 
 import { ApplicationError } from "@/errors/application.error.js";
 import type { AccessControl } from "@/modules/auth/access-control.js";
+import type { PropertyAccess } from "@/modules/auth/property-access.js";
+import { resolveAccessibleProperties } from "@/modules/auth/property-scope.js";
 import type { MonitoringRepository } from "@/modules/monitoring/repositories/monitoring.repository.js";
 import {
   currentQuerySchema,
@@ -55,6 +57,7 @@ export function buildMonitoringRoutes(
   broadcaster?: ReadingsBroadcaster,
   liveLimits?: Partial<LiveLimits>,
   accessControl?: AccessControl,
+  propertyAccess?: PropertyAccess,
 ): FastifyPluginAsyncZod {
   return async (app) => {
     const overview = new GetOverviewService(
@@ -146,8 +149,16 @@ export function buildMonitoringRoutes(
             socket.ping();
           }, limits.heartbeatMs);
 
+          let allowedStations: Set<number> | null = accessControl?.enabled
+            ? new Set()
+            : null;
           const unsubscribe = broadcaster.subscribe(
             (reading, message) => {
+              if (
+                allowedStations !== null &&
+                !allowedStations.has(reading.station_id)
+              )
+                return;
               if (station_id !== undefined && reading.station_id !== station_id)
                 return;
               if (socket.readyState !== socket.OPEN) return;
@@ -163,6 +174,19 @@ export function buildMonitoringRoutes(
               ? async () => {
                   try {
                     await accessControl.enforce(request);
+                    const ids = resolveAccessibleProperties(request.actor!);
+                    if (ids !== null) {
+                      if (!propertyAccess)
+                        throw new Error(
+                          "Property access repository unavailable",
+                        );
+                      allowedStations = await propertyAccess.stations(ids);
+                      if (
+                        station_id !== undefined &&
+                        !allowedStations.has(station_id)
+                      )
+                        throw new StationNotFoundError();
+                    } else allowedStations = null;
                   } catch (error) {
                     socket.close(1008, "Access revoked");
                     throw error;
