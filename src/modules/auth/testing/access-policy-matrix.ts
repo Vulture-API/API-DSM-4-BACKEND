@@ -44,6 +44,14 @@ export function expectedAccessPolicies() {
   add("PATCH", "/api/devops/outages/:id/resolve", { public: true });
   add("GET", "/api/auth/me", { always: true });
   crud("/api/users", "users");
+  add("GET", "/api/users/:id/properties", {
+    always: true,
+    permission: "users.read",
+  });
+  add("PUT", "/api/users/:id/properties", {
+    always: true,
+    permission: "users.update",
+  });
   crud("/api/roles", "roles");
   crud("/api/stations", "stations");
   crud("/api/alerts/config", "alert-configs");
