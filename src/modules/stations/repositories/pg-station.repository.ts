@@ -1,5 +1,6 @@
 import type { DatabaseError, Pool } from "pg";
 
+import { scopedQuery } from "@/modules/auth/property-scope.js";
 import { DuplicateMacAddressError } from "@/modules/stations/errors/duplicate-mac-address.error.js";
 import type { StationRepository } from "@/modules/stations/repositories/station.repository.js";
 import type {
@@ -72,11 +73,12 @@ export class PgStationRepository implements StationRepository {
     const result = await this.database.query<
       Partial<Station> & { total_records: string }
     >(
-      `
+      ...scopedQuery(
+        `
         WITH filtered AS (
           SELECT ${STATION_COLUMNS}
           FROM stations
-          WHERE ($1::int IS NULL OR property_id = $1::int)
+          WHERE ($1::int IS NULL OR property_id = $1::int) AND /* scope */
         )
         SELECT page.*, total.total_records
         FROM (SELECT COUNT(*) AS total_records FROM filtered) AS total
@@ -84,7 +86,9 @@ export class PgStationRepository implements StationRepository {
           SELECT * FROM filtered ORDER BY id ASC LIMIT $2 OFFSET $3
         ) AS page ON true
       `,
-      [filters.property_id ?? null, filters.limit, offset],
+        [filters.property_id ?? null, filters.limit, offset],
+        "property_id",
+      ),
     );
 
     const totalRecords = Number(result.rows[0]?.total_records ?? 0);
@@ -183,8 +187,11 @@ export class PgStationRepository implements StationRepository {
 
   async findByPropertyId(propertyId: number): Promise<Station[]> {
     const result = await this.database.query<Station>(
-      `SELECT ${STATION_COLUMNS} FROM stations WHERE property_id = $1 ORDER BY id ASC`,
-      [propertyId],
+      ...scopedQuery(
+        `SELECT ${STATION_COLUMNS} FROM stations WHERE property_id = $1 AND /* scope */ ORDER BY id ASC`,
+        [propertyId],
+        "property_id",
+      ),
     );
 
     return result.rows;
@@ -214,7 +221,13 @@ export class PgStationRepository implements StationRepository {
       id: number;
       name: string;
       location: string | null;
-    }>("SELECT id, name, location FROM properties ORDER BY name ASC");
+    }>(
+      ...scopedQuery(
+        "SELECT id, name, location FROM properties WHERE /* scope */ ORDER BY name ASC",
+        [],
+        "id",
+      ),
+    );
 
     return result.rows;
   }
