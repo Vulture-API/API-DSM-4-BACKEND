@@ -396,6 +396,76 @@ describe.skipIf(!url)(
         await legacy.close();
       }
     });
+    it("preserva escritas autorizadas dentro do escopo após aplicar os predicados SQL", async () => {
+      for (const table of ["stations", "sensors", "alert_configs"])
+        await pool.query(
+          `SELECT setval(pg_get_serial_sequence('${table}','id'),2)`,
+        );
+      const send = async (
+        method: "POST" | "PUT" | "PATCH" | "DELETE",
+        url: string,
+        payload: Record<string, unknown> | undefined,
+        expected: number,
+      ) => {
+        const response = await app.inject({
+          method,
+          url,
+          ...(payload === undefined ? {} : { payload }),
+          headers: headers(2),
+        });
+        expect(response.statusCode, response.body).toBe(expected);
+        return response.statusCode === 204 ? null : response.json();
+      };
+      const stationBody = {
+        property_id: 1,
+        mac_address: "02:00:00:00:00:03",
+        name: "Estação permitida",
+      };
+      const station = await send("POST", "/api/stations", stationBody, 201);
+      await send("PUT", `/api/stations/${station.id}`, stationBody, 200);
+      await send(
+        "PUT",
+        `/api/stations/${station.id}/collection`,
+        { collection_interval_seconds: 120 },
+        200,
+      );
+      await send(
+        "PUT",
+        `/api/properties/1/stations/${station.id}`,
+        undefined,
+        200,
+      );
+      const sensorBody = {
+        station_id: station.id,
+        sensor_type_id: 1,
+        local_identifier: "novo",
+        operational_status: true,
+      };
+      const sensor = await send("POST", "/api/sensors", sensorBody, 201);
+      await send(
+        "PUT",
+        `/api/sensors/${sensor.id}`,
+        { ...sensorBody, operational_status: false },
+        200,
+      );
+      const ruleBody = {
+        sensor_id: sensor.id,
+        reference_value: 42,
+        comparison_operator: ">",
+      };
+      const rule = await send("POST", "/api/alerts/config", ruleBody, 201);
+      await send(
+        "PUT",
+        `/api/alerts/config/${rule.id}`,
+        { ...ruleBody, reference_value: 84 },
+        200,
+      );
+      await send("PUT", "/api/alerts/triggered/1/acknowledge", {}, 200);
+      await send("PATCH", "/api/occurrences/1/resolve", undefined, 200);
+      await send("DELETE", `/api/alerts/config/${rule.id}`, undefined, 204);
+      await send("DELETE", `/api/sensors/${sensor.id}`, undefined, 204);
+      await send("DELETE", `/api/stations/${station.id}`, undefined, 204);
+    });
     const concurrentOperations: {
       method: "GET" | "PUT" | "POST" | "PATCH" | "DELETE";
       url: string;
