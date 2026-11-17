@@ -76,6 +76,7 @@ describe.each([false, true])(
       });
       auth = new FakeAuthRepository();
       auth.credentials.push({
+        role_name: "Administrador",
         ...user,
         permissions: [],
         password_hash: "unused",

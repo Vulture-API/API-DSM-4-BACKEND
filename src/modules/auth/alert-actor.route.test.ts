@@ -12,6 +12,7 @@ describe("authenticated alert acknowledgement", () => {
       const alert = await alerts.create({ alert_config_id: 1, reading_id: 1 });
       const auth = new FakeAuthRepository();
       auth.credentials.push({
+        role_name: "Administrador",
         id: 7,
         role_id: 2,
         name: "Test",
