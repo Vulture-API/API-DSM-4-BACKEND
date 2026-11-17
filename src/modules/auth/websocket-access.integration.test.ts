@@ -28,6 +28,7 @@ describe("WebSocket authorization and revocation", () => {
   beforeEach(async () => {
     auth = new FakeAuthRepository();
     auth.credentials.push({
+      role_name: "Administrador",
       id: 1,
       role_id: 1,
       name: "Test",
