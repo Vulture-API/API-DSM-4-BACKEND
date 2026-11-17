@@ -1,15 +1,16 @@
 import z from "zod";
 
 import {
-  isValidDateOnlyString,
   isValidDateParameter,
   isValidIsoDateTimeString,
 } from "@/modules/readings/utils/date-filter.js";
-import { MAX_FORECAST_DAYS } from "@/modules/reports/services/generate-report.service.js";
+import {
+  MAX_FORECAST_DAYS,
+  MAX_PG_INT,
+  normalizeReportDateBoundary,
+} from "@/modules/reports/utils/report-filter.rules.js";
 
-const MAX_PG_INT = 2_147_483_647;
 const DIGITS_ONLY = /^\d+$/;
-const HAS_TIMEZONE = /(Z|[+-]\d{2}(?::?\d{2})?)$/i;
 
 const emptyToUndefined = (value: unknown) =>
   value === null || value === undefined || value === "" ? undefined : value;
@@ -48,18 +49,6 @@ const optionalForecastDays = z.preprocess(
     .optional(),
 );
 
-function normalizeDateBoundary(
-  value: string,
-  boundary: "start" | "end",
-): string {
-  if (isValidDateOnlyString(value)) {
-    return boundary === "start"
-      ? `${value}T00:00:00.000Z`
-      : `${value}T23:59:59.999Z`;
-  }
-  return HAS_TIMEZONE.test(value) ? value : `${value}Z`;
-}
-
 function optionalDateBoundary(boundary: "start" | "end") {
   return z.preprocess(
     emptyToUndefined,
@@ -70,7 +59,7 @@ function optionalDateBoundary(boundary: "start" | "end") {
         message:
           "Invalid date format. Expected YYYY-MM-DD or ISO 8601 datetime.",
       })
-      .transform((value) => normalizeDateBoundary(value, boundary))
+      .transform((value) => normalizeReportDateBoundary(value, boundary))
       .refine((value) => isValidIsoDateTimeString(value), {
         message: "Invalid ISO 8601 datetime.",
       })
