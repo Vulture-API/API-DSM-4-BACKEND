@@ -1,5 +1,3 @@
-import { InvalidReportPeriodError } from "@/modules/reports/errors/invalid-report-period.error.js";
-import { InvalidReportTypeError } from "@/modules/reports/errors/invalid-report-type.error.js";
 import { ReportPropertyNotFoundError } from "@/modules/reports/errors/report-property-not-found.error.js";
 import { ReportStationNotFoundError } from "@/modules/reports/errors/report-station-not-found.error.js";
 import { StationCoordinatesMissingError } from "@/modules/reports/errors/station-coordinates-missing.error.js";
@@ -11,7 +9,6 @@ import type {
 import type {
   AlertReportItem,
   AlertsReport,
-  CanonicalReportType,
   ForecastDayItem,
   ForecastReport,
   GenerateReportInput,
@@ -20,14 +17,24 @@ import type {
   HistorySensorSummary,
   MeteorologicalReport,
 } from "@/modules/reports/types/report.type.js";
+import {
+  DEFAULT_FORECAST_DAYS,
+  DEFAULT_REPORT_PERIOD_DAYS,
+  MAX_FORECAST_DAYS,
+  MAX_REPORT_PERIOD_DAYS,
+  type NormalizedForecastPeriod,
+  type NormalizedReportPeriod,
+  normalizeReportFilters,
+} from "@/modules/reports/utils/report-filter.rules.js";
 
 type Clock = () => Date;
 
-export const DEFAULT_REPORT_PERIOD_DAYS = 7;
-export const MAX_REPORT_PERIOD_DAYS = 366;
-export const DEFAULT_FORECAST_DAYS = 7;
-export const MAX_FORECAST_DAYS = 16;
-const DAY_MS = 86_400_000;
+export {
+  DEFAULT_FORECAST_DAYS,
+  DEFAULT_REPORT_PERIOD_DAYS,
+  MAX_FORECAST_DAYS,
+  MAX_REPORT_PERIOD_DAYS,
+};
 
 export function getWeatherDescription(code: number | null): string | null {
   if (code === null || code === undefined) return null;
@@ -75,7 +82,8 @@ export class GenerateReportService {
   ) {}
 
   async execute(input: GenerateReportInput): Promise<MeteorologicalReport> {
-    const canonicalType = this.resolveReportType(input.type);
+    const referenceNow = this.clock();
+    const filters = normalizeReportFilters(input, referenceNow);
 
     let stationScope: {
       id: number;
@@ -84,11 +92,12 @@ export class GenerateReportService {
       longitude: number | null;
     } | null = null;
     let propertyScope: { id: number; name: string } | null = null;
+    let resolvedStationPropertyId: number | null = null;
 
-    if (input.station_id !== undefined) {
-      const station = await this.repository.getStationInfo(input.station_id);
+    if (filters.station_id !== undefined) {
+      const station = await this.repository.getStationInfo(filters.station_id);
       if (!station) {
-        throw new ReportStationNotFoundError(input.station_id);
+        throw new ReportStationNotFoundError(filters.station_id);
       }
       stationScope = {
         id: station.id,
@@ -97,147 +106,76 @@ export class GenerateReportService {
         longitude: station.longitude,
       };
       propertyScope = { id: station.property_id, name: station.property_name };
+      resolvedStationPropertyId = station.property_id;
     }
 
-    if (input.property_id !== undefined && !propertyScope) {
-      const property = await this.repository.getPropertyInfo(input.property_id);
+    if (
+      filters.property_id !== undefined &&
+      filters.property_id !== resolvedStationPropertyId
+    ) {
+      const property = await this.repository.getPropertyInfo(
+        filters.property_id,
+      );
       if (!property) {
-        throw new ReportPropertyNotFoundError(input.property_id);
+        throw new ReportPropertyNotFoundError(filters.property_id);
       }
       propertyScope = { id: property.id, name: property.name };
     }
 
-    const generatedAt = this.clock().toISOString();
+    const generatedAt = referenceNow.toISOString();
+    const period = {
+      from: filters.period.from.toISOString(),
+      to: filters.period.to.toISOString(),
+    };
 
-    switch (canonicalType) {
-      case "history": {
-        const { from, to } = this.resolvePeriod(input.from, input.to);
-        const period = {
-          from: from.toISOString(),
-          to: to.toISOString(),
-        };
+    switch (filters.report_type) {
+      case "history":
         return this.generateHistoryReport({
-          input,
-          from,
-          to,
+          stationId: filters.station_id,
+          propertyId: filters.property_id,
+          normalizedPeriod: filters.period,
           generatedAt,
           period,
           stationScope,
           propertyScope,
         });
-      }
 
       case "forecast":
         return this.generateForecastReport({
-          input,
-          generatedAt,
-          stationScope,
-          propertyScope,
-        });
-
-      case "alerts": {
-        const { from, to } = this.resolvePeriod(input.from, input.to);
-        const period = {
-          from: from.toISOString(),
-          to: to.toISOString(),
-        };
-        return this.generateAlertsReport({
-          input,
-          from,
-          to,
+          forecastPeriod: filters.forecast_period!,
           generatedAt,
           period,
           stationScope,
           propertyScope,
         });
-      }
-    }
-  }
 
-  private resolveReportType(rawType: string): CanonicalReportType {
-    const normalized = (rawType || "")
-      .trim()
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
-
-    if (
-      [
-        "history",
-        "historico",
-        "leituras",
-        "dados",
-        "synthetic",
-        "analytical",
-        "sintetico",
-        "analitico",
-      ].includes(normalized)
-    ) {
-      return "history";
+      case "alerts":
+        return this.generateAlertsReport({
+          stationId: filters.station_id,
+          propertyId: filters.property_id,
+          normalizedPeriod: filters.period,
+          generatedAt,
+          period,
+          stationScope,
+          propertyScope,
+        });
     }
-    if (["forecast", "previsao", "previsoes", "tempo"].includes(normalized)) {
-      return "forecast";
-    }
-    if (["alerts", "alertas", "ocorrencias"].includes(normalized)) {
-      return "alerts";
-    }
-
-    throw new InvalidReportTypeError(rawType);
-  }
-
-  private resolvePeriod(
-    rawFrom?: Date | string | undefined,
-    rawTo?: Date | string | undefined,
-  ): { from: Date; to: Date } {
-    let to: Date;
-    if (rawTo) {
-      to = new Date(rawTo);
-      if (isNaN(to.getTime())) {
-        throw InvalidReportPeriodError.invalidFormat("to", rawTo);
-      }
-    } else {
-      to = this.clock();
-    }
-
-    let from: Date;
-    if (rawFrom) {
-      from = new Date(rawFrom);
-      if (isNaN(from.getTime())) {
-        throw InvalidReportPeriodError.invalidFormat("from", rawFrom);
-      }
-    } else {
-      from = new Date(to.getTime() - DEFAULT_REPORT_PERIOD_DAYS * DAY_MS);
-    }
-
-    if (from.getTime() >= to.getTime()) {
-      throw InvalidReportPeriodError.inverted(from, to);
-    }
-
-    const diffDays = Math.ceil((to.getTime() - from.getTime()) / DAY_MS);
-    if (diffDays > MAX_REPORT_PERIOD_DAYS) {
-      throw InvalidReportPeriodError.periodTooLong(
-        diffDays,
-        MAX_REPORT_PERIOD_DAYS,
-      );
-    }
-
-    return { from, to };
   }
 
   private async generateHistoryReport(params: {
-    input: GenerateReportInput;
-    from: Date;
-    to: Date;
+    stationId?: number | undefined;
+    propertyId?: number | undefined;
+    normalizedPeriod: NormalizedReportPeriod;
     generatedAt: string;
     period: { from: string; to: string };
     stationScope: { id: number; name: string } | null;
     propertyScope: { id: number; name: string } | null;
   }): Promise<HistoryReport> {
     const rawReadings = await this.repository.getReadings({
-      station_id: params.input.station_id,
-      property_id: params.input.property_id,
-      from_unix: Math.floor(params.from.getTime() / 1000),
-      to_unix: Math.ceil(params.to.getTime() / 1000),
+      station_id: params.stationId,
+      property_id: params.propertyId,
+      from_unix: params.normalizedPeriod.from_unix,
+      to_unix: params.normalizedPeriod.to_unix,
     });
 
     const readings: HistoryReadingItem[] = rawReadings
@@ -329,8 +267,9 @@ export class GenerateReportService {
   }
 
   private async generateForecastReport(params: {
-    input: GenerateReportInput;
+    forecastPeriod: NormalizedForecastPeriod;
     generatedAt: string;
+    period: { from: string; to: string };
     stationScope: {
       id: number;
       name: string;
@@ -353,28 +292,11 @@ export class GenerateReportService {
       );
     }
 
-    let daysCount = params.input.days ?? DEFAULT_FORECAST_DAYS;
-    if (params.input.from && params.input.to) {
-      const from = new Date(params.input.from);
-      const to = new Date(params.input.to);
-      if (!isNaN(from.getTime()) && !isNaN(to.getTime()) && to > from) {
-        daysCount = Math.max(
-          1,
-          Math.min(
-            MAX_FORECAST_DAYS,
-            Math.ceil((to.getTime() - from.getTime()) / DAY_MS),
-          ),
-        );
-      }
-    }
-
-    daysCount = Math.max(1, Math.min(MAX_FORECAST_DAYS, daysCount));
-
     const result = await this.repository.getForecast({
       station_id: params.stationScope.id,
       latitude: params.stationScope.latitude,
       longitude: params.stationScope.longitude,
-      days: daysCount,
+      days: params.forecastPeriod.days,
     });
 
     const days: ForecastDayItem[] = result.days.map((d: ReportForecastRow) => ({
@@ -388,16 +310,10 @@ export class GenerateReportService {
       weather_description: getWeatherDescription(d.weather_code),
     }));
 
-    const fromDate = this.clock();
-    const toDate = new Date(fromDate.getTime() + daysCount * DAY_MS);
-
     return {
       report_type: "forecast",
       generated_at: params.generatedAt,
-      period: {
-        from: fromDate.toISOString(),
-        to: toDate.toISOString(),
-      },
+      period: params.period,
       station: {
         id: params.stationScope.id,
         name: params.stationScope.name,
@@ -412,19 +328,19 @@ export class GenerateReportService {
   }
 
   private async generateAlertsReport(params: {
-    input: GenerateReportInput;
-    from: Date;
-    to: Date;
+    stationId?: number | undefined;
+    propertyId?: number | undefined;
+    normalizedPeriod: NormalizedReportPeriod;
     generatedAt: string;
     period: { from: string; to: string };
     stationScope: { id: number; name: string } | null;
     propertyScope: { id: number; name: string } | null;
   }): Promise<AlertsReport> {
     const rawAlerts = await this.repository.getAlerts({
-      station_id: params.input.station_id,
-      property_id: params.input.property_id,
-      from_date: params.from,
-      to_date: params.to,
+      station_id: params.stationId,
+      property_id: params.propertyId,
+      from_date: params.normalizedPeriod.from,
+      to_date: params.normalizedPeriod.to,
     });
 
     const alerts: AlertReportItem[] = rawAlerts
