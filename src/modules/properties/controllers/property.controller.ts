@@ -28,7 +28,10 @@ export class PropertyController {
     request: FastifyRequest<{ Body: PropertyBodyInput }>,
     reply: FastifyReply,
   ) => {
-    const property = await this.createPropertyService.execute(request.body);
+    const property = await this.createPropertyService.execute(
+      request.body,
+      request.actor,
+    );
 
     return reply.status(201).send(property);
   };

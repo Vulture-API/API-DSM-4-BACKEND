@@ -5,7 +5,7 @@ import type {
 } from "@/modules/properties/types/property.type.js";
 
 export interface PropertyRepository {
-  create(data: CreatePropertyInput): Promise<Property>;
+  create(data: CreatePropertyInput, creatorId?: number): Promise<Property>;
   findById(id: number): Promise<Property | null>;
   userExists(userId: number): Promise<boolean>;
   listProperties(): Promise<

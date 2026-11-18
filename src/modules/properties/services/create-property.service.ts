@@ -1,3 +1,4 @@
+import type { AuthUser } from "@/modules/auth/types.js";
 import { UserReferenceNotFoundError } from "@/modules/properties/errors/property.errors.js";
 import type { PropertyRepository } from "@/modules/properties/repositories/property.repository.js";
 import type {
@@ -8,7 +9,10 @@ import type {
 export class CreatePropertyService {
   constructor(private readonly propertyRepository: PropertyRepository) {}
 
-  async execute(input: CreatePropertyInput): Promise<Property> {
+  async execute(
+    input: CreatePropertyInput,
+    actor?: AuthUser | null,
+  ): Promise<Property> {
     const userExists = await this.propertyRepository.userExists(
       input.owner_user_id,
     );
@@ -17,10 +21,13 @@ export class CreatePropertyService {
       throw new UserReferenceNotFoundError();
     }
 
-    return this.propertyRepository.create({
+    const data = {
       name: input.name,
       owner_user_id: input.owner_user_id,
       location: input.location ?? null,
-    });
+    };
+    return actor?.role_name === "Gerente Agrícola"
+      ? this.propertyRepository.create(data, actor.id)
+      : this.propertyRepository.create(data);
   }
 }
