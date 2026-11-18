@@ -36,6 +36,7 @@ import {
   JWT_ISSUER,
   JWT_TTL_SECONDS,
 } from "@/modules/auth/access-control.js";
+import { PropertyAccess } from "@/modules/auth/property-access.js";
 import { propertyScopeContext } from "@/modules/auth/property-scope.js";
 import {
   type AuthRepositoryPort,
@@ -192,6 +193,8 @@ export function buildApp(options: BuildAppOptions = {}) {
     assertAccessPolicy(route.config?.access, `${route.method} ${route.url}`);
   });
   app.decorateRequest("actor", null);
+  const propertyAccess = new PropertyAccess(pool);
+  app.addHook("preHandler", async (request) => propertyAccess.enforce(request));
   app.addHook("onRequest", (_request, _reply, done) => {
     propertyScopeContext.run({ ids: null }, done);
   });
@@ -488,6 +491,7 @@ export function buildApp(options: BuildAppOptions = {}) {
             ...options.liveLimits,
           },
           accessControl,
+          propertyAccess,
         ),
         { prefix: "/api/stations" },
       );
