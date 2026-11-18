@@ -1,6 +1,7 @@
 import type { Pool } from "pg";
 
 import { database } from "@/config/database.js";
+import { scopedQuery } from "@/modules/auth/property-scope.js";
 import { SensorConflictError } from "@/modules/sensors/errors/sensor-conflict.error.js";
 import type { Sensor } from "@/modules/sensors/types/sensor.type.js";
 import type { PaginatedResult } from "@/shared/schemas/pagination.schema.js";
@@ -253,16 +254,22 @@ export class PgSensorRepository implements SensorRepository {
 
     const [rows, count] = await Promise.all([
       this.pool.query<SensorRow>(
-        `SELECT ${SENSOR_COLUMNS} FROM sensors
-         WHERE ($1::int IS NULL OR station_id = $1)
+        ...scopedQuery(
+          `SELECT ${SENSOR_COLUMNS} FROM sensors
+         WHERE ($1::int IS NULL OR station_id = $1) AND /* scope */
          ORDER BY id ASC
          LIMIT $2 OFFSET $3`,
-        [stationId, limit, (page - 1) * limit],
+          [stationId, limit, (page - 1) * limit],
+          "(SELECT property_id FROM stations WHERE stations.id = sensors.station_id)",
+        ),
       ),
       this.pool.query<{ total: number }>(
-        `SELECT COUNT(*)::int AS total FROM sensors
-         WHERE ($1::int IS NULL OR station_id = $1)`,
-        [stationId],
+        ...scopedQuery(
+          `SELECT COUNT(*)::int AS total FROM sensors
+         WHERE ($1::int IS NULL OR station_id = $1) AND /* scope */`,
+          [stationId],
+          "(SELECT property_id FROM stations WHERE stations.id = sensors.station_id)",
+        ),
       ),
     ]);
 

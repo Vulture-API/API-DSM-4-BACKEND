@@ -1,5 +1,6 @@
 import type { Pool } from "pg";
 
+import { scopedQuery } from "@/modules/auth/property-scope.js";
 import {
   ForecastProviderError,
   ForecastUnavailableError,
@@ -105,6 +106,7 @@ const READINGS_SQL = `
     AND r.unix_time <= $2::bigint
     AND ($3::int IS NULL OR s.station_id = $3::int)
     AND ($4::int IS NULL OR st.property_id = $4::int)
+    AND /* scope */
   ORDER BY r.unix_time ASC, r.id ASC
 `;
 
@@ -136,6 +138,7 @@ const ALERTS_SQL = `
     AND ta.triggered_at <= ($2::timestamptz AT TIME ZONE 'UTC')
     AND ($3::int IS NULL OR st.id = $3::int)
     AND ($4::int IS NULL OR st.property_id = $4::int)
+    AND /* scope */
   ORDER BY ta.triggered_at DESC, ta.id DESC
 `;
 
@@ -186,12 +189,18 @@ export class PgReportRepository implements ReportRepository {
   }
 
   async getReadings(filters: ReportQueryFilters): Promise<ReportReadingRow[]> {
-    const result = await this.database.query<PgReadingRow>(READINGS_SQL, [
-      filters.from_unix,
-      filters.to_unix,
-      filters.station_id ?? null,
-      filters.property_id ?? null,
-    ]);
+    const result = await this.database.query<PgReadingRow>(
+      ...scopedQuery(
+        READINGS_SQL,
+        [
+          filters.from_unix,
+          filters.to_unix,
+          filters.station_id ?? null,
+          filters.property_id ?? null,
+        ],
+        "st.property_id",
+      ),
+    );
 
     return result.rows.map((row) => ({
       id: Number(row.id),
@@ -207,12 +216,18 @@ export class PgReportRepository implements ReportRepository {
   }
 
   async getAlerts(filters: ReportAlertFilters): Promise<ReportAlertRow[]> {
-    const result = await this.database.query<PgAlertRow>(ALERTS_SQL, [
-      filters.from_date.toISOString(),
-      filters.to_date.toISOString(),
-      filters.station_id ?? null,
-      filters.property_id ?? null,
-    ]);
+    const result = await this.database.query<PgAlertRow>(
+      ...scopedQuery(
+        ALERTS_SQL,
+        [
+          filters.from_date.toISOString(),
+          filters.to_date.toISOString(),
+          filters.station_id ?? null,
+          filters.property_id ?? null,
+        ],
+        "st.property_id",
+      ),
+    );
 
     return result.rows.map((row) => ({
       id: Number(row.id),

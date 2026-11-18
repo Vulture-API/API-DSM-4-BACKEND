@@ -1,5 +1,6 @@
 import type { Pool } from "pg";
 
+import { scopedQuery } from "@/modules/auth/property-scope.js";
 import type { MonitoringRepository } from "@/modules/monitoring/repositories/monitoring.repository.js";
 import type {
   CurrentFilters,
@@ -66,6 +67,7 @@ const SNAPSHOTS_SQL = `
     WHERE s.station_id = st.id
   ) lr ON true
   WHERE ($1::int IS NULL OR st.property_id = $1::int)
+    AND /* scope */
   ORDER BY st.name ASC, st.id ASC
 `;
 
@@ -94,6 +96,7 @@ const SERIES_SQL = `
       AND r.data_consistent
       AND ($3::int IS NULL OR s.station_id = $3::int)
       AND ($4::int IS NULL OR st.property_id = $4::int)
+      AND /* scope */
     GROUP BY 1, 2
   ) b
   JOIN sensor_types t ON t.id = b.sensor_type_id
@@ -146,6 +149,7 @@ const CURRENT_SQL = `
   ) lr ON true
   WHERE ($1::int IS NULL OR st.id = $1::int)
     AND ($2::int IS NULL OR st.property_id = $2::int)
+    AND /* scope */
   ORDER BY st.name ASC, st.id ASC
 `;
 
@@ -172,19 +176,25 @@ export class PgMonitoringRepository implements MonitoringRepository {
   constructor(private readonly database: Pool) {}
 
   async listSnapshots(propertyId?: number): Promise<StationSnapshot[]> {
-    const result = await this.database.query<StationSnapshot>(SNAPSHOTS_SQL, [
-      propertyId ?? null,
-    ]);
+    const result = await this.database.query<StationSnapshot>(
+      ...scopedQuery(SNAPSHOTS_SQL, [propertyId ?? null], "st.property_id"),
+    );
     return result.rows;
   }
 
   async readingSeries(filters: SeriesFilters): Promise<SensorTypeSeries[]> {
-    const result = await this.database.query<SensorTypeSeries>(SERIES_SQL, [
-      filters.from_unix,
-      filters.bucket_seconds,
-      filters.station_id ?? null,
-      filters.property_id ?? null,
-    ]);
+    const result = await this.database.query<SensorTypeSeries>(
+      ...scopedQuery(
+        SERIES_SQL,
+        [
+          filters.from_unix,
+          filters.bucket_seconds,
+          filters.station_id ?? null,
+          filters.property_id ?? null,
+        ],
+        "st.property_id",
+      ),
+    );
     return result.rows;
   }
 
@@ -197,10 +207,13 @@ export class PgMonitoringRepository implements MonitoringRepository {
   }
 
   async listCurrent(filters: CurrentFilters): Promise<StationCurrentRow[]> {
-    const result = await this.database.query<StationCurrentRow>(CURRENT_SQL, [
-      filters.station_id ?? null,
-      filters.property_id ?? null,
-    ]);
+    const result = await this.database.query<StationCurrentRow>(
+      ...scopedQuery(
+        CURRENT_SQL,
+        [filters.station_id ?? null, filters.property_id ?? null],
+        "st.property_id",
+      ),
+    );
     return result.rows;
   }
 

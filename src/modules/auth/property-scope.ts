@@ -19,3 +19,18 @@ export function scopeCondition(column: string, values: unknown[]): string {
   values.push(ids);
   return `${column} = ANY($${values.length}::int[])`;
 }
+
+/** O marcador explicita o ponto de filtragem antes de agregação/paginação. */
+export function scopedQuery(
+  sql: string,
+  values: unknown[],
+  column: string,
+): [string, unknown[]] {
+  if (!sql.includes("/* scope */"))
+    throw new Error("Missing property scope marker");
+  const parameters = [...values];
+  return [
+    sql.replace("/* scope */", scopeCondition(column, parameters)),
+    parameters,
+  ];
+}

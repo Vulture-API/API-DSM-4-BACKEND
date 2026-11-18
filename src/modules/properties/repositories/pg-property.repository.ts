@@ -1,5 +1,6 @@
 import type { DatabaseError, Pool } from "pg";
 
+import { scopedQuery } from "@/modules/auth/property-scope.js";
 import {
   PropertyDeletionConflictError,
   UserReferenceNotFoundError,
@@ -104,7 +105,11 @@ export class PgPropertyRepository implements PropertyRepository {
       location: string | null;
       owner_user_id: number | null;
     }>(
-      "SELECT id, name, location, owner_user_id FROM properties ORDER BY name ASC",
+      ...scopedQuery(
+        "SELECT id, name, location, owner_user_id FROM properties WHERE /* scope */ ORDER BY name ASC",
+        [],
+        "id",
+      ),
     );
 
     return result.rows;
