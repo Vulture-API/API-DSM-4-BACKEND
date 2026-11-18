@@ -114,6 +114,8 @@ import {
   UserRepository,
   type UserRepositoryPort,
 } from "@/modules/users/repositories/user.repository.js";
+import { UserPropertiesRepository } from "@/modules/users/repositories/user-properties.repository.js";
+import { userPropertiesRoutes } from "@/modules/users/routes/user-properties.route.js";
 import { userRoutes } from "@/modules/users/routes/users.route.js";
 import type { PasswordHasher } from "@/modules/users/services/password-hasher.js";
 
@@ -323,6 +325,10 @@ export function buildApp(options: BuildAppOptions = {}) {
 
     app.register(async (users) => {
       users.setErrorHandler(handleUsersError);
+      users.register(userPropertiesRoutes, {
+        prefix: "/api/users",
+        repository: new UserPropertiesRepository(pool),
+      });
       const userRepository = options.userRepository ?? new UserRepository(pool);
       const roleRepository = options.roleRepository ?? new RoleRepository(pool);
       users.register(userRoutes, {
