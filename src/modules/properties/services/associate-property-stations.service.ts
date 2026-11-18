@@ -29,9 +29,8 @@ export class AssociatePropertyStationsService {
         stationId,
         propertyId,
       );
-      if (updated) {
-        updatedStations.push(updated);
-      }
+      if (!updated) throw new StationNotFoundError();
+      updatedStations.push(updated);
     }
 
     return updatedStations;

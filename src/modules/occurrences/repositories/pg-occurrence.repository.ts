@@ -111,17 +111,23 @@ export class PgOccurrenceRepository
 
   async findById(id: number): Promise<Occurrence | null> {
     const result = await this.database.query<OccurrenceRow>(
-      `${SELECT_OCCURRENCE} WHERE o.id = $1`,
-      [id],
+      ...scopedQuery(
+        `${SELECT_OCCURRENCE} WHERE o.id = $1 AND /* scope */`,
+        [id],
+        "st.property_id",
+      ),
     );
     return result.rows[0] ? mapOccurrence(result.rows[0]) : null;
   }
 
   async resolve(id: number, at: Date): Promise<Occurrence | null> {
     const updated = await this.database.query(
-      `UPDATE occurrences SET status = 'RESOLVED', resolved_at = ${UTC("$2")}
-       WHERE id = $1 AND status = 'OPEN'`,
-      [id, at.toISOString()],
+      ...scopedQuery(
+        `UPDATE occurrences SET status = 'RESOLVED', resolved_at = ${UTC("$2")}
+       WHERE id = $1 AND /* scope */ AND status = 'OPEN'`,
+        [id, at.toISOString()],
+        "(SELECT st.property_id FROM stations st WHERE st.id=occurrences.station_id)",
+      ),
     );
     return (updated.rowCount ?? 0) > 0 ? this.findById(id) : null;
   }

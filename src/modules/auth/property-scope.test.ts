@@ -4,10 +4,28 @@ import {
   propertyScopeContext,
   resolveAccessibleProperties,
   scopeCondition,
+  scopedQuery,
 } from "@/modules/auth/property-scope.js";
 import type { AuthUser } from "@/modules/auth/types.js";
 
 describe("SCRUM-609: resolução de escopo", () => {
+  it("parametriza origem e destino e rejeita marcadores inconsistentes", () => {
+    propertyScopeContext.run({ ids: [1] }, () => {
+      expect(
+        scopedQuery(
+          "WHERE /* scope */ AND /* scope */",
+          [42, 99],
+          ["property_id", "$2"],
+        ),
+      ).toEqual([
+        "WHERE property_id = ANY($3::int[]) AND $2 = ANY($4::int[])",
+        [42, 99, [1], [1]],
+      ]);
+      expect(() => scopedQuery("WHERE /* scope */", [], ["a", "b"])).toThrow(
+        "marker count",
+      );
+    });
+  });
   it("usa o perfil atual e não IDs fixos", () => {
     expect(
       resolveAccessibleProperties({

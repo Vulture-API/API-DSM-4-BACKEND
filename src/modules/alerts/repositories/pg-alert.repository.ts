@@ -14,6 +14,7 @@ import type {
   UpdateAlertConfigData,
 } from "@/modules/alerts/types/alert.type.js";
 import { scopedQuery } from "@/modules/auth/property-scope.js";
+import { SensorNotFoundError } from "@/modules/sensors/errors/sensor-not-found.error.js";
 
 const CONFIG_COLUMNS = `
   id,
@@ -67,23 +68,27 @@ export class PgAlertConfigRepository implements AlertConfigRepository {
 
   async create(data: CreateAlertConfigData): Promise<AlertConfig> {
     const result = await this.database.query<AlertConfig>(
-      `
+      ...scopedQuery(
+        `
         INSERT INTO alert_configs
           (manager_user_id, sensor_id, reference_value, comparison_operator, message, active)
-        VALUES ($1, $2, $3, $4, $5, $6)
+        SELECT $1, $2, $3, $4, $5, $6 WHERE /* scope */
         RETURNING ${CONFIG_COLUMNS}
       `,
-      [
-        data.manager_user_id,
-        data.sensor_id,
-        data.reference_value,
-        data.comparison_operator,
-        data.message,
-        data.active,
-      ],
+        [
+          data.manager_user_id,
+          data.sensor_id,
+          data.reference_value,
+          data.comparison_operator,
+          data.message,
+          data.active,
+        ],
+        "(SELECT st.property_id FROM stations st JOIN sensors se ON se.station_id=st.id WHERE se.id=$2)",
+      ),
     );
 
-    return result.rows[0]!;
+    if (!result.rows[0]) throw new SensorNotFoundError();
+    return result.rows[0];
   }
 
   async findMany(
@@ -120,8 +125,11 @@ export class PgAlertConfigRepository implements AlertConfigRepository {
 
   async findById(id: number): Promise<AlertConfig | null> {
     const result = await this.database.query<AlertConfig>(
-      `SELECT ${CONFIG_COLUMNS} FROM alert_configs WHERE id = $1`,
-      [id],
+      ...scopedQuery(
+        `SELECT ${CONFIG_COLUMNS} FROM alert_configs WHERE id = $1 AND /* scope */`,
+        [id],
+        "(SELECT st.property_id FROM stations st JOIN sensors se ON se.station_id=st.id WHERE se.id=alert_configs.sensor_id)",
+      ),
     );
 
     return result.rows[0] ?? null;
@@ -129,8 +137,11 @@ export class PgAlertConfigRepository implements AlertConfigRepository {
 
   async findActiveBySensorId(sensorId: number): Promise<AlertConfig[]> {
     const result = await this.database.query<AlertConfig>(
-      `SELECT ${CONFIG_COLUMNS} FROM alert_configs WHERE sensor_id = $1 AND active = true`,
-      [sensorId],
+      ...scopedQuery(
+        `SELECT ${CONFIG_COLUMNS} FROM alert_configs WHERE sensor_id = $1 AND /* scope */ AND active = true`,
+        [sensorId],
+        "(SELECT st.property_id FROM stations st JOIN sensors se ON se.station_id=st.id WHERE se.id=alert_configs.sensor_id)",
+      ),
     );
 
     return result.rows;
@@ -141,7 +152,8 @@ export class PgAlertConfigRepository implements AlertConfigRepository {
     data: UpdateAlertConfigData,
   ): Promise<AlertConfig | null> {
     const result = await this.database.query<AlertConfig>(
-      `
+      ...scopedQuery(
+        `
         UPDATE alert_configs
         SET manager_user_id = $2,
             sensor_id = $3,
@@ -149,18 +161,23 @@ export class PgAlertConfigRepository implements AlertConfigRepository {
             comparison_operator = $5,
             message = $6,
             active = $7
-        WHERE id = $1
+        WHERE id = $1 AND /* scope */ AND /* scope */
         RETURNING ${CONFIG_COLUMNS}
       `,
-      [
-        id,
-        data.manager_user_id,
-        data.sensor_id,
-        data.reference_value,
-        data.comparison_operator,
-        data.message,
-        data.active,
-      ],
+        [
+          id,
+          data.manager_user_id,
+          data.sensor_id,
+          data.reference_value,
+          data.comparison_operator,
+          data.message,
+          data.active,
+        ],
+        [
+          "(SELECT st.property_id FROM stations st JOIN sensors se ON se.station_id=st.id WHERE se.id=alert_configs.sensor_id)",
+          "(SELECT st.property_id FROM stations st JOIN sensors se ON se.station_id=st.id WHERE se.id=$3)",
+        ],
+      ),
     );
 
     return result.rows[0] ?? null;
@@ -168,8 +185,11 @@ export class PgAlertConfigRepository implements AlertConfigRepository {
 
   async delete(id: number): Promise<boolean> {
     const result = await this.database.query(
-      `DELETE FROM alert_configs WHERE id = $1`,
-      [id],
+      ...scopedQuery(
+        `DELETE FROM alert_configs WHERE id = $1 AND /* scope */`,
+        [id],
+        "(SELECT st.property_id FROM stations st JOIN sensors se ON se.station_id=st.id WHERE se.id=alert_configs.sensor_id)",
+      ),
     );
 
     return (result.rowCount ?? 0) > 0;
@@ -177,7 +197,7 @@ export class PgAlertConfigRepository implements AlertConfigRepository {
 
   async sensorExists(sensorId: number): Promise<boolean> {
     const result = await this.database.query(
-      `SELECT 1 FROM sensors WHERE id = $1`,
+      "SELECT 1 FROM sensors WHERE id = $1",
       [sensorId],
     );
 
@@ -240,8 +260,11 @@ export class PgTriggeredAlertRepository implements TriggeredAlertRepository {
 
   async findById(id: number): Promise<TriggeredAlert | null> {
     const result = await this.database.query<TriggeredAlert>(
-      `SELECT ${TRIGGERED_COLUMNS} FROM triggered_alerts WHERE id = $1`,
-      [id],
+      ...scopedQuery(
+        `SELECT ${TRIGGERED_COLUMNS} FROM triggered_alerts WHERE id = $1 AND /* scope */`,
+        [id],
+        "(SELECT st.property_id FROM stations st JOIN sensors se ON se.station_id=st.id JOIN alert_configs ac ON ac.sensor_id=se.id WHERE ac.id=triggered_alerts.alert_config_id)",
+      ),
     );
 
     return result.rows[0] ?? null;
@@ -252,13 +275,16 @@ export class PgTriggeredAlertRepository implements TriggeredAlertRepository {
     userId: number,
   ): Promise<TriggeredAlert | null> {
     const result = await this.database.query<TriggeredAlert>(
-      `
+      ...scopedQuery(
+        `
         UPDATE triggered_alerts
         SET acknowledged_by = $2, acknowledged_at = current_timestamp
-        WHERE id = $1 AND acknowledged_at IS NULL
+        WHERE id = $1 AND /* scope */ AND acknowledged_at IS NULL
         RETURNING ${TRIGGERED_COLUMNS}
       `,
-      [id, userId],
+        [id, userId],
+        "(SELECT st.property_id FROM stations st JOIN sensors se ON se.station_id=st.id JOIN alert_configs ac ON ac.sensor_id=se.id WHERE ac.id=triggered_alerts.alert_config_id)",
+      ),
     );
 
     return result.rows[0] ?? null;

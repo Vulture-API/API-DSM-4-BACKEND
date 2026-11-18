@@ -80,12 +80,15 @@ export class PgPropertyRepository implements PropertyRepository {
 
   async findById(id: number): Promise<Property | null> {
     const result = await this.pool.query<PropertyRow>(
-      `
+      ...scopedQuery(
+        `
       SELECT id, name, owner_user_id, location, created_at
       FROM properties
-      WHERE id = $1
+      WHERE id = $1 AND /* scope */
     `,
-      [id],
+        [id],
+        "id",
+      ),
     );
 
     const row = result.rows[0];
@@ -170,13 +173,16 @@ export class PgPropertyRepository implements PropertyRepository {
 
     const result = await this.pool
       .query<PropertyRow>(
-        `
+        ...scopedQuery(
+          `
         UPDATE properties
         SET ${fields.join(", ")}
-        WHERE id = $1
+        WHERE id = $1 AND /* scope */
         RETURNING id, name, owner_user_id, location, created_at
       `,
-        values,
+          values,
+          "id",
+        ),
       )
       .catch(rethrowForeignKeyViolation);
 
@@ -212,10 +218,13 @@ export class PgPropertyRepository implements PropertyRepository {
   async delete(id: number): Promise<boolean> {
     try {
       const result = await this.pool.query(
-        `
-        DELETE FROM properties WHERE id = $1
+        ...scopedQuery(
+          `
+        DELETE FROM properties WHERE id = $1 AND /* scope */
       `,
-        [id],
+          [id],
+          "id",
+        ),
       );
 
       return (result.rowCount ?? 0) > 0;

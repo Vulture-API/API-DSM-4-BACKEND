@@ -82,6 +82,20 @@ export class ReadingsBroadcaster {
       this.lastReadingId,
       this.batchSize,
     );
+    // A consulta pode aguardar o banco enquanto um vínculo é revogado.
+    // Revalidar após carregá-la impede enviar dados novos com o escopo anterior.
+    if (readings.length) {
+      await Promise.all(
+        [...this.listeners].map(async (subscriber) => {
+          try {
+            await subscriber.authorize?.();
+          } catch (error) {
+            this.listeners.delete(subscriber);
+            this.report(error);
+          }
+        }),
+      );
+    }
     for (const reading of readings) {
       this.lastReadingId = reading.reading_id;
       const message = JSON.stringify({ type: "reading", ...reading });

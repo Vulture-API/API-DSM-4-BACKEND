@@ -78,13 +78,13 @@ const STATION_INFO_SQL = `
     p.name AS property_name
   FROM stations st
   JOIN properties p ON p.id = st.property_id
-  WHERE st.id = $1
+  WHERE st.id = $1 AND /* scope */
 `;
 
 const PROPERTY_INFO_SQL = `
   SELECT id, name
   FROM properties
-  WHERE id = $1
+  WHERE id = $1 AND /* scope */
 `;
 
 const READINGS_SQL = `
@@ -157,9 +157,9 @@ export class PgReportRepository implements ReportRepository {
   ) {}
 
   async getStationInfo(stationId: number): Promise<ReportStationInfo | null> {
-    const result = await this.database.query<PgStationRow>(STATION_INFO_SQL, [
-      stationId,
-    ]);
+    const result = await this.database.query<PgStationRow>(
+      ...scopedQuery(STATION_INFO_SQL, [stationId], "st.property_id"),
+    );
     const row = result.rows[0];
     if (!row) return null;
 
@@ -176,9 +176,9 @@ export class PgReportRepository implements ReportRepository {
   async getPropertyInfo(
     propertyId: number,
   ): Promise<ReportPropertyInfo | null> {
-    const result = await this.database.query<PgPropertyRow>(PROPERTY_INFO_SQL, [
-      propertyId,
-    ]);
+    const result = await this.database.query<PgPropertyRow>(
+      ...scopedQuery(PROPERTY_INFO_SQL, [propertyId], "id"),
+    );
     const row = result.rows[0];
     if (!row) return null;
 
