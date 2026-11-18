@@ -376,6 +376,12 @@ export function buildExportFilename(
   return `relatorio-${typeSlug}-${scopeSlug}-${fromDate}_a_${toDate}.${extension}`;
 }
 
+/** Monta o cabeçalho Content-Disposition seguro para download do arquivo exportado. */
+export function buildExportContentDisposition(filename: string): string {
+  const sanitized = filename.replace(/["\\\r\n]/g, "_");
+  return `attachment; filename="${sanitized}"`;
+}
+
 /** Formata os dados preparados em CSV delimitado por ponto e vírgula com BOM UTF-8. */
 export function formatPreparedReportAsCsv(
   prepared: PreparedReportExport,
