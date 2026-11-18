@@ -105,10 +105,12 @@ export function expectedAccessPolicies() {
     "/readings",
     "/api/v1/readings",
     "/api/reports",
+    "/api/reports/export",
     "/api/reports/types",
   ])
     add("GET", path, { permission: "monitoring.read" });
   add("POST", "/api/reports", { permission: "monitoring.read" });
+  add("POST", "/api/reports/export", { permission: "monitoring.read" });
   add("GET", "/api/stations/current/ws", {
     permission: "monitoring.read",
     websocket: true,
