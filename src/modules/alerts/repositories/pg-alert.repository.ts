@@ -13,6 +13,7 @@ import type {
   TriggeredAlert,
   UpdateAlertConfigData,
 } from "@/modules/alerts/types/alert.type.js";
+import { scopedQuery } from "@/modules/auth/property-scope.js";
 
 const CONFIG_COLUMNS = `
   id,
@@ -91,21 +92,24 @@ export class PgAlertConfigRepository implements AlertConfigRepository {
     const offset = (filters.page - 1) * filters.limit;
 
     const result = await this.database.query<WithTotal<AlertConfig>>(
-      `
+      ...scopedQuery(
+        `
         WITH filtered AS (
           SELECT ${CONFIG_COLUMNS}
           FROM alert_configs
           WHERE ($1::int IS NULL OR sensor_id = $1::int)
-            AND ($2::int IS NULL OR manager_user_id = $2::int)
+            AND ($2::int IS NULL OR manager_user_id = $2::int) AND /* scope */
         )
         ${pageWithTotal("ORDER BY id ASC LIMIT $3 OFFSET $4")}
       `,
-      [
-        filters.sensor_id ?? null,
-        filters.manager_user_id ?? null,
-        filters.limit,
-        offset,
-      ],
+        [
+          filters.sensor_id ?? null,
+          filters.manager_user_id ?? null,
+          filters.limit,
+          offset,
+        ],
+        "(SELECT st.property_id FROM stations st JOIN sensors se ON se.station_id = st.id WHERE se.id = alert_configs.sensor_id)",
+      ),
     );
 
     return {
@@ -210,7 +214,8 @@ export class PgTriggeredAlertRepository implements TriggeredAlertRepository {
     const offset = (filters.page - 1) * filters.limit;
 
     const result = await this.database.query<WithTotal<TriggeredAlert>>(
-      `
+      ...scopedQuery(
+        `
         WITH filtered AS (
           SELECT ${TRIGGERED_COLUMNS}
           FROM triggered_alerts
@@ -218,11 +223,13 @@ export class PgTriggeredAlertRepository implements TriggeredAlertRepository {
             $1::boolean IS NULL
             OR ($1::boolean = true AND acknowledged_at IS NOT NULL)
             OR ($1::boolean = false AND acknowledged_at IS NULL)
-          )
+          ) AND /* scope */
         )
         ${pageWithTotal("ORDER BY triggered_at DESC, id DESC LIMIT $2 OFFSET $3")}
       `,
-      [filters.acknowledged ?? null, filters.limit, offset],
+        [filters.acknowledged ?? null, filters.limit, offset],
+        "(SELECT st.property_id FROM stations st JOIN sensors se ON se.station_id = st.id JOIN alert_configs ac ON ac.sensor_id = se.id WHERE ac.id = triggered_alerts.alert_config_id)",
+      ),
     );
 
     return {

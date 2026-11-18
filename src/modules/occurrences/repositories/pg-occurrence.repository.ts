@@ -1,5 +1,6 @@
 import type { Pool } from "pg";
 
+import { scopedQuery } from "@/modules/auth/property-scope.js";
 import type {
   CommunicationMonitorRepository,
   OccurrenceRepository,
@@ -82,14 +83,20 @@ export class PgOccurrenceRepository
     ];
     const [rows, count] = await Promise.all([
       this.database.query<OccurrenceRow>(
-        `${SELECT_OCCURRENCE} ${FILTER}
+        ...scopedQuery(
+          `${SELECT_OCCURRENCE} ${FILTER} AND /* scope */
          ORDER BY o.detected_at DESC, o.id DESC
          LIMIT $7 OFFSET $8`,
-        [...params, filter.limit, (filter.page - 1) * filter.limit],
+          [...params, filter.limit, (filter.page - 1) * filter.limit],
+          "st.property_id",
+        ),
       ),
       this.database.query<{ total: number }>(
-        `SELECT count(*)::int AS total FROM occurrences o ${FILTER}`,
-        params,
+        ...scopedQuery(
+          `SELECT count(*)::int AS total FROM occurrences o JOIN stations st ON st.id=o.station_id ${FILTER} AND /* scope */`,
+          params,
+          "st.property_id",
+        ),
       ),
     ]);
     return {

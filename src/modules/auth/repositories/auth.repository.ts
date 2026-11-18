@@ -11,6 +11,10 @@ type CredentialRow = Omit<Credential, "created_at"> & {
   created_at: Date | string;
 };
 const columns = `u.id, u.role_id, u.name, u.active, u.created_at, c.email,
+  r.name AS role_name,
+  CASE WHEN r.name = 'Administrador' THEN NULL ELSE ARRAY(
+    SELECT up.property_id FROM user_properties up WHERE up.user_id = u.id ORDER BY up.property_id
+  ) END AS property_ids,
   COALESCE((SELECT array_agg(rp.permission_code ORDER BY rp.permission_code)
             FROM role_permissions rp WHERE rp.role_id = u.role_id), '{}') AS permissions`;
 
@@ -20,7 +24,8 @@ export class PgAuthRepository implements AuthRepositoryPort {
   async findCredentialByEmail(email: string): Promise<Credential | null> {
     const result = await this.pool.query<CredentialRow>(
       `SELECT ${columns}, c.password_hash FROM users u
-       INNER JOIN credentials c ON c.user_id = u.id WHERE c.email = $1`,
+       INNER JOIN credentials c ON c.user_id = u.id
+       INNER JOIN roles r ON r.id = u.role_id WHERE c.email = $1`,
       [email],
     );
     const row = result.rows[0];
@@ -32,7 +37,8 @@ export class PgAuthRepository implements AuthRepositoryPort {
   async findUserById(id: number): Promise<AuthUser | null> {
     const result = await this.pool.query<Omit<CredentialRow, "password_hash">>(
       `SELECT ${columns} FROM users u
-       INNER JOIN credentials c ON c.user_id = u.id WHERE u.id = $1`,
+       INNER JOIN credentials c ON c.user_id = u.id
+       INNER JOIN roles r ON r.id = u.role_id WHERE u.id = $1`,
       [id],
     );
     const row = result.rows[0];

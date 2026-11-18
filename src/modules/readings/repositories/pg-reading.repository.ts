@@ -1,5 +1,6 @@
 import type { Pool } from "pg";
 
+import { scopeCondition } from "@/modules/auth/property-scope.js";
 import type {
   ReadingRepository,
   ReadingsQueryResult,
@@ -64,6 +65,13 @@ export class PgReadingRepository implements ReadingRepository {
       values.push(endUnixTime);
       conditions.push(`r.unix_time <= $${values.length}`);
     }
+
+    conditions.push(
+      scopeCondition(
+        "(SELECT st.property_id FROM stations st JOIN sensors s ON s.station_id=st.id WHERE s.id=r.sensor_id)",
+        values,
+      ),
+    );
 
     const whereClause =
       conditions.length > 0 ? `WHERE ${conditions.join(" AND ")}` : "";

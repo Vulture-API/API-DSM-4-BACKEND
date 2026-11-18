@@ -1,5 +1,6 @@
 import type { Pool } from "pg";
 
+import { scopedQuery } from "@/modules/auth/property-scope.js";
 import type { StatisticsRepository } from "@/modules/statistics/repositories/statistics.repository.js";
 import type {
   SensorTypeStatistics,
@@ -29,6 +30,7 @@ const SUMMARY_SQL = `
     AND r.data_consistent
     AND ($3::int IS NULL OR s.station_id = $3::int)
     AND ($4::int IS NULL OR st.property_id = $4::int)
+    AND /* scope */
   GROUP BY t.id, t.name, t.unit_of_measure
   ORDER BY t.name ASC
 `;
@@ -38,13 +40,16 @@ export class PgStatisticsRepository implements StatisticsRepository {
 
   async summarize(filters: StatisticsFilters): Promise<SensorTypeStatistics[]> {
     const result = await this.database.query<SensorTypeStatistics>(
-      SUMMARY_SQL,
-      [
-        filters.from_unix,
-        filters.to_unix,
-        filters.station_id ?? null,
-        filters.property_id ?? null,
-      ],
+      ...scopedQuery(
+        SUMMARY_SQL,
+        [
+          filters.from_unix,
+          filters.to_unix,
+          filters.station_id ?? null,
+          filters.property_id ?? null,
+        ],
+        "st.property_id",
+      ),
     );
     return result.rows;
   }
