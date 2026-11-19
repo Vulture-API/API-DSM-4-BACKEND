@@ -14,6 +14,7 @@ import type {
   MeteorologicalReport,
 } from "@/modules/reports/types/report.type.js";
 import {
+  buildExportContentDisposition,
   buildExportFilename,
   escapeCsvCell,
   exportReport,
@@ -1135,6 +1136,19 @@ describe("Regras de Exportação de Relatórios (report-export.rules)", () => {
         id: 10,
         name: "Fazenda Boa Vista",
       });
+    });
+
+    it("monta cabeçalho Content-Disposition seguro para download", () => {
+      expect(
+        buildExportContentDisposition(
+          "relatorio-historico-estacao-1-2026-10-01_a_2026-10-10.csv",
+        ),
+      ).toBe(
+        'attachment; filename="relatorio-historico-estacao-1-2026-10-01_a_2026-10-10.csv"',
+      );
+      expect(
+        buildExportContentDisposition('nome"injetado\r\nmalicioso\\.csv'),
+      ).toBe('attachment; filename="nome_injetado__malicioso_.csv"');
     });
   });
 });

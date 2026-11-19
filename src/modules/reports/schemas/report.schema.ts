@@ -72,15 +72,77 @@ const optionalReportType = z.preprocess(
   z.string().trim(),
 );
 
+const optionalBodyReportType = z.preprocess(
+  (value) => (value === null ? "" : value),
+  z.string().trim().optional(),
+);
+
+const optionalExportFormat = z.preprocess(
+  (value) => (value === null || value === undefined ? "" : value),
+  z.string().trim(),
+);
+
+const optionalAllowEmpty = z.preprocess((value) => {
+  if (value === null || value === undefined || value === "") {
+    return undefined;
+  }
+  if (value === "true") return true;
+  if (value === "false") return false;
+  return value;
+}, z.boolean().optional());
+
+const reportScopeAndPeriodFields = {
+  station_id: optionalPositiveInt,
+  property_id: optionalPositiveInt,
+  from: optionalDateBoundary("start"),
+  to: optionalDateBoundary("end"),
+  days: optionalForecastDays,
+};
+
 export const reportRequestSchema = z
   .object({
     type: optionalReportType,
-    station_id: optionalPositiveInt,
-    property_id: optionalPositiveInt,
-    from: optionalDateBoundary("start"),
-    to: optionalDateBoundary("end"),
-    days: optionalForecastDays,
+    ...reportScopeAndPeriodFields,
   })
   .strict();
 
+export const exportReportQuerySchema = z
+  .object({
+    type: optionalReportType,
+    ...reportScopeAndPeriodFields,
+    format: optionalExportFormat,
+    allow_empty: optionalAllowEmpty,
+  })
+  .strict();
+
+export const exportReportBodySchema = z
+  .object({
+    report: z.unknown().optional(),
+    type: optionalBodyReportType,
+    ...reportScopeAndPeriodFields,
+    format: optionalExportFormat,
+    allow_empty: optionalAllowEmpty,
+  })
+  .strict()
+  .superRefine((data, ctx) => {
+    const hasReport = data.report !== undefined;
+    const hasGenerationFilters = [
+      data.type,
+      data.station_id,
+      data.property_id,
+      data.from,
+      data.to,
+      data.days,
+    ].some((value) => value !== undefined);
+
+    if (hasReport && hasGenerationFilters) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Do not combine 'report' with report generation filters.",
+      });
+    }
+  });
+
 export type ReportRequestInput = z.infer<typeof reportRequestSchema>;
+export type ExportReportQueryInput = z.infer<typeof exportReportQuerySchema>;
+export type ExportReportBodyInput = z.infer<typeof exportReportBodySchema>;

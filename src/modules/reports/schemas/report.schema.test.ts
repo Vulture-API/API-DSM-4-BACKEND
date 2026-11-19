@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { reportRequestSchema } from "@/modules/reports/schemas/report.schema.js";
+import {
+  exportReportBodySchema,
+  exportReportQuerySchema,
+  reportRequestSchema,
+} from "@/modules/reports/schemas/report.schema.js";
 
 describe("reportRequestSchema", () => {
   it("aceita parâmetros mínimos com type e converte filtros opcionais", () => {
@@ -77,6 +81,74 @@ describe("reportRequestSchema", () => {
     ["campo desconhecido (strict)", { type: "history", unknown_param: 1 }],
   ])("recusa entrada inválida: %s", (_label, payload) => {
     const result = reportRequestSchema.safeParse(payload);
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("exportReportQuerySchema", () => {
+  it("aceita filtros de exportação via query string com conversão de allow_empty", () => {
+    const parsed = exportReportQuerySchema.parse({
+      type: "history",
+      station_id: "1",
+      from: "2026-10-01",
+      to: "2026-10-10",
+      format: " csv ",
+      allow_empty: "true",
+    });
+
+    expect(parsed).toEqual({
+      type: "history",
+      station_id: 1,
+      property_id: undefined,
+      from: "2026-10-01T00:00:00.000Z",
+      to: "2026-10-10T23:59:59.999Z",
+      days: undefined,
+      format: "csv",
+      allow_empty: true,
+    });
+  });
+
+  it("normaliza format ausente para string vazia e rejeita allow_empty inválido", () => {
+    expect(exportReportQuerySchema.parse({ type: "alerts" }).format).toBe("");
+    expect(
+      exportReportQuerySchema.safeParse({
+        type: "history",
+        format: "csv",
+        allow_empty: "sim",
+      }).success,
+    ).toBe(false);
+  });
+});
+
+describe("exportReportBodySchema", () => {
+  it("aceita exportação a partir de relatório já gerado sem exigir type", () => {
+    const report = { report_type: "history" };
+    const parsed = exportReportBodySchema.parse({
+      report,
+      format: "json",
+      allow_empty: false,
+    });
+
+    expect(parsed).toEqual({
+      report,
+      type: undefined,
+      station_id: undefined,
+      property_id: undefined,
+      from: undefined,
+      to: undefined,
+      days: undefined,
+      format: "json",
+      allow_empty: false,
+    });
+  });
+
+  it("rejeita combinação simultânea de report já gerado com filtros de geração", () => {
+    const result = exportReportBodySchema.safeParse({
+      report: { report_type: "history" },
+      type: "history",
+      format: "csv",
+    });
+
     expect(result.success).toBe(false);
   });
 });

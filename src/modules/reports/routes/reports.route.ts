@@ -2,7 +2,12 @@ import type { FastifyPluginAsyncZod } from "fastify-type-provider-zod";
 
 import { ReportController } from "@/modules/reports/controllers/report.controller.js";
 import type { ReportRepository } from "@/modules/reports/repositories/report.repository.js";
-import { reportRequestSchema } from "@/modules/reports/schemas/report.schema.js";
+import {
+  exportReportBodySchema,
+  exportReportQuerySchema,
+  reportRequestSchema,
+} from "@/modules/reports/schemas/report.schema.js";
+import { ExportReportService } from "@/modules/reports/services/export-report.service.js";
 import { GenerateReportService } from "@/modules/reports/services/generate-report.service.js";
 
 /**
@@ -10,14 +15,19 @@ import { GenerateReportService } from "@/modules/reports/services/generate-repor
  *   GET  /types   catalogo de tipos disponiveis e filtros aceitos
  *   GET  /        consulta/geracao via query string
  *   POST /        solicitacao de geracao via JSON
+ *   GET  /export  geracao e exportacao direta para download (csv/json)
+ *   POST /export  exportacao de relatorio gerado ou via filtros (csv/json)
  */
 export function buildReportRoutes(
   repository: ReportRepository,
   clock?: () => Date,
 ): FastifyPluginAsyncZod {
   return async (app) => {
+    const generateReportService = new GenerateReportService(repository, clock);
+    const exportReportService = new ExportReportService(generateReportService);
     const controller = new ReportController(
-      new GenerateReportService(repository, clock),
+      generateReportService,
+      exportReportService,
     );
 
     app.get(
@@ -26,6 +36,24 @@ export function buildReportRoutes(
         config: { access: { permission: "monitoring.read" } },
       },
       controller.getAvailableTypes,
+    );
+
+    app.get(
+      "/export",
+      {
+        config: { access: { permission: "monitoring.read" } },
+        schema: { querystring: exportReportQuerySchema },
+      },
+      controller.exportByQuery,
+    );
+
+    app.post(
+      "/export",
+      {
+        config: { access: { permission: "monitoring.read" } },
+        schema: { body: exportReportBodySchema },
+      },
+      controller.exportByBody,
     );
 
     app.get(

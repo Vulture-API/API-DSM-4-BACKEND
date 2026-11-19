@@ -1,6 +1,11 @@
 import type { FastifyReply, FastifyRequest } from "fastify";
 
-import type { ReportRequestInput } from "@/modules/reports/schemas/report.schema.js";
+import type {
+  ExportReportBodyInput,
+  ExportReportQueryInput,
+  ReportRequestInput,
+} from "@/modules/reports/schemas/report.schema.js";
+import { ExportReportService } from "@/modules/reports/services/export-report.service.js";
 import {
   DEFAULT_FORECAST_DAYS,
   DEFAULT_REPORT_PERIOD_DAYS,
@@ -8,6 +13,9 @@ import {
   MAX_FORECAST_DAYS,
   MAX_REPORT_PERIOD_DAYS,
 } from "@/modules/reports/services/generate-report.service.js";
+import type { MeteorologicalReport } from "@/modules/reports/types/report.type.js";
+import type { ExportedReportResult } from "@/modules/reports/types/report-export.type.js";
+import { buildExportContentDisposition } from "@/modules/reports/utils/report-export.rules.js";
 
 const AVAILABLE_REPORT_TYPES = {
   types: [
@@ -72,7 +80,15 @@ const AVAILABLE_REPORT_TYPES = {
  * Controlador HTTP responsavel pela solicitacao e consulta dos relatorios meteorologicos.
  */
 export class ReportController {
-  constructor(private readonly generateReportService: GenerateReportService) {}
+  private readonly exportReportService: ExportReportService;
+
+  constructor(
+    private readonly generateReportService: GenerateReportService,
+    exportReportService?: ExportReportService,
+  ) {
+    this.exportReportService =
+      exportReportService ?? new ExportReportService(generateReportService);
+  }
 
   getAvailableTypes = async (_request: FastifyRequest, reply: FastifyReply) => {
     return reply.status(200).send(AVAILABLE_REPORT_TYPES);
@@ -92,8 +108,57 @@ export class ReportController {
     return this.executeReport(request.body, reply);
   };
 
+  exportByQuery = async (
+    request: FastifyRequest<{ Querystring: ExportReportQueryInput }>,
+    reply: FastifyReply,
+  ) => {
+    const { format, allow_empty, ...reportFilters } = request.query;
+    const result = await this.exportReportService.generateAndExport({
+      ...reportFilters,
+      format,
+      allowEmpty: allow_empty,
+    });
+    return this.sendExportedReport(result, reply);
+  };
+
+  exportByBody = async (
+    request: FastifyRequest<{ Body: ExportReportBodyInput }>,
+    reply: FastifyReply,
+  ) => {
+    const { report, format, allow_empty, type, ...reportFilters } =
+      request.body;
+    const result =
+      report !== undefined
+        ? this.exportReportService.exportFromReport({
+            report: report as MeteorologicalReport,
+            format,
+            allowEmpty: allow_empty,
+          })
+        : await this.exportReportService.generateAndExport({
+            ...reportFilters,
+            type: type ?? "",
+            format,
+            allowEmpty: allow_empty,
+          });
+    return this.sendExportedReport(result, reply);
+  };
+
   private async executeReport(input: ReportRequestInput, reply: FastifyReply) {
     const report = await this.generateReportService.execute(input);
     return reply.status(200).send(report);
+  }
+
+  private sendExportedReport(
+    result: ExportedReportResult,
+    reply: FastifyReply,
+  ) {
+    return reply
+      .status(200)
+      .header("Content-Type", result.contentType)
+      .header(
+        "Content-Disposition",
+        buildExportContentDisposition(result.filename),
+      )
+      .send(result.content);
   }
 }
