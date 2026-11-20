@@ -28,6 +28,8 @@ export class InMemorySensorTypeRepository implements SensorTypeRepository {
       factor: data.factor ?? null,
       gain: data.gain ?? null,
       offset_value: data.offset_value ?? null,
+      min_value: data.min_value ?? null,
+      max_value: data.max_value ?? null,
     };
 
     this.sensorTypes.push(sensorType);
@@ -70,6 +72,10 @@ export class InMemorySensorTypeRepository implements SensorTypeRepository {
         data.offset_value !== undefined
           ? data.offset_value
           : current.offset_value,
+      min_value:
+        data.min_value !== undefined ? data.min_value : current.min_value,
+      max_value:
+        data.max_value !== undefined ? data.max_value : current.max_value,
     };
 
     this.sensorTypes[index] = updated;
@@ -88,7 +94,7 @@ export class InMemorySensorTypeRepository implements SensorTypeRepository {
 }
 
 const SENSOR_TYPE_COLUMNS =
-  "id, name, unit_of_measure, factor::float8 AS factor, gain::float8 AS gain, offset_value::float8 AS offset_value";
+  "id, name, unit_of_measure, factor::float8 AS factor, gain::float8 AS gain, offset_value::float8 AS offset_value, min_value::float8 AS min_value, max_value::float8 AS max_value";
 
 export class PgSensorTypeRepository implements SensorTypeRepository {
   private tableChecked = false;
@@ -105,7 +111,9 @@ export class PgSensorTypeRepository implements SensorTypeRepository {
           unit_of_measure VARCHAR(20) NOT NULL,
           factor NUMERIC,
           gain NUMERIC,
-          offset_value NUMERIC
+          offset_value NUMERIC,
+          min_value NUMERIC,
+          max_value NUMERIC
         );
       `);
       this.tableChecked = true;
@@ -118,8 +126,8 @@ export class PgSensorTypeRepository implements SensorTypeRepository {
     await this.ensureTable();
     const result = await this.pool.query<SensorType>(
       `
-        INSERT INTO sensor_types (name, unit_of_measure, factor, gain, offset_value)
-        VALUES ($1, $2, $3, $4, $5)
+        INSERT INTO sensor_types (name, unit_of_measure, factor, gain, offset_value, min_value, max_value)
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING ${SENSOR_TYPE_COLUMNS}
       `,
       [
@@ -128,6 +136,8 @@ export class PgSensorTypeRepository implements SensorTypeRepository {
         data.factor ?? null,
         data.gain ?? null,
         data.offset_value ?? null,
+        data.min_value ?? null,
+        data.max_value ?? null,
       ],
     );
 
@@ -193,6 +203,10 @@ export class PgSensorTypeRepository implements SensorTypeRepository {
       data.offset_value !== undefined
         ? data.offset_value
         : existing.offset_value;
+    const minValue =
+      data.min_value !== undefined ? data.min_value : existing.min_value;
+    const maxValue =
+      data.max_value !== undefined ? data.max_value : existing.max_value;
 
     const result = await this.pool.query<SensorType>(
       `
@@ -201,11 +215,22 @@ export class PgSensorTypeRepository implements SensorTypeRepository {
             unit_of_measure = $3,
             factor = $4,
             gain = $5,
-            offset_value = $6
+            offset_value = $6,
+            min_value = $7,
+            max_value = $8
         WHERE id = $1
         RETURNING ${SENSOR_TYPE_COLUMNS}
       `,
-      [id, name, unitOfMeasure, factor, gain, offsetValue],
+      [
+        id,
+        name,
+        unitOfMeasure,
+        factor,
+        gain,
+        offsetValue,
+        minValue ?? null,
+        maxValue ?? null,
+      ],
     );
 
     return result.rows[0] ?? null;

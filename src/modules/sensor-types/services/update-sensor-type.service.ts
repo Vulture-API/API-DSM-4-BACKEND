@@ -3,6 +3,7 @@ import { SensorTypeNotFoundError } from "@/modules/sensor-types/errors/sensor-ty
 import type { SensorTypeRepository } from "@/modules/sensor-types/repositories/sensor-type.repository.js";
 import type { SensorTypeInput } from "@/modules/sensor-types/schemas/sensor-type-input.schema.js";
 import type { SensorType } from "@/modules/sensor-types/types/sensor-type.type.js";
+import { assertValidLimits } from "@/modules/sensors/errors/invalid-sensor-limits.error.js";
 import { assertValidCalibration } from "@/shared/errors/invalid-calibration.error.js";
 
 export class UpdateSensorTypeService {
@@ -22,6 +23,15 @@ export class UpdateSensorTypeService {
     }
 
     assertValidCalibration(input);
+    // Um lado omitido mantém o atual: a faixa resultante precisa continuar válida.
+    assertValidLimits(
+      input.min_value !== undefined
+        ? input.min_value
+        : (existing.min_value ?? null),
+      input.max_value !== undefined
+        ? input.max_value
+        : (existing.max_value ?? null),
+    );
 
     const updated = await this.sensorTypeRepository.update(id, input);
     if (!updated) {
