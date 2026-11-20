@@ -25,7 +25,9 @@ describe.skipIf(!TEST_DATABASE_URL)(
         unit_of_measure varchar(20) NOT NULL,
         factor numeric NULL,
         gain numeric NULL,
-        offset_value numeric NULL
+        offset_value numeric NULL,
+        min_value numeric NULL,
+        max_value numeric NULL
       );
     `);
       await admin.end();
@@ -58,6 +60,8 @@ describe.skipIf(!TEST_DATABASE_URL)(
         factor: null,
         gain: null,
         offset_value: null,
+        min_value: null,
+        max_value: null,
       });
 
       expect(await repository.findById(1)).toEqual(created);
@@ -108,6 +112,23 @@ describe.skipIf(!TEST_DATABASE_URL)(
         offset_value: null,
       });
       expect(await repository.findById(created.id)).toEqual(cleared);
+    });
+
+    it("should_store_keep_and_remove_the_physical_limits", async () => {
+      const created = await repository.create({
+        name: "Índice Pluviométrico",
+        unit_of_measure: "mm",
+        min_value: 0,
+        max_value: 500.5,
+      });
+      expect(created).toMatchObject({ min_value: 0, max_value: 500.5 });
+
+      const kept = await repository.update(created.id, { gain: 0.125 });
+      expect(kept).toMatchObject({ min_value: 0, max_value: 500.5 });
+
+      const cleared = await repository.update(created.id, { max_value: null });
+      expect(cleared).toMatchObject({ min_value: 0, max_value: null });
+      expect(await repository.findAll()).toEqual([cleared]);
     });
   },
 );
