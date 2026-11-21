@@ -249,7 +249,7 @@ export const devopsRoutes: FastifyPluginAsync<DevOpsRoutesOptions> = async (
     {
       config: {
         access: { public: true },
-        rateLimit: false,
+        // Rota pública: mantém o rate limit global contra abuso.
       },
     },
     async (request, reply) => {
@@ -271,7 +271,7 @@ export const devopsRoutes: FastifyPluginAsync<DevOpsRoutesOptions> = async (
     {
       config: {
         access: { public: true },
-        rateLimit: false,
+        // Rota pública: mantém o rate limit global contra abuso.
       },
     },
     async (request, reply) => {
@@ -313,10 +313,8 @@ export const devopsRoutes: FastifyPluginAsync<DevOpsRoutesOptions> = async (
   fastify.get(
     "/api/devops/audit-logs",
     {
-      config: {
-        access: { public: true },
-        rateLimit: false,
-      },
+      // Logs de auditoria trazem e-mails e IPs: exigem autenticação.
+      config: { access: { permission: "users.read" } },
     },
     async (request) => {
       const query = request.query as Record<string, string | undefined>;

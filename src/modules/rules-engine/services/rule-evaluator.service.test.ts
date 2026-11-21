@@ -102,4 +102,19 @@ describe("RuleEvaluator", () => {
       ),
     ).toBe(true);
   });
+
+  it("should_treat_out_of_range_readings_as_infinite_values", () => {
+    expect(
+      RuleEvaluator.violates(
+        buildReading({ value: Number.POSITIVE_INFINITY }),
+        buildConfig({ comparison_operator: ">", reference_value: 25 }),
+      ),
+    ).toBe(true);
+    expect(
+      RuleEvaluator.violates(
+        buildReading({ value: Number.NEGATIVE_INFINITY }),
+        buildConfig({ comparison_operator: ">", reference_value: 25 }),
+      ),
+    ).toBe(false);
+  });
 });

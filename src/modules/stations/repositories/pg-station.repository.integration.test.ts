@@ -1,6 +1,7 @@
 import { Pool } from "pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 
+import { propertyScopeContext } from "@/modules/auth/property-scope.js";
 import { DuplicateMacAddressError } from "@/modules/stations/errors/duplicate-mac-address.error.js";
 import { PgStationRepository } from "@/modules/stations/repositories/pg-station.repository.js";
 
@@ -87,6 +88,34 @@ describe.skipIf(!TEST_DATABASE_URL)(
         (await repository.findCollectionInterval(1))
           ?.collection_interval_seconds,
       ).toBe(60);
+    });
+
+    it("should_hide_station_by_id_outside_the_property_scope", async () => {
+      const created = await repository.create(station(50));
+      const inScope = (ids: number[] | null, fn: () => Promise<unknown>) =>
+        propertyScopeContext.run({ ids }, fn);
+
+      await expect(
+        inScope([2], () => repository.findById(created.id)),
+      ).resolves.toBeNull();
+      await expect(
+        inScope([2], () => repository.findCollectionInterval(created.id)),
+      ).resolves.toBeNull();
+      await expect(
+        inScope([2], () => repository.updateCollectionInterval(created.id, 30)),
+      ).resolves.toBeNull();
+      await expect(
+        inScope([2], () => repository.delete(created.id)),
+      ).resolves.toBe(false);
+      await expect(
+        inScope([], () => repository.findById(created.id)),
+      ).resolves.toBeNull();
+      await expect(
+        inScope([1], () => repository.findById(created.id)),
+      ).resolves.toMatchObject({ id: created.id });
+      await expect(
+        inScope(null, () => repository.findById(created.id)),
+      ).resolves.toMatchObject({ id: created.id });
     });
 
     it("should_return_null_for_the_collection_interval_of_a_missing_station", async () => {

@@ -38,6 +38,17 @@ export function handleParametersError(
     });
   }
 
+  // Erros 4xx do Fastify (JSON malformado, corpo grande demais...).
+  const status = (error as { statusCode?: number }).statusCode;
+  if (typeof status === "number" && status >= 400 && status < 500) {
+    return reply.status(status).send({
+      code: status,
+      message:
+        status === 413 ? "Payload too large" : "Malformed or invalid request",
+      details: [],
+    });
+  }
+
   return reply.status(500).send({
     code: 500,
     message: "Internal server error",
