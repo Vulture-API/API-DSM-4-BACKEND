@@ -3,6 +3,7 @@ import {
   type FastifyReply,
   type FastifyRequest,
 } from "fastify";
+import { ZodError } from "zod";
 
 import { env } from "@/config/environment.js";
 import { ApplicationError } from "@/errors/application.error.js";
@@ -29,6 +30,35 @@ export function handleError(
       code: "VALIDATION_ERROR",
       message: "Invalid data",
       errors: error.validation,
+      ...developmentDetails,
+    });
+  }
+
+  // Entrada inválida validada manualmente com Zod dentro do handler.
+  if (error instanceof ZodError) {
+    return reply.status(400).send({
+      statusCode: 400,
+      code: "VALIDATION_ERROR",
+      message: "Invalid data",
+      errors: error.issues,
+      ...developmentDetails,
+    });
+  }
+
+  // Erros 4xx do próprio Fastify (JSON malformado, corpo grande demais,
+  // content-type não suportado...): devolvem o status original, não 500.
+  const status = (error as { statusCode?: number }).statusCode;
+  if (
+    !(error instanceof ApplicationError) &&
+    typeof status === "number" &&
+    status >= 400 &&
+    status < 500
+  ) {
+    return reply.status(status).send({
+      statusCode: status,
+      code: status === 413 ? "PAYLOAD_TOO_LARGE" : "BAD_REQUEST",
+      message:
+        status === 413 ? "Payload too large" : "Malformed or invalid request",
       ...developmentDetails,
     });
   }
