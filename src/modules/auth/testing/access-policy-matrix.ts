@@ -36,9 +36,9 @@ export function expectedAccessPolicies() {
     "/api/devops/outages",
     "/api/devops/outages/:id",
     "/api/devops/sla",
-    "/api/devops/audit-logs",
   ])
     add("GET", path, { public: true });
+  add("GET", "/api/devops/audit-logs", { permission: "users.read" });
   add("POST", "/api/auth/login", { public: true });
   add("POST", "/api/devops/outages", { public: true });
   add("PATCH", "/api/devops/outages/:id/resolve", { public: true });
