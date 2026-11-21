@@ -89,6 +89,8 @@ export function expectedAccessPolicies() {
   }
   add("GET", "/api/stations/properties", { permission: "properties.read" });
   add("GET", "/api/stations/:id/status", { permission: "stations.read" });
+  add("GET", "/api/stations/:id/collection", { permission: "stations.read" });
+  add("PUT", "/api/stations/:id/collection", { permission: "stations.update" });
   for (const path of [
     "/api/stations/overview",
     "/api/stations/current",
@@ -99,10 +101,16 @@ export function expectedAccessPolicies() {
     "/api/stations/:id/statistics",
     "/api/stations/:id/forecast",
     "/api/readings",
+    "/api/meteorological-data",
     "/readings",
     "/api/v1/readings",
+    "/api/reports",
+    "/api/reports/export",
+    "/api/reports/types",
   ])
     add("GET", path, { permission: "monitoring.read" });
+  add("POST", "/api/reports", { permission: "monitoring.read" });
+  add("POST", "/api/reports/export", { permission: "monitoring.read" });
   add("GET", "/api/stations/current/ws", {
     permission: "monitoring.read",
     websocket: true,

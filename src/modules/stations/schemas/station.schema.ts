@@ -29,6 +29,13 @@ export const stationIdParamSchema = z.object({
   id: z.coerce.number().int().positive(),
 });
 
+export const collectionSettingsBodySchema = z.object({
+  collection_interval_seconds: z.number().int(),
+});
+
+export type CollectionSettingsBody = z.infer<
+  typeof collectionSettingsBodySchema
+>;
 export type StationBodyInput = z.infer<typeof stationBodySchema>;
 export type ListStationsQuery = z.infer<typeof listStationsQuerySchema>;
 export type StationIdParam = z.infer<typeof stationIdParamSchema>;

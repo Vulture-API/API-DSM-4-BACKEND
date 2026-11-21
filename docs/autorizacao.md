@@ -105,9 +105,9 @@ Para reproduzir, defina `TEST_DATABASE_URL` apontando exclusivamente para um Pos
 
 ```bash
 # Testes diretamente relacionados à entrega.
-npx vitest run src/modules/auth/access-control.test.ts \
-  src/modules/auth/access-policy.test.ts \
-  src/modules/auth/authorization.routes.test.ts \
+npx vitest run src/modules/auth/access-control.route.test.ts \
+  src/modules/auth/access-policy.integration.test.ts \
+  src/modules/auth/authorization.route.test.ts \
   src/errors/handlers/authorization.test.ts --reporter=verbose
 
 # Regressão e cobertura, incluindo as integrações PostgreSQL e WebSocket.

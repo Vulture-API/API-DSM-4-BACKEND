@@ -73,6 +73,11 @@ describe.skipIf(!url)(
           permission_code varchar(100) NOT NULL REFERENCES ${schema}.permissions(code) ON DELETE RESTRICT,
           PRIMARY KEY (role_id, permission_code)
         );
+        CREATE TABLE ${schema}.user_properties (
+          user_id integer NOT NULL REFERENCES ${schema}.users(id) ON DELETE CASCADE,
+          property_id integer NOT NULL,
+          PRIMARY KEY (user_id, property_id)
+        );
       `);
       } finally {
         await setup.end();
@@ -92,7 +97,7 @@ describe.skipIf(!url)(
 
     beforeEach(async () => {
       await pool.query(
-        "TRUNCATE credentials, users, role_permissions, roles RESTART IDENTITY",
+        "TRUNCATE user_properties, credentials, users, role_permissions, roles RESTART IDENTITY",
       );
       // Deliberately use a non-admin name for the privileged role and an admin
       // name for the empty one: access must depend on grants, never labels/IDs.
@@ -132,8 +137,17 @@ describe.skipIf(!url)(
         headers: member,
       });
       expect(response.statusCode).toBe(200);
-      const { permissions: _permissions, ...user } = response.json<
-        User & { permissions: string[] }
+      const {
+        permissions: _permissions,
+        role_name: _roleName,
+        property_ids: _propertyIds,
+        ...user
+      } = response.json<
+        User & {
+          permissions: string[];
+          role_name: string;
+          property_ids: number[] | null;
+        }
       >();
       memberUser = user;
     });

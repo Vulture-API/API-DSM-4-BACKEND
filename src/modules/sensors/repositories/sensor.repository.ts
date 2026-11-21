@@ -1,6 +1,7 @@
 import type { Pool } from "pg";
 
 import { database } from "@/config/database.js";
+import { scopedQuery } from "@/modules/auth/property-scope.js";
 import { SensorConflictError } from "@/modules/sensors/errors/sensor-conflict.error.js";
 import type { Sensor } from "@/modules/sensors/types/sensor.type.js";
 import type { PaginatedResult } from "@/shared/schemas/pagination.schema.js";
@@ -18,14 +19,26 @@ export interface SensorUpdateData {
   operational_status?: boolean | undefined;
   min_value?: number | null | undefined;
   max_value?: number | null | undefined;
+  gain?: number | null | undefined;
+  offset_value?: number | null | undefined;
+  model?: string | null | undefined;
 }
 
 export type SensorCreateData = Omit<
   Sensor,
-  "id" | "created_at" | "min_value" | "max_value"
+  | "id"
+  | "created_at"
+  | "min_value"
+  | "max_value"
+  | "gain"
+  | "offset_value"
+  | "model"
 > & {
   min_value?: number | null | undefined;
   max_value?: number | null | undefined;
+  gain?: number | null | undefined;
+  offset_value?: number | null | undefined;
+  model?: string | null | undefined;
 };
 
 export interface SensorRepository {
@@ -74,6 +87,9 @@ export class InMemorySensorRepository implements SensorRepository {
       operational_status: data.operational_status,
       min_value: data.min_value ?? null,
       max_value: data.max_value ?? null,
+      gain: data.gain ?? null,
+      offset_value: data.offset_value ?? null,
+      model: data.model ?? null,
       created_at: new Date().toISOString(),
     };
 
@@ -148,6 +164,12 @@ export class InMemorySensorRepository implements SensorRepository {
         data.min_value !== undefined ? data.min_value : current.min_value,
       max_value:
         data.max_value !== undefined ? data.max_value : current.max_value,
+      gain: data.gain !== undefined ? data.gain : current.gain,
+      offset_value:
+        data.offset_value !== undefined
+          ? data.offset_value
+          : current.offset_value,
+      model: data.model !== undefined ? data.model : current.model,
       created_at: current.created_at,
     };
 
@@ -169,7 +191,7 @@ export class InMemorySensorRepository implements SensorRepository {
 type SensorRow = Omit<Sensor, "created_at"> & { created_at: Date | string };
 
 const SENSOR_COLUMNS =
-  "id, station_id, sensor_type_id, local_identifier, operational_status, min_value::float8 AS min_value, max_value::float8 AS max_value, created_at";
+  "id, station_id, sensor_type_id, local_identifier, operational_status, min_value::float8 AS min_value, max_value::float8 AS max_value, gain::float8 AS gain, offset_value::float8 AS offset_value, model, created_at";
 
 function mapSensor(row: SensorRow): Sensor {
   return {
@@ -199,8 +221,8 @@ export class PgSensorRepository implements SensorRepository {
   async create(data: SensorCreateData): Promise<Sensor> {
     try {
       const result = await this.pool.query<SensorRow>(
-        `INSERT INTO sensors (station_id, sensor_type_id, local_identifier, operational_status, min_value, max_value)
-         VALUES ($1, $2, $3, $4, $5, $6)
+        `INSERT INTO sensors (station_id, sensor_type_id, local_identifier, operational_status, min_value, max_value, gain, offset_value, model)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
          RETURNING ${SENSOR_COLUMNS}`,
         [
           data.station_id,
@@ -209,6 +231,9 @@ export class PgSensorRepository implements SensorRepository {
           data.operational_status,
           data.min_value ?? null,
           data.max_value ?? null,
+          data.gain ?? null,
+          data.offset_value ?? null,
+          data.model ?? null,
         ],
       );
       return mapSensor(result.rows[0]!);
@@ -229,16 +254,22 @@ export class PgSensorRepository implements SensorRepository {
 
     const [rows, count] = await Promise.all([
       this.pool.query<SensorRow>(
-        `SELECT ${SENSOR_COLUMNS} FROM sensors
-         WHERE ($1::int IS NULL OR station_id = $1)
+        ...scopedQuery(
+          `SELECT ${SENSOR_COLUMNS} FROM sensors
+         WHERE ($1::int IS NULL OR station_id = $1) AND /* scope */
          ORDER BY id ASC
          LIMIT $2 OFFSET $3`,
-        [stationId, limit, (page - 1) * limit],
+          [stationId, limit, (page - 1) * limit],
+          "(SELECT property_id FROM stations WHERE stations.id = sensors.station_id)",
+        ),
       ),
       this.pool.query<{ total: number }>(
-        `SELECT COUNT(*)::int AS total FROM sensors
-         WHERE ($1::int IS NULL OR station_id = $1)`,
-        [stationId],
+        ...scopedQuery(
+          `SELECT COUNT(*)::int AS total FROM sensors
+         WHERE ($1::int IS NULL OR station_id = $1) AND /* scope */`,
+          [stationId],
+          "(SELECT property_id FROM stations WHERE stations.id = sensors.station_id)",
+        ),
       ),
     ]);
 
@@ -289,9 +320,12 @@ export class PgSensorRepository implements SensorRepository {
            sensor_type_id = COALESCE($3, sensor_type_id),
            local_identifier = COALESCE($4, local_identifier),
            operational_status = COALESCE($5, operational_status),
-           -- COALESCE não serve aqui: null remove o limite.
+           -- COALESCE não serve aqui: null remove o limite ou a calibração.
            min_value = CASE WHEN $6 THEN $7::decimal ELSE min_value END,
-           max_value = CASE WHEN $8 THEN $9::decimal ELSE max_value END
+           max_value = CASE WHEN $8 THEN $9::decimal ELSE max_value END,
+           gain = CASE WHEN $10 THEN $11::decimal ELSE gain END,
+           offset_value = CASE WHEN $12 THEN $13::decimal ELSE offset_value END,
+           model = CASE WHEN $14 THEN $15::varchar ELSE model END
          WHERE id = $1
          RETURNING ${SENSOR_COLUMNS}`,
         [
@@ -304,6 +338,12 @@ export class PgSensorRepository implements SensorRepository {
           data.min_value ?? null,
           data.max_value !== undefined,
           data.max_value ?? null,
+          data.gain !== undefined,
+          data.gain ?? null,
+          data.offset_value !== undefined,
+          data.offset_value ?? null,
+          data.model !== undefined,
+          data.model ?? null,
         ],
       );
       return result.rows[0] ? mapSensor(result.rows[0]) : null;

@@ -36,6 +36,7 @@ import {
   JWT_ISSUER,
   JWT_TTL_SECONDS,
 } from "@/modules/auth/access-control.js";
+import { propertyScopeContext } from "@/modules/auth/property-scope.js";
 import {
   type AuthRepositoryPort,
   PgAuthRepository,
@@ -80,6 +81,9 @@ import { InMemoryReadingRepository } from "@/modules/readings/repositories/in-me
 import { PgReadingRepository } from "@/modules/readings/repositories/pg-reading.repository.js";
 import type { ReadingRepository } from "@/modules/readings/repositories/reading.repository.js";
 import { buildReadingRoutes } from "@/modules/readings/routes/readings.route.js";
+import { PgReportRepository } from "@/modules/reports/repositories/pg-report.repository.js";
+import type { ReportRepository } from "@/modules/reports/repositories/report.repository.js";
+import { buildReportRoutes } from "@/modules/reports/routes/reports.route.js";
 import {
   RoleRepository,
   type RoleRepositoryPort,
@@ -139,6 +143,7 @@ export type BuildAppOptions = {
   sensorTypeRepository?: SensorTypeRepository;
   sensorRepository?: SensorRepository;
   readingRepository?: ReadingRepository;
+  reportRepository?: ReportRepository;
   devopsMetricsService?: DevOpsMetricsService;
   outageRepository?: SystemOutageRepository | undefined;
   outageService?: DevOpsOutageService | undefined;
@@ -187,6 +192,9 @@ export function buildApp(options: BuildAppOptions = {}) {
     assertAccessPolicy(route.config?.access, `${route.method} ${route.url}`);
   });
   app.decorateRequest("actor", null);
+  app.addHook("onRequest", (_request, _reply, done) => {
+    propertyScopeContext.run({ ids: null }, done);
+  });
   app.decorateRequest("metricsStartTime", 0);
 
   const auditService = options.auditService ?? AuditService.getInstance();
@@ -431,6 +439,18 @@ export function buildApp(options: BuildAppOptions = {}) {
         );
       }
     });
+    const openMeteoProvider = options.forecastProvider
+      ? undefined
+      : new OpenMeteoProvider({
+          baseUrl: env.FORECAST_API_URL,
+          timeoutMs: env.FORECAST_TIMEOUT_MS,
+        });
+    const forecastProvider =
+      options.forecastProvider ??
+      new CachedForecastProvider(openMeteoProvider!, {
+        ttlMs: env.FORECAST_CACHE_TTL_MINUTES * 60_000,
+      });
+
     app.register(async (stations) => {
       stations.setErrorHandler(handleError);
       const repository =
@@ -478,15 +498,6 @@ export function buildApp(options: BuildAppOptions = {}) {
         ),
         { prefix: "/api/stations" },
       );
-      const forecastProvider =
-        options.forecastProvider ??
-        new CachedForecastProvider(
-          new OpenMeteoProvider({
-            baseUrl: env.FORECAST_API_URL,
-            timeoutMs: env.FORECAST_TIMEOUT_MS,
-          }),
-          { ttlMs: env.FORECAST_CACHE_TTL_MINUTES * 60_000 },
-        );
       stations.register(
         buildForecastRoutes(
           repository,
@@ -501,6 +512,25 @@ export function buildApp(options: BuildAppOptions = {}) {
         ),
         { prefix: "/api/stations" },
       );
+    });
+    app.register(async (reports) => {
+      reports.setErrorHandler(handleError);
+      const reportRepository =
+        options.reportRepository ??
+        new PgReportRepository(
+          pool,
+          forecastProvider,
+          openMeteoProvider,
+          (error, context) =>
+            console.error(
+              "[reports] falha no provedor de previsão:",
+              context,
+              error,
+            ),
+        );
+      reports.register(buildReportRoutes(reportRepository, options.clock), {
+        prefix: "/api/reports",
+      });
     });
     app.register(async (alerts) => {
       alerts.setErrorHandler(handleError);
@@ -553,7 +583,12 @@ export function buildApp(options: BuildAppOptions = {}) {
         (process.env.NODE_ENV === "test" && !options.database
           ? new InMemoryReadingRepository()
           : new PgReadingRepository(pool));
-      for (const prefix of ["/api/readings", "/readings", "/api/v1/readings"]) {
+      for (const prefix of [
+        "/api/readings",
+        "/readings",
+        "/api/v1/readings",
+        "/api/meteorological-data",
+      ]) {
         readings.register(buildReadingRoutes(repository), { prefix });
       }
     });

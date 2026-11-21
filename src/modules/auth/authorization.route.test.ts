@@ -48,6 +48,7 @@ const readCases: { permission: PermissionCode; paths: string[] }[] = [
       "/api/stations/statistics",
       "/api/stations/1/forecast",
       "/api/readings",
+      "/api/meteorological-data",
       "/readings",
       "/api/v1/readings",
     ],

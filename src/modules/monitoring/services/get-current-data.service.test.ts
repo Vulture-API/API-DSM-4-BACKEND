@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { InMemoryMonitoringRepository } from "@/modules/monitoring/repositories/monitoring.repository.js";
 import { GetCurrentDataService } from "@/modules/monitoring/services/get-current-data.service.js";
@@ -171,4 +171,109 @@ describe("GetCurrentDataService", () => {
 
     expect(result.stations).toEqual([]);
   });
+
+  it("preserva os dados de cada estação e não mistura suas atualizações", async () => {
+    const reading = {
+      sensor_id: 10,
+      local_identifier: "temp",
+      sensor_type_id: 1,
+      sensor_type: "Temperatura",
+      unit_of_measure: "°C",
+      value: 0,
+      unix_time: 0,
+    };
+    repository.current = [
+      row(1, minutesAgo(1), { readings: [reading] }),
+      row(2, minutesAgo(2), {
+        readings: [
+          {
+            ...reading,
+            sensor_id: 20,
+            value: -5,
+            unix_time: unix(minutesAgo(3)),
+          },
+        ],
+      }),
+      row(3, minutesAgo(1)),
+    ];
+    const original = structuredClone(repository.current);
+
+    const result = await service.execute({});
+
+    expect(result.stations).toEqual([
+      {
+        station_id: 1,
+        name: "Estação 1",
+        property_id: 1,
+        property_name: "Fazenda",
+        status: "Online",
+        last_update: new Date(0),
+        readings: [reading],
+      },
+      {
+        station_id: 2,
+        name: "Estação 2",
+        property_id: 2,
+        property_name: "Fazenda",
+        status: "Online",
+        last_update: minutesAgo(3),
+        readings: original[1]!.readings,
+      },
+      {
+        station_id: 3,
+        name: "Estação 3",
+        property_id: 1,
+        property_name: "Fazenda",
+        status: "Online",
+        last_update: null,
+        readings: [],
+      },
+    ]);
+    expect(repository.current).toEqual(original);
+  });
+
+  it("encaminha os filtros combinados e aceita estação existente sem leituras", async () => {
+    repository.current = [row(1, null), row(2, null)];
+    const list = vi.spyOn(repository, "listCurrent");
+    const exists = vi.spyOn(repository, "stationExists");
+
+    expect(
+      (await service.execute({ station_id: 2, property_id: 2 })).stations,
+    ).toHaveLength(1);
+    expect(exists).toHaveBeenCalledWith(2);
+    expect(list).toHaveBeenCalledWith({ station_id: 2, property_id: 2 });
+    expect(
+      (await service.execute({ station_id: 2, property_id: 1 })).stations,
+    ).toEqual([]);
+  });
+
+  it("não consulta leituras quando a estação não existe", async () => {
+    const list = vi.spyOn(repository, "listCurrent");
+    await expect(service.execute({ station_id: 99 })).rejects.toMatchObject({
+      statusCode: 404,
+    });
+    expect(list).not.toHaveBeenCalled();
+  });
+
+  it("considera online a comunicação exatamente no limite e prioriza offline sobre alerta", async () => {
+    repository.current = [
+      row(1, minutesAgo(10)),
+      row(2, minutesAgo(10 + 1 / 60), { active_alerts: 1 }),
+    ];
+    expect((await service.execute({})).stations.map((s) => s.status)).toEqual([
+      "Online",
+      "Offline",
+    ]);
+  });
+
+  it.each(["listCurrent", "stationExists"] as const)(
+    "propaga falha de %s sem produzir dados parciais",
+    async (method) => {
+      const failure = new Error("Falha do repositório fake");
+      vi.spyOn(repository, method).mockRejectedValueOnce(failure);
+      await expect(
+        service.execute(method === "stationExists" ? { station_id: 1 } : {}),
+      ).rejects.toBe(failure);
+    },
+  );
 });

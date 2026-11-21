@@ -1,13 +1,9 @@
-import { ApplicationError } from "@/errors/application.error.js";
 import type { ReadingRepository } from "@/modules/readings/repositories/reading.repository.js";
 import type {
   ListReadingsFilters,
   Reading,
 } from "@/modules/readings/types/reading.type.js";
-import {
-  isValidDateParameter,
-  resolveTimeRange,
-} from "@/modules/readings/utils/date-filter.js";
+import { normalizeReadingsFilters } from "@/modules/readings/utils/normalize-readings-filters.js";
 import { StationNotFoundError } from "@/modules/stations/errors/station-not-found.error.js";
 import {
   buildPaginationMeta,
@@ -27,45 +23,8 @@ export class GetReadingsHistoryService {
       }
     }
 
-    const rawStartDate = input.start_date ?? input.initial_date;
-
-    const rawEndDate = input.end_date ?? input.final_date;
-
-    if (rawStartDate !== undefined && !isValidDateParameter(rawStartDate)) {
-      throw new ApplicationError(
-        400,
-        "INVALID_DATE",
-        "Invalid start date format. Expected YYYY-MM-DD or ISO 8601 datetime",
-      );
-    }
-
-    if (rawEndDate !== undefined && !isValidDateParameter(rawEndDate)) {
-      throw new ApplicationError(
-        400,
-        "INVALID_DATE",
-        "Invalid end date format. Expected YYYY-MM-DD or ISO 8601 datetime",
-      );
-    }
-
-    const { startUnixTime, endUnixTime } = resolveTimeRange(input);
-
-    if (
-      startUnixTime !== undefined &&
-      endUnixTime !== undefined &&
-      startUnixTime > endUnixTime
-    ) {
-      throw new ApplicationError(
-        400,
-        "INVALID_PERIOD",
-        "start period must be less than or equal to end period",
-      );
-    }
-
-    const { data, total_records } = await this.repository.findMany({
-      ...input,
-      start_unix_time: startUnixTime,
-      end_unix_time: endUnixTime,
-    });
+    const filters = normalizeReadingsFilters(input);
+    const { data, total_records } = await this.repository.findMany(filters);
 
     return {
       data,
