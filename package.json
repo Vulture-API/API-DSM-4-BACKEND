@@ -46,7 +46,7 @@
     "@vitest/coverage-v8": "^5.0.1",
     "eslint": "^9.39.5",
     "eslint-plugin-simple-import-sort": "^12.1.1",
-    "globals": "^16.5.0",
+    "globals": "^17.14.0",
     "prettier": "^3.9.8",
     "tsc-alias": "^1.9.5",
     "tsx": "^4.23.13",
