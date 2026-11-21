@@ -101,8 +101,11 @@ export class PgStationRepository implements StationRepository {
 
   async findById(id: number): Promise<Station | null> {
     const result = await this.database.query<Station>(
-      `SELECT ${STATION_COLUMNS} FROM stations WHERE id = $1`,
-      [id],
+      ...scopedQuery(
+        `SELECT ${STATION_COLUMNS} FROM stations WHERE id = $1 AND /* scope */`,
+        [id],
+        "property_id",
+      ),
     );
 
     return result.rows[0] ?? null;
@@ -144,8 +147,11 @@ export class PgStationRepository implements StationRepository {
     id: number,
   ): Promise<StationCollectionInterval | null> {
     const result = await this.database.query<StationCollectionInterval>(
-      "SELECT mac_address, collection_interval_seconds FROM stations WHERE id = $1",
-      [id],
+      ...scopedQuery(
+        "SELECT mac_address, collection_interval_seconds FROM stations WHERE id = $1 AND /* scope */",
+        [id],
+        "property_id",
+      ),
     );
 
     return result.rows[0] ?? null;
@@ -156,12 +162,15 @@ export class PgStationRepository implements StationRepository {
     seconds: number,
   ): Promise<StationCollectionInterval | null> {
     const result = await this.database.query<StationCollectionInterval>(
-      `
+      ...scopedQuery(
+        `
         UPDATE stations SET collection_interval_seconds = $2
-        WHERE id = $1
+        WHERE id = $1 AND /* scope */
         RETURNING mac_address, collection_interval_seconds
       `,
-      [id, seconds],
+        [id, seconds],
+        "property_id",
+      ),
     );
 
     return result.rows[0] ?? null;
@@ -169,8 +178,11 @@ export class PgStationRepository implements StationRepository {
 
   async delete(id: number): Promise<boolean> {
     const result = await this.database.query(
-      `DELETE FROM stations WHERE id = $1`,
-      [id],
+      ...scopedQuery(
+        `DELETE FROM stations WHERE id = $1 AND /* scope */`,
+        [id],
+        "property_id",
+      ),
     );
 
     return (result.rowCount ?? 0) > 0;

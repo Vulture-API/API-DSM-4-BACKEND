@@ -17,7 +17,11 @@ export class PgReadingRepository implements ReadingRepository {
         SELECT
           id,
           sensor_id,
-          value::float8 AS value,
+          CASE
+            WHEN value > 1e308 THEN 'Infinity'::float8
+            WHEN value < -1e308 THEN '-Infinity'::float8
+            ELSE value::float8
+          END AS value,
           unix_time::bigint AS unix_time,
           data_consistent,
           created_at

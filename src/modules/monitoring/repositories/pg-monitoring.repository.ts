@@ -200,8 +200,11 @@ export class PgMonitoringRepository implements MonitoringRepository {
 
   async stationExists(stationId: number): Promise<boolean> {
     const result = await this.database.query(
-      "SELECT 1 FROM stations WHERE id = $1",
-      [stationId],
+      ...scopedQuery(
+        "SELECT 1 FROM stations WHERE id = $1 AND /* scope */",
+        [stationId],
+        "property_id",
+      ),
     );
     return (result.rowCount ?? 0) > 0;
   }
